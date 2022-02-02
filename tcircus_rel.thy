@@ -1,5 +1,5 @@
 theory tcircus_rel
-  imports tcircus_traces
+  imports "tcircus_traces"
 begin
 
 subsection \<open> Foundations \<close>
@@ -11,9 +11,15 @@ text \<open> We don't need a tick event, because this is handled by the $wait$ f
   the healthiness condition that a tock can't occur in a refusal before a tock event using
   the type system. \<close>
 
-alphabet ('s, 'e) tc_vars = "('e tev list, 's) rsp_vars" +
-  ref :: "'e refusal"
+alphabet ('s, 'e) tt_vars = "('e reftrace, 's) rsp_vars" +
+  ref :: "'e refevent refusal"
   pat :: "bool" 
+
+type_synonym ('\<sigma>,'\<phi>) ttcircus = "('\<sigma>, '\<phi>) tt_vars"
+type_synonym ('\<sigma>,'\<phi>) taction  = "('\<sigma>, '\<phi>) ttcircus hrel"
+type_synonym '\<phi> ttcsp = "(unit,'\<phi>) taction"
+type_synonym '\<phi> ttprocess  = "'\<phi> ttcsp hrel"
+type_synonym ('a,'\<sigma>,'\<theta>) expr_tc = "('a, ('\<sigma>,'\<theta>) ttcircus \<times> ('\<sigma>,'\<theta>) ttcircus) uexpr"
 
 text \<open> We record patience/urgency via the @{const pat} variable instead of in the refusal set. This
   is so that conjunction works -- time is deterministic, and so a process is patient (accepts
@@ -31,9 +37,9 @@ text \<open> The interpretation of $wait$ changes to there being both stable (qu
 lemma tc_splits:
   "(\<forall>r. P r) = (\<forall>ok wait tr st ref pat more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, pat\<^sub>v = pat, \<dots> = more\<rparr>)"
   "(\<exists>r. P r) = (\<exists> ok wait tr st ref pat more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, pat\<^sub>v = pat, \<dots> = more\<rparr>)"
-  by (metis rp_vars.select_convs(3) rsp_vars.surjective tc_vars.surjective)+
+  by (metis rp_vars.select_convs(3) rsp_vars.surjective tt_vars.surjective)+
 
-declare tc_vars.splits [alpha_splits del]
+declare tt_vars.splits [alpha_splits del]
 declare des_vars.splits [alpha_splits del]
 declare rp_vars.splits [alpha_splits del]
 declare rsp_vars.splits [alpha_splits del]
@@ -42,12 +48,10 @@ declare rsp_vars.splits [alpha_splits]
 declare rp_vars.splits [alpha_splits]
 declare des_vars.splits [alpha_splits]
 
-type_synonym ('s,'e) taction  = "('s, 'e) tc_vars hrel"
-
 subsection \<open> Reactive Relation Constructs \<close>
 
-definition tc_skip :: "('s, 'e) taction" ("II\<^sub>t") where
-[upred_defs]: "tc_skip = ($tr\<acute> =\<^sub>u $tr \<and> $st\<acute> =\<^sub>u $st)"
+definition tt_skip :: "('s, 'e) taction" ("II\<^sub>t") where
+[upred_defs]: "tt_skip = ($tr\<acute> =\<^sub>u $tr \<and> $st\<acute> =\<^sub>u $st)"
 
 definition TRR1 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR1(P) = (II\<^sub>t ;; P)"
@@ -100,7 +104,7 @@ lemma TRR_intro:
   by (simp add: TRR_alt_def Healthy_def, simp add: Healthy_if assms ex_unrest)
 
 lemma TRR_unrest_ref [unrest]: "P is TRR \<Longrightarrow> $ref \<sharp> P"
-  by (metis (no_types, lifting) Healthy_if TRR_alt_def exists_twice in_var_indep in_var_uvar ref_vwb_lens tc_vars.indeps(2) unrest_as_exists unrest_ex_diff vwb_lens_mwb)
+  by (metis (no_types, lifting) Healthy_if TRR_alt_def exists_twice in_var_indep in_var_uvar ref_vwb_lens tt_vars.indeps(2) unrest_as_exists unrest_ex_diff vwb_lens_mwb)
 
 lemma TRR_unrest_pat [unrest]: "P is TRR \<Longrightarrow> $pat \<sharp> P"
   by (metis (no_types, hide_lams) Healthy_if TRR_alt_def exists_twice in_var_uvar pat_vwb_lens unrest_as_exists vwb_lens_mwb)
@@ -410,6 +414,5 @@ no_utp_lift lift_state_rel
 
 definition TDC :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" where
 [upred_defs]: "TDC(P) = U(\<exists> ref\<^sub>0. P\<lbrakk>\<guillemotleft>ref\<^sub>0\<guillemotright>/$ref\<acute>\<rbrakk> \<and> $ref\<acute> \<le> \<guillemotleft>ref\<^sub>0\<guillemotright>)"
-
 
 end

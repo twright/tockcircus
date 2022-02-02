@@ -1,10 +1,10 @@
-section \<open> Timed Traces \<close>
+section \<open> Tick Tock CSP UTP Semantics \<close>
 
 theory tcircus_traces
-  imports "UTP-Reactive-Designs.utp_rea_designs" "../rcircus/Refusal_Tests"
+  imports "UTP-Reactive-Designs.utp_rea_designs"  "../rcircus/Refusal_Tests"
 begin recall_syntax
 
-subsection \<open> Events and Traces \<close>
+subsection \<open> Preliminaries \<close>
 
 instantiation list :: (type) monoid_mult
 begin
@@ -16,18 +16,56 @@ end
 lemma power_replicate: "[x]^n = replicate n x"
   by (induct n; simp)
 
-text \<open> We try and characterise a tock-CSP like model using the standard Circus pattern and adapting
-  the CML model and bits of the refusal testing model. First we represent traces. \<close>
+datatype '\<theta> refevent = refevt '\<theta> | reftick | reftock 
 
-datatype 'e tev = 
-  Tock "'e set" \<comment> \<open> Passage of time, which we term and ``idle'' event \<close>
-  | Evt 'e      \<comment> \<open> Other, ``active'' events \<close>
+datatype '\<theta> tev = Tock "('\<theta>  refevent) set" \<comment> \<open> Passage of time, which we term and ``idle'' event \<close>
+                | Evt '\<theta>                    \<comment> \<open> Other, ``active'' events \<close>
 
-type_synonym 'e ttrace = "'e tev list"
+datatype '\<theta> oevent = oref "('\<theta>  refevent) set" | oevt '\<theta> | otock | otick
+
+type_synonym '\<theta> reftrace = "('\<theta> tev) list"
+
+type_synonym '\<theta> oreftrace = "('\<theta> oevent) list"
+  
+subsection \<open> Healthiness conditions \<close>
+
+fun isprefix :: "'a list \<Rightarrow> 'a list \<Rightarrow> bool" where
+"isprefix xs ys = (\<exists>zs::('a list). ys = xs @ ys)"
+
+fun list_diff :: "'a list \<Rightarrow> 'a list \<Rightarrow> 'a list" where
+"list_diff (x#xs) [] = undefined"|
+"list_diff [] ys = ys"|
+"list_diff (x#xs) (y#ys) = (if x=y then list_diff xs ys else undefined)"
+
+lemma "isprefix xs ys \<Longrightarrow> ys = xs @ list_diff xs ys"
+  by auto
+
+fun events :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
+"events [] = []" |
+"events (Tock A # t) = events t" |
+"events (Evt x # t) = (Evt x # events t)"
+
+lemma events_append [simp]: "events (xs @ ys) = events(xs) @ events(ys)"
+proof (induct xs)
+  case Nil
+  thus ?case by simp
+next
+  case (Cons x xs')
+  thus ?case by (case_tac x; simp)
+qed
+
+fun oevents :: "'\<theta> oreftrace \<Rightarrow> '\<theta> oreftrace" where
+"oevents [] = []"|
+"oevents (oevt e # xs) = oevt e # oevents xs"|
+"oevents (oref X # xs) = oevents xs"|
+"oevents (otock # xs) = oevents xs"|
+"oevents (otick # xs) = oevents xs"
+
+subsubsection \<open> Idle Traces \<close>
 
 subsection \<open> Idle Traces \<close>
 
-definition tocks :: "'e set \<Rightarrow> 'e tev list set" where
+definition tocks :: "'e refevent set \<Rightarrow> 'e reftrace set" where
 "tocks X = {t. \<forall> e \<in> set(t). \<exists> Y. e = Tock Y \<and> Y \<subseteq> X}"
 
 lemma tocks_Nil [simp]: "[] \<in> tocks X"
@@ -138,26 +176,29 @@ lemma tock_ord_Evt_hd_eq [simp]: "Evt e # x \<subseteq>\<^sub>t Evt f # y \<long
   by (auto simp add: tock_ord_def)
      (smt One_nat_def add.commute diff_add_cancel_left' length_Cons less_Suc0 list.size(4) nat_add_left_cancel_less not_less nth_Cons')
 
-subsubsection \<open> Other Functions \<close>
+fun otocks :: "'\<theta> oreftrace \<Rightarrow> '\<theta> oreftrace" where
+"otocks [] = []"|
+"otocks (oevt e # xs) = otocks xs"|
+"otocks (oref X # xs) = otocks xs"|
+"otocks (otock # xs) = otock # otocks xs"|
+"otocks (otick # xs) = otick # otocks xs"
 
-fun events :: "'e tev list \<Rightarrow> 'e tev list" where
-"events [] = []" |
-"events (Tock A # t) = events t" |
-"events (Evt x # t) = (Evt x # events t)"
+fun refusallist :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
+"refusallist [] = []" |
+"refusallist (Evt x # xs) = refusallist xs"|
+"refusallist (Tock A # xs) = Tock A # refusallist xs"
 
-lemma events_append [simp]: "events (xs @ ys) = events(xs) @ events(ys)"
-  apply (induct xs, simp_all)
-  apply (rename_tac x xs)
-  apply (case_tac x)
-  apply (simp_all)
-done
+fun refusals :: "'\<theta> reftrace  \<Rightarrow> '\<theta> refevent set" where
+"refusals [] = {}" |
+"refusals (Tock A # t) = A \<union> refusals t" |
+"refusals (Evt x # t) = refusals t"
 
 text \<open> This function is from CML. It extracts the prefix of a trace that consists of tocks only,
   that is before an active event has occurred. \<close>
 
-fun idleprefix :: "'e tev list \<Rightarrow> 'e tev list" where
-"idleprefix [] = []" |
-"idleprefix (Tock A # t) = (Tock A # idleprefix t)" |
+fun idleprefix :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
+"idleprefix [] = []"|
+"idleprefix (Tock A # t) = (Tock A # idleprefix t)"|
 "idleprefix (Evt x # t) = []"
 
 lemma idleprefix_tocks [simp]: "idleprefix t \<in> tocks UNIV"
@@ -169,6 +210,7 @@ fun activesuffix :: "'e tev list \<Rightarrow> 'e tev list" where
 "activesuffix [] = []" |
 "activesuffix (Tock A # t) = activesuffix t" |
 "activesuffix (Evt x # t) = (Evt x # t)"
+
 
 text \<open> If an active suffix has elements, then the first element must be an event. \<close>
 
@@ -250,5 +292,35 @@ proof -
     by (metis assms(1) assms(2) assms(3) tock_prefix_eq)
 qed
 
+\<comment>\<open> Careful: the final refusal is now at the beginning. \<close>
+definition "idlesuffix = idleprefix \<circ> rev"
+
+fun timelength :: "'\<theta> reftrace \<Rightarrow> nat" where
+"timelength (u) = length(refusallist(u))"
+
+(*
+syntax
+  "_events"      :: "logic \<Rightarrow> logic" ("events\<^sub>u'(_')")
+  "_tocks"       :: "logic \<Rightarrow> logic" ("tocks\<^sub>u'(_')")
+  "_refusallist" :: "logic \<Rightarrow> logic" ("refusallist\<^sub>u'(_')")
+  "_refusals"    :: "logic \<Rightarrow> logic" ("refusals\<^sub>u'(_')")
+  "_idleprefix"  :: "logic \<Rightarrow> logic" ("idleprefix\<^sub>u'(_')")
+  "_activesuffix"  :: "logic \<Rightarrow> logic" ("activesuffix\<^sub>u'(_')")
+  "_idlesuffix"  :: "logic \<Rightarrow> logic" ("idlesuffix\<^sub>u'(_')")
+  "_ev"          :: "logic \<Rightarrow> logic" ("ev\<^sub>u'(_')")
+  "_tock"        :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("tock\<^sub>u'(_,_')")
+  "_list_diff"   :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("listdiff\<^sub>u'(_,_')")
+translations
+  "events\<^sub>u(t)" == "CONST uop CONST events t"
+  "tocks\<^sub>u(t)" == "CONST uop CONST tocks t"
+  "refusallist\<^sub>u(t)" == "CONST uop CONST refusallist t"
+  "refusals\<^sub>u(t)" == "CONST uop CONST refusals t"
+  "idleprefix\<^sub>u(t)" == "CONST uop CONST idleprefix t"
+  "activesuffix\<^sub>u(t)" == "CONST uop CONST activesuffix t"
+  "idlesuffix\<^sub>u(t)" == "CONST uop CONST idlesuffix t"
+  "ev\<^sub>u(e)" == "CONST uop CONST Evt e"
+  "tock\<^sub>u(t,A)" == "CONST bop CONST Tock t A"
+  "listdiff\<^sub>u(x,y)" == "CONST bop CONST list_diff x y"
+*)
 
 end

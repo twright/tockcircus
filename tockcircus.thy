@@ -191,8 +191,8 @@ text \<open> SDF: Check the following definition against the tick-tock paper. It
 definition DoT :: "('e, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("do\<^sub>T'(_')") where
 [rdes_def]: "DoT a =
   \<^bold>R(true\<^sub>r 
-  \<turnstile> \<T>({a}, {0..}) ;; (\<E>(true, [], {a}, true) \<or> \<U>(true, [Evt a]))
-  \<diamondop> \<T>({a}, {0..}) ;; \<F>(true, [Evt a], id\<^sub>s))"
+  \<turnstile> \<T>({refevt a}, {0..}) ;; (\<E>(true, [], {refevt a}, true) \<or> \<U>(true, [Evt a]))
+  \<diamondop> \<T>({refevt a}, {0..}) ;; \<F>(true, [Evt a], id\<^sub>s))"
 
 lemma DoT_TC: "do\<^sub>T(e) is TC"
   by (rule Healthy_intro, rdes_eq)
@@ -238,18 +238,18 @@ lemma Wait_Stop: "Wait m ;; Stop = Stop"
 lemma "\<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T ;; do\<^sub>T(a) ;; \<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T = 
         \<^bold>R (\<^U>(R1 true) \<turnstile>
          (\<U>(true, []) \<or>
-          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {a}, true) \<or>
-          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
-         \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<F>(true, [Evt a], \<^U>([x \<mapsto>\<^sub>s &x + 1])))"
+          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({refevt a}, {0..}) ;; \<E>(true, [], {refevt a}, true) \<or>
+          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({refevt a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
+         \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({refevt a}, {0..}) ;; \<F>(true, [Evt a], \<^U>([x \<mapsto>\<^sub>s &x + 1])))"
   by (rdes_simp, simp add: rpred seqr_assoc usubst)
 
 lemma "Wait(m) ;; do\<^sub>T(a) ;; \<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T = 
       \<^bold>R (true\<^sub>r \<turnstile>
         (\<T>({}, {0..<m}) ;; \<E>(true, [], {}, true) \<or>
          \<T>({}, {m}) ;; \<U>(true, []) \<or> 
-         \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {a}, true) \<or> 
-         \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
-         \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<F>(true, [Evt a], [x \<mapsto>\<^sub>s &x + 1]))"
+         \<T>({}, {m}) ;; \<T>({refevt a}, {0..}) ;; \<E>(true, [], {refevt a}, true) \<or> 
+         \<T>({}, {m}) ;; \<T>({refevt a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
+         \<T>({}, {m}) ;; \<T>({refevt a}, {0..}) ;; \<F>(true, [Evt a], [x \<mapsto>\<^sub>s &x + 1]))"
   apply (rdes_simp)
   apply (simp add: rpred seqr_assoc usubst)
   oops

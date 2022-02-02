@@ -4,7 +4,7 @@ theory tcircus_calc
   imports tcircus_idle
 begin
 
-abbreviation tsyme :: "('e tev list, 's) uexpr \<Rightarrow> ('s, 'e) taction" where
+abbreviation tsyme :: "('e reftrace, 's) uexpr \<Rightarrow> ('s, 'e) taction" where
 "tsyme t \<equiv> U(\<exists> t\<^sub>0. $tr\<acute> = $tr @ \<guillemotleft>t\<^sub>0\<guillemotright> \<and> t\<^sub>0 \<subseteq>\<^sub>t \<lceil>t\<rceil>\<^sub>S\<^sub><)"
 
 utp_const tsyme
@@ -22,7 +22,7 @@ text \<open> We introduce a small algebra for peri- and postconditions to captur
   is the set of events being accepted at this point. FIXME: Should stable observations
   also update the state? \<close>
 
-definition tc_stable :: "'s upred \<Rightarrow> ('e tev list, 's) uexpr \<Rightarrow> ('e set, 's) uexpr \<Rightarrow> 's upred \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _, _')") where
+definition tc_stable :: "'s upred \<Rightarrow> ('e reftrace, 's) uexpr \<Rightarrow> ('e refevent set, 's) uexpr \<Rightarrow> 's upred \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _, _')") where
 [upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> ($pat\<acute> \<Rightarrow> \<lceil>p\<rceil>\<^sub>S\<^sub><))"
 
 text \<open> We also need unstable intermediate observations, which the following relation provides. It
@@ -41,7 +41,7 @@ text \<open> A timed observation represents a period of delay. The set @{term X}
   events that are accepted during this period. The set @{term A} characterises the possible delay
   periods, for example @{term "{0..n}"} means a delay of between $0$ and $n$ units. \<close>
 
-definition tc_time :: "('e set, 's) uexpr \<Rightarrow> (nat set, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<T>'(_, _')") where 
+definition tc_time :: "('e refevent set, 's) uexpr \<Rightarrow> (nat set, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<T>'(_, _')") where 
 [upred_defs]: "\<T>(X, A) = U(\<exists> t \<in> tocks \<lceil>- X\<rceil>\<^sub>S\<^sub><. $tr\<acute> = $tr @ \<guillemotleft>t\<guillemotright> \<and> length(\<guillemotleft>t\<guillemotright>) \<in> \<lceil>A\<rceil>\<^sub>S\<^sub>< \<and> $st\<acute> = $st)"
 
 utp_lift_notation tc_stable
