@@ -1,7 +1,7 @@
 section \<open> Tick Tock CSP UTP Semantics \<close>
 
 theory tcircus_traces
-  imports "UTP-Reactive-Designs.utp_rea_designs"  "../rcircus/Refusal_Tests"
+  imports "UTP-Reactive-Designs.utp_rea_designs"  "/home/isabelle/utp-main/theories/rcircus/Refusal_Tests"
 begin recall_syntax
 
 subsection \<open> Preliminaries \<close>

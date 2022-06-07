@@ -1,7 +1,7 @@
 section \<open> Tick Tock CSP UTP Semantics \<close>
 
 theory tcircus_reftrace_semantics
-  imports "tcircus_rel" "../rcircus/Refusal_Tests" "UTP.utp_full"
+  imports "tcircus_rel" "/home/isabelle/utp-main/theories/rcircus/Refusal_Tests" "UTP.utp_full"
 begin
 
 subsection \<open> Refusal trace functions \<close>
@@ -38,13 +38,13 @@ subsection \<open> Refusal Traces \<close>
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFE P = { tockify t | t.
-                  \<not>`(\<not>P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,true,false,true/$tr,$tr\<acute>,$ok,$wait,$ok\<acute>\<rbrakk>` }"
+                  \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFR P = { tockify t@[oref X] | t X.
-                  \<not>`(\<not>P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,true,false,true,true/$tr,$tr\<acute>,$ref\<acute>,$ok,$wait,$ok\<acute>,$wait\<acute>\<rbrakk>` }"
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>` }"
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { tockify t @ [otick] | t .
-                  \<not>`(\<not>P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,true,false,true,false/$tr,$tr\<acute>,$ok,$wait,$ok\<acute>,$wait\<acute>\<rbrakk>` }"
+                  \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
 fun tttraces :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttraces P = tttracesFE P \<union> tttracesFR P \<union> tttracesTI P"
 

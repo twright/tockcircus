@@ -11,7 +11,6 @@ proof (rule tttracesEqRem)
   show "tttracesTI Div = ?r \<inter> TI"
     apply(simp add: TI_def)
     apply(rdes_simp)
-    apply(rel_auto)
     done
 next
   show "tttracesFR Div = ?r \<inter> FR"
@@ -23,10 +22,9 @@ next
   have "?r - FR - TI = ?r"
     by (auto simp add: FR_def TI_def)
   moreover have "tttracesFE Div = ?r"
-    apply(simp add: FR_def TI_def)
-    apply(rdes_simp)
-    apply(rel_simp)
-    by (smt (verit, ccfv_threshold) Nitpick.Ex1_unfold mem_Collect_eq singletonI tockifyEmpty)
+    apply(rdes_simp simps: FR_def TI_def)
+    apply(rel_auto)
+    done
   ultimately show "tttracesFE Div = ?r - FR - TI"
     by auto
 qed
@@ -46,15 +44,12 @@ proof (rule tttracesEqRem)
     by auto
 next
   show "tttracesTI Skip = ?r \<inter> TI"
-    apply(simp add: TI_def)
-    apply(rdes_simp)
-    apply(rel_auto)
-    apply(auto simp add: TTT1_def TTT2_def TTT3_def)
+    apply(rdes_simp simps: TI_def)
+    using TTT1_def TTT2_def TTT3_def apply(rel_auto)
     done
 next
   show "tttracesFR Skip = ?r \<inter> FR"
-    apply (simp add: FR_def)
-    apply(rdes_simp)
+    apply(rdes_simp simps: FR_def)
     apply(rel_auto)
     done
 qed
@@ -68,7 +63,6 @@ proof (rule tttracesEqRem)
   moreover have "tttracesFE Stop\<^sub>U = ET"
     apply(rdes_simp)
     apply(rel_auto)
-    apply(auto simp add: tockifyEmpty)
     done
   ultimately show "tttracesFE Stop\<^sub>U = (ET \<union> ?r2) - FR - TI"
     by auto
@@ -101,6 +95,11 @@ lemma "\<forall> X. [oref X] \<in> tttraces Stop"
   apply(rdes_simp simps: tockifyEmpty)
   apply(rel_auto)
   done
+
+lemma "tttracesFE Stop = {[]}"
+  apply(rdes_simp)
+  apply(auto simp add: tockifyEmpty)
+  sledgehammer
 
 inductive tockSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
 tockSequence0: "tockSequence X []"|
