@@ -4,6 +4,7 @@ theory tcircus_reftrace_calculation
   imports "tockcircus" "tcircus_reftrace_semantics" "UTP.utp_full"
 begin
 
+
 subsection \<open> Div \<close>
 
 lemma tttracesDiv: "tttraces Div = {[]}" (is "tttraces Div = ?r")
@@ -29,6 +30,7 @@ next
     by auto
 qed
 
+
 subsection \<open> Skip \<close>
 
 lemma tttracesSkip: "tttraces Skip = {[], [otick]}" (is "tttraces Skip = ?r")
@@ -53,6 +55,7 @@ next
     apply(rel_auto)
     done
 qed
+
 
 subsection \<open> Untimed Stop \<close>
 
@@ -84,6 +87,7 @@ next
     by blast
 qed
 
+
 subsection \<open> Timed Stop \<close>
 
 lemma "{[]} \<subseteq> tttraces Stop"
@@ -96,33 +100,90 @@ lemma "\<forall> X. [oref X] \<in> tttraces Stop"
   apply(rel_auto)
   done
 
-lemma "tttracesFE Stop = {[]}"
-  apply(rdes_simp)
-  apply(auto simp add: tockifyEmpty)
-  sledgehammer
-
-inductive tockSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
+inductive tockSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" for X where
 tockSequence0: "tockSequence X []"|
-tockSequence1: "\<lbrakk>tockSequence X t; Y \<subseteq> X\<rbrakk> \<Longrightarrow> tockSequence X (oref Y # tock # t)"
+tockSequence1: "\<lbrakk>tockSequence X t; Y \<subseteq> X\<rbrakk> \<Longrightarrow> tockSequence X (oref Y # otock # t)"
+
+lemma tockSeqTocks: "(tockSequence X (tockify t)) = (t \<in> tocks X)"
+proof (induct t)
+  case Nil
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case (Cons a t)
+  then show ?case proof (cases a)
+    case (Tock Y)
+    then have "(a # t \<in> tocks X) \<Longrightarrow> (tockSequence X (tockify (a # t)))" proof -
+      assume 1: "a # t \<in> tocks X"
+      then have "Y \<subseteq> X"
+        by (simp add: Tock tocks_def)
+      moreover have "tockSequence X (tockify t)"
+        by (metis "1" Cons.hyps Cons_eq_appendI append_self_conv2 tocks_append)
+      ultimately show "tockSequence X (tockify (a # t))"
+        by (simp add: Tock tockSequence1)
+    qed
+    moreover have "(tockSequence X (tockify (a # t))) \<Longrightarrow> (a # t \<in> tocks X)" proof -
+      assume 2: "tockSequence X (tockify (a # t))"
+      then have "t \<in> tocks X"
+        using Tock tockSequence.simps Cons.hyps by auto
+      moreover have "Y \<subseteq> X"
+        by (metis Tock 2 list.discI list.inject oevent.inject(1) tockSequence.simps tockify.simps(2))
+      ultimately show "a # t \<in> tocks X"
+        by (simp add: Tock tocks_Cons)
+    qed
+    ultimately show ?thesis
+      by auto
+  next
+    case (Evt e)
+    hence "a # t \<notin> tocks X"
+      by simp
+    moreover hence "\<not> tockSequence X (tockify (a # t))"
+      using Evt tockSequence.simps by auto
+    ultimately show "(tockSequence X (tockify (a # t))) = (a # t \<in> tocks X)"
+      by blast
+  qed
+qed
+
+lemma tockSequenceTockify: "tockSequence UNIV t \<Longrightarrow> t \<in> range tockify"
+proof (induct t rule: tockSequence.induct)
+  case (tockSequence0)
+  then show ?case
+    by (metis range_eqI tockify.simps(3))
+next
+  case (tockSequence1 t Y)
+    assume 2: "t \<in> range tockify"
+    then obtain ta where 3: "t = tockify ta"
+      by blast
+    have "oref Y # otock # t = tockify (Tock Y # ta)"
+      by (simp add: "3")
+    then show "oref Y # otock # t \<in> range tockify"
+      by blast
+  qed
+
+lemma tttracesFEStop: "tttracesFE Stop = {t. tockSequence UNIV t}"
+  apply(rdes_simp)
+  apply(rel_simp)
+  by (metis rangeE tockSeqTocks tockSequenceTockify)
+
+lemma tttracesTIStop: "tttracesTI Stop = {}"
+  by (rdes_simp)
+
+definition finalRefTockSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
+  "finalRefTockSequence X t = (\<exists> ta Y. t = ta @ [oref Y] \<and> Y \<subseteq> X \<and> tockSequence X ta)"
 
 inductive refSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> reftrace \<Rightarrow> bool" where
 refSequence0: "refSequence X []"|
 refSequence1: "\<lbrakk>refSequence X t; Y \<subseteq> X\<rbrakk> \<Longrightarrow> refSequence X (iref Y # t)"
 
-lemma refSeqEvents: "refSequence X t \<Longrightarrow> events t = []"
-  oops
-  \<comment>\<open>
-  by (induct rule: refSequence.induct; auto)
-  \<close>  
+lemma tttracesFRStop: "tttracesFR Stop = {t. finalRefTockSequence UNIV t}"
+  apply(rdes_simp)
+  apply(rel_simp)
+  apply(simp add: finalRefTockSequence_def)
+  by (metis (no_types, hide_lams) rangeE tockSeqTocks tockSequenceTockify)
 
-(*
-lemma refSeqRefEvents: "tockSequence X t \<Longrightarrow> events (t @ [ref Y]) = []"
-  by (induct rule: tockSequence.induct; auto)
-*)
+lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockSequence UNIV t}"
+  using tttracesFEStop tttracesFRStop tttracesTIStop by fastforce
 
-lemma stopEvents: "t \<in> untickeds \<Longrightarrow> t \<in> tttraces Stop \<Longrightarrow> oevents t = []"
-  apply(auto; rel_simp)
-  oops
 
 subsection \<open> Internal Choice \<close>
 
@@ -140,9 +201,6 @@ next
     apply(metis list.discI list.inject oevent.distinct(1) oevent.inject(2) tockify.elims(1) tockify.simps(1))
     done
 qed
-
-lemma tockifyRefRev: "tockify t@[oref X,otock] = tockify (t@[iref X])"
-  oops
 
 lemma "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
 proof (rule tttracesEq)
