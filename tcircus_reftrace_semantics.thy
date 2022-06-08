@@ -59,6 +59,8 @@ subsubsection \<open> Structural Conditions \<close>
 
 definition TTT1 :: "('\<theta> oreftrace) set" where
 "TTT1 = { t. \<forall> i::nat . Suc i < length t \<longrightarrow> t ! i \<noteq> otick}"
+definition TTT1s :: "('\<theta> oreftrace) set" where
+"TTT1s = { t. \<forall> i::nat . Suc i \<le> length t \<longrightarrow> t ! i \<noteq> otick}"
 
 definition TTT2 :: "('\<theta> oreftrace) set" where
 "TTT2 = { t . \<forall> i::nat. Suc i < length t \<and> t ! i \<in> range oref \<longrightarrow> t ! (i + 1) = otock}"
@@ -69,6 +71,8 @@ definition TTT3 :: "('\<theta> oreftrace) set" where
 "TTT3 = { t . \<forall> i::nat. i < length t \<and> t ! i = otock \<longrightarrow> i > 0 \<and> t ! (i - 1) \<in> range oref}"
 
 abbreviation "TTTs \<equiv> TTT1 \<inter> TTT2 \<inter> TTT3"
+
+abbreviation "TTTss \<equiv> TTT1s \<inter> TTT2s \<inter> TTT3"
 
 subsubsection \<open> Designated Subsets \<close>
 
@@ -165,6 +169,7 @@ proof -
   qed
 qed
 
+
 subsubsection \<open> Refusal Trace Structure \<close>
 
 lemma tockifyEmpty: "([] = tockify t) = (t = [])"
@@ -185,6 +190,12 @@ proof -
   thus ?thesis by blast
 qed
 
+lemma TTT1sUnticked: "TTT1s = untickeds"
+  by (simp add: Suc_le_eq in_set_conv_nth TTT1s_def)
+
+lemma tockifyTTT1s: "range tockify \<subseteq> TTT1s"
+  using TTT1sUnticked tockifyUnticked by blast
+
 lemma tockifyTTT1: "range tockify \<subseteq> TTT1"
   using tockifyUnticked TTT1TickedOrUnticked by blast
 
@@ -193,6 +204,9 @@ lemma tttracesFETockify: "tttracesFE P \<subseteq> range tockify"
 
 lemma tockifyTicked: "tockify t@[otick] \<in> tickeds"
   using tockifyUnticked by auto
+
+lemma TTT1sAppend: "t \<in> TTT1s \<Longrightarrow> s \<in> TTT1 \<Longrightarrow> t@s \<in> TTT1"
+  by (simp add: TTT1s_def TTT1_def nth_append)
 
 lemma tttracesFETTT1: "tttracesFE P \<subseteq> (TTT1::'\<theta> oreftrace set)"
   using tttracesFETockify tockifyTTT1 by auto
@@ -383,8 +397,14 @@ lemma tttracesTTT3: "tttraces P \<subseteq> TTT3"
 lemma TTTStructure: "tttraces P \<subseteq> TTT1 \<inter> TTT2 \<inter> TTT3"
   by (meson semilattice_inf_class.inf.bounded_iff tttracesTTT1 tttracesTTT2 tttracesTTT3)
 
+lemma tockifyTTTss: "range tockify \<subseteq> TTTss"
+  using tockifyTTT1s tockifyTTT2s tockifyTTT3 by auto
+
 lemma tockifyTTTs: "range tockify \<subseteq> TTT1 \<inter> TTT2 \<inter> TTT3"
   using TTT2sStronger tockifyTTT1 tockifyTTT2s tockifyTTT3 by auto
+
+lemma TTTsAppend: "t \<in> TTTss \<Longrightarrow> s \<in> TTTs \<Longrightarrow> t@s \<in> TTTs"
+  by (simp add: TTT1sAppend TTT2sAppend TTT3Append)
 
 subsubsection \<open> Reasoning about tttrace sets \<close>
 
@@ -526,6 +546,13 @@ proof -
   finally show "tttraces P = B"
     by blast
 qed
+
+lemma tttracesCalc:
+  assumes "tttracesFE P = A"
+      and "tttracesFR P = B"
+      and "tttracesTI P = C"
+    shows "tttraces P = A \<union> B \<union> C"
+  using assms(1) assms(2) assms(3) tttraces.simps by blast
 
 lemma tttracesEqTttraces:
   assumes "tttracesFE P = tttracesFE Q"

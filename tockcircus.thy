@@ -252,7 +252,7 @@ lemma "Wait(m) ;; do\<^sub>T(a) ;; \<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle
          \<T>({}, {m}) ;; \<T>({refevt a}, {0..}) ;; \<F>(true, [Evt a], [x \<mapsto>\<^sub>s &x + 1]))"
   apply (rdes_simp)
   apply (simp add: rpred seqr_assoc usubst)
-  oops
+  done
 
 definition ExtChoice :: "'i set \<Rightarrow> ('i \<Rightarrow> ('s, 'e) taction) \<Rightarrow> ('s, 'e) taction" where
 [upred_defs]:
