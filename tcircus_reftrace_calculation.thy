@@ -385,4 +385,64 @@ lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
   apply(simp_all add: tockifyEq)
   oops
 
+subsection \<open> External choice \<close>
+
+fun oidleprefix :: "'\<phi> oreftrace \<Rightarrow> '\<phi> oreftrace" where
+"oidleprefix (oref X # otock # xs) = oref X # otock # oidleprefix xs"|
+"oidleprefix xs = []"
+
+lemma oidleprefixTockSequence: "tockSequence UNIV (oidleprefix p)"
+proof (induct p rule: oidleprefix.induct)
+  case (1 X xs)
+  then show ?case
+    by (simp add: tockSequence1)
+next
+  case "2_1"
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("2_2" vb va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("2_3" va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("2_4" va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("2_5" v)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("2_6" v vd vc)
+  then show ?case 
+    by (simp add: tockSequence0)
+next
+case ("2_7" v vd vc)
+  then show ?case 
+    by (simp add: tockSequence0)
+next
+  case ("2_8" v vc)
+  then show ?case 
+    by (simp add: tockSequence0)
+qed
+
+lemma "(r = (oidleprefix p :: '\<phi> oreftrace)) = ((tockSequence UNIV r) \<and> (\<forall> r2 . (tockSequence UNIV r2 \<and> r2 \<le> r @ p) \<longrightarrow> r2 \<le> r))"
+proof 
+  assume 1: "r = oidleprefix p"
+  have "tockSequence UNIV r"
+    using 1 oidleprefixTockSequence by auto
+  {
+    fix r2 :: "'\<phi> oreftrace"
+    assume "r2 \<le> r @ p"
+    then have "tockSequence UNIV r2 \<Longrightarrow> r2 \<le> r"
+    proof (induction rule: tockSequence.induct)
+    qed
+  }
+  then have "\<forall> r2 . (tockSequence UNIV r2 \<and> r2 \<le> r @ p) \<longrightarrow> r2 \<le> r"
+    by auto
+qed
 end
