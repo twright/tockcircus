@@ -59,21 +59,66 @@ qed
 
 subsection \<open> Untimed Stop \<close>
 
+lemma torefsetRange: "reftick \<notin> X \<Longrightarrow> reftock \<notin> X \<Longrightarrow> \<exists> X'. X = torefset X'"
+proof -
+  assume 1: "reftick \<notin> X"
+  assume 2: "reftock \<notin> X"
+  have 3: "\<And>x. x \<in> X \<Longrightarrow> \<exists> e. x=refevt e"
+  by (metis "1" "2" fromrefevent.cases)
+  obtain X' where 4: "X' = {e | e . refevt e \<in> X}"
+    by blast
+  have "\<And>x. x \<in> X \<Longrightarrow> x \<in> torefset X'"
+    using "3" "4" by auto
+  moreover have "\<And>x. x \<in> torefset X' \<Longrightarrow> x \<in> X"
+    using "4" by auto
+  ultimately show ?thesis
+    by auto
+qed
+
+lemma torefsetReftick: "reftick \<notin> torefset X"
+  by simp
+
+lemma torefsetReftock: "reftock \<notin> torefset X"
+  by simp
+
+lemma finalrefsetTick: "reftick \<in> finalrefset p refterm X = refterm"
+  by (smt (z3) UnE UnI2 finalrefset.elims insertCI refevent.distinct(5) singletonD torefsetReftick)
+
+lemma finalrefsetTock: "(reftock \<in> finalrefset p refterm X) \<noteq> p"
+  by (smt (z3) UnE UnI2 finalrefset.elims insertCI insert_absorb refevent.distinct(5) singleton_insert_inj_eq' torefsetReftock)
+
+lemma finalrefsetRange: "\<exists> X' p refterm. X = finalrefset p refterm X'"
+proof -
+  have "reftock \<in> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset False True X'"
+    apply(simp only: finalrefset.simps)
+    by (metis (no_types, lifting) Un_insert_right insert_eq_iff insert_is_Un lattice_class.inf_sup_aci(5) mk_disjoint_insert refevent.distinct(5) torefsetRange)
+  moreover have "reftock \<in> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset False False X'"
+    apply(simp only: finalrefset.simps)
+    by (metis insertI2 insert_is_Un mk_disjoint_insert semilattice_sup_class.sup_commute torefsetRange)
+  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset True True X'"
+    apply(simp only: finalrefset.simps)
+    by (metis Un_commute insertCI insert_is_Un mk_disjoint_insert torefsetRange)
+  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset True False X'"
+    apply(simp only: finalrefset.simps)
+    using torefsetRange by blast
+  ultimately show "?thesis"
+    by meson
+qed
+
 lemma "tttraces Stop\<^sub>U = {[]} \<union> {[oref X] | X . True}" (is "?l = ET \<union> ?r2")
 proof (rule tttracesEqRem)
   have "(ET \<union> ?r2) - FR - TI = ET"
     by (auto simp add: FE_def FR_def TI_def TTT1_def TTT2_def TTT3_def)
   moreover have "tttracesFE Stop\<^sub>U = ET"
     apply(rdes_simp)
-    apply(rel_auto)
-    done
+    by (rel_auto)
   ultimately show "tttracesFE Stop\<^sub>U = (ET \<union> ?r2) - FR - TI"
     by auto
 next
   have "tttracesFR Stop\<^sub>U = ?r2"
     apply(rdes_simp)
     apply(rel_auto)
-    done
+    by (simp add: finalrefsetRange)
   moreover have "(ET \<union> ?r2) \<inter> FR = ?r2"
     by (auto simp add: FR_def TTT1_def TTT2_def TTT3_def)
   ultimately show "tttracesFR Stop\<^sub>U = (ET \<union> ?r2) \<inter> FR"
@@ -97,13 +142,14 @@ lemma "{[]} \<subseteq> tttraces Stop"
 
 lemma "\<forall> X. [oref X] \<in> tttraces Stop"
   apply(rdes_simp simps: tockifyEmpty)
-  apply(rel_auto)
-  done
+  (*apply(rel_auto)*)
+  oops
 
 inductive tockSequence :: "('\<theta> refevent) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" for X where
 tockSequence0: "tockSequence X []"|
 tockSequence1: "\<lbrakk>tockSequence X t; Y \<subseteq> X\<rbrakk> \<Longrightarrow> tockSequence X (oref Y # otock # t)"
 
+(*
 lemma tockSeqTocks: "(tockSequence X (tockify t)) = (t \<in> tocks X)"
 proof (induct t)
   case Nil
@@ -183,7 +229,7 @@ lemma tttracesFRStop: "tttracesFR Stop = {t. finalRefTockSequence UNIV t}"
 
 lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockSequence UNIV t}"
   using tttracesFEStop tttracesFRStop tttracesTIStop tttracesCalc by blast
-
+*)
 
 subsection \<open> Internal Choice \<close>
 
@@ -197,11 +243,16 @@ next
     apply(induct t arbitrary: s)
     apply(auto simp add: tockifyEmpty)
     apply(case_tac "a")
+    apply(simp_all only: tockify.simps torefset.simps)
+    oops
+    (*
     apply(metis (no_types, lifting) list.discI list.inject oevent.distinct(1) oevent.inject(1) tockify.elims tockify.simps(2))
     apply(metis list.discI list.inject oevent.distinct(1) oevent.inject(2) tockify.elims(1) tockify.simps(1))
     done
+    *)
 qed
 
+(*
 lemma "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
 proof (rule tttracesEq)
   show "tttraces P \<union> tttraces Q \<subseteq> TTTs"
@@ -222,7 +273,7 @@ next
   thus "tttracesTI (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> TI"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
-
+*)
 
 subsection \<open> Wait \<close>
 
@@ -233,6 +284,7 @@ fun otimelength :: "'\<theta> oreftrace \<Rightarrow> nat" where
   "otimelength (otick # xs) = otimelength xs" |
   "otimelength [] = 0"
 
+(*
 lemma tocksTimeLength: "t \<in> tocks X \<Longrightarrow> otimelength(tockify t) = length t"
 proof (induct t)
   case Nil
@@ -301,9 +353,11 @@ next
   show "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = ?TI"
     using tttracesTIWait by blast
 qed
+*)
 
 subsection \<open> Do \<close>
 
+(*
 lemma tocksTockifyFinal: "t \<in> tocks (- {refevt e})
   \<Longrightarrow> \<exists>s. tockify (t @ [Evt e]) = s @ [oevt e] \<and> tockSequence (- {refevt e}) s \<and> (\<exists>X. \<not> refevt e \<in> X)"
   by (metis insert_absorb insert_not_empty tockSeqTocks tockify.simps(1) tockify.simps(3) tockifyAppend)
@@ -445,4 +499,5 @@ proof
   then have "\<forall> r2 . (tockSequence UNIV r2 \<and> r2 \<le> r @ p) \<longrightarrow> r2 \<le> r"
     by auto
 qed
+*)
 end

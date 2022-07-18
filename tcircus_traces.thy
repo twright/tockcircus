@@ -16,9 +16,9 @@ end
 lemma power_replicate: "[x]^n = replicate n x"
   by (induct n; simp)
 
-datatype '\<theta> refevent = refevt '\<theta> | reftick | reftock 
+datatype '\<theta> refevent = refevt '\<theta> | reftick | reftock
 
-datatype '\<theta> tev = Tock "('\<theta>  refevent) set" \<comment> \<open> Passage of time, which we term and ``idle'' event \<close>
+datatype '\<theta> tev = Tock "'\<theta> set" \<comment> \<open> Passage of time, which we term and ``idle'' event \<close>
                 | Evt '\<theta>                    \<comment> \<open> Other, ``active'' events \<close>
 
 datatype '\<theta> oevent = oref "('\<theta>  refevent) set" | oevt '\<theta> | otock | otick
@@ -65,7 +65,7 @@ subsubsection \<open> Idle Traces \<close>
 
 subsection \<open> Idle Traces \<close>
 
-definition tocks :: "'e refevent set \<Rightarrow> 'e reftrace set" where
+definition tocks :: "'e set \<Rightarrow> 'e reftrace set" where
 "tocks X = {t. \<forall> e \<in> set(t). \<exists> Y. e = Tock Y \<and> Y \<subseteq> X}"
 
 lemma tocks_Nil [simp]: "[] \<in> tocks X"
@@ -188,7 +188,7 @@ fun refusallist :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
 "refusallist (Evt x # xs) = refusallist xs"|
 "refusallist (Tock A # xs) = Tock A # refusallist xs"
 
-fun refusals :: "'\<theta> reftrace  \<Rightarrow> '\<theta> refevent set" where
+fun refusals :: "'\<theta> reftrace  \<Rightarrow> '\<theta> set" where
 "refusals [] = {}" |
 "refusals (Tock A # t) = A \<union> refusals t" |
 "refusals (Evt x # t) = refusals t"

@@ -11,10 +11,35 @@ fun tooutput :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace" where
 "tooutput (Tock X # ts) = otock # tooutput ts"|
 "tooutput []           = []"
 
+fun torefset :: "'\<theta> set \<Rightarrow> '\<theta> refevent set" where
+"torefset X = {refevt e | e. e \<in> X}"
+
+fun fromrefevent :: "'\<theta> refevent \<Rightarrow> '\<theta> set" where
+"fromrefevent (refevt e) = {e}"|
+"fromrefevent reftick = {}"|
+"fromrefevent reftock = {}"
+
+fun fromrefset :: "'\<theta> refevent set \<Rightarrow> '\<theta> set" where
+"fromrefset X = \<Union> {fromrefevent x | x. x\<in>X}"
+
+fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> refevent set" where
+"finalrefset True False X = torefset X"|
+"finalrefset True True X = torefset X \<union> {reftick}"|
+"finalrefset False False X = torefset X \<union> {reftock}"|
+"finalrefset False True X = torefset X \<union> {reftock, reftick}"
+
 fun tockify :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace" where
 "tockify (Evt e # ts) = oevt e # tockify ts"|
-"tockify (Tock X # ts) = oref X # otock # tockify ts"|
+"tockify (Tock X # ts) = oref (torefset X) # otock # tockify ts"|
 "tockify []           = []"
+
+fun tockifications :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace set" where
+"tockifications (Evt e # ts) =
+  { oevt e # t | t. t \<in> tockifications ts }"|
+"tockifications (Tock X # ts) =
+    { oref (torefset X) # otock # t | t. t \<in> tockifications ts}
+  \<union> { oref (torefset X \<union> {reftick}) # otock # t | t. t \<in> tockifications ts }"|
+"tockifications [] = {[]}"
 
 lemma tockifyAppend: "tockify(t @ s) = tockify t @ tockify s"
 proof (induct t)
@@ -23,6 +48,66 @@ proof (induct t)
 next
   case (Cons a t)
   then show ?case by (cases a; auto)
+qed
+
+lemma "tockifications ([Tock {}]) = {[oref {}, otock], [oref {reftick}, otock]}"
+  by (auto)
+
+lemma "tockifications ([Tock {}, Evt 1]) = {[oref {}, otock, oevt 1], [oref {reftick}, otock, oevt 1]}"
+  by (auto)
+
+lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications []} = {[oref {}, otock], [oref {reftick}, otock]}"
+  by (auto)
+
+
+lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications [Evt 1]} = {[oref {}, otock, oevt 1], [oref {reftick}, otock, oevt 1]}"
+  by (auto)
+
+lemma tockificationsCons: "tockifications (a # t) = {w @ t' | w t'. w \<in> tockifications [a] \<and> t' \<in> tockifications t}"
+proof (cases a)
+  case (Tock X)
+  have "tockifications [Tock X] = {[oref (torefset X), otock], [oref (torefset X \<union> {reftick}), otock]}"
+    by (auto)
+  moreover have "tockifications ([Tock X] @ t) = {[oref (torefset X), otock] @ s | s . s \<in> tockifications t}
+                                               \<union> {[oref (torefset X \<union> {reftick}), otock] @ s | s . s \<in> tockifications t}"
+    by auto
+  ultimately show ?thesis
+     by (smt (z3) Collect_cong Collect_disj_eq Tock append.simps(1) append.simps(2) append_eq_append_conv insertCI insertE singletonD singletonI)
+next
+  case (Evt e)
+  have "tockifications (Evt e # t) = {[oevt e] @ s | s . s \<in> tockifications t}"
+    by simp
+  moreover have "tockifications [Evt e] = {[oevt e]}"
+    by simp
+  ultimately show ?thesis
+    by (smt (z3) Collect_cong Evt singletonD singletonI)
+qed
+
+lemma tockificationsAppend: "tockifications(t @ s) = { t' @ s' | t' s' . t' \<in> tockifications t \<and> s' \<in> tockifications s }"
+proof (induct t)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a t)
+  then have "tockifications ((a # t) @ s) = tockifications (a # (t @ s))"
+    by simp
+  also have "\<dots> = {w @ t' | w t'. w \<in> tockifications [a] \<and> t' \<in> tockifications (t @ s)}"
+    using tockificationsCons by blast
+  also have "\<dots> = {(w @ t'') @ t''' | w t'' t'''. w \<in> tockifications [a] \<and> t'' \<in> tockifications t
+                                             \<and> t''' \<in> tockifications s}"
+    using Cons.hyps by auto
+  also have "\<dots> = {v @ t''' | v t'''. v \<in> {w @ t''| w t'' . w \<in> tockifications [a] \<and> t'' \<in> tockifications t}
+                                             \<and> t''' \<in> tockifications s}"
+    by blast
+  also have "\<dots> = {v @ t''' | v t'''. v \<in> tockifications (a # t) \<and> t''' \<in> tockifications s}"
+  proof -
+    have "\<And>v. (v \<in> {w @ t''| w t'' . w \<in> tockifications [a] \<and> t'' \<in> tockifications t}) = (v \<in> tockifications (a # t))"
+      using tockificationsCons by blast
+    thus ?thesis
+      by force
+  qed
+  finally show ?case
+    by blast
 qed
 
 subsection \<open> Traces \<close>
@@ -40,8 +125,8 @@ fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
 "tttracesFE P = { tockify t | t.
                   \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { tockify t@[oref X] | t X.
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>` }"
+"tttracesFR P = { tockify t@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool).
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<rbrakk>` }"
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { tockify t @ [otick] | t .
                   \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
@@ -340,9 +425,9 @@ proof -
       case (Cons x ts)
       then show ?case proof (cases x)
         case (Tock X)
-        then have "tockify (x # ts) = oref X # otock # tockify ts"
+        then have "tockify (x # ts) = oref (torefset X) # otock # tockify ts"
           by simp
-        moreover have "[oref X, otock] \<in> TTT3"
+        moreover have "[oref (torefset X), otock] \<in> TTT3"
           by (simp add: TTT3_def nth_Cons')
         ultimately show ?thesis
           using Cons TTT3Append by fastforce

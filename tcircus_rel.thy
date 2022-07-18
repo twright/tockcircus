@@ -12,7 +12,7 @@ text \<open> We don't need a tick event, because this is handled by the $wait$ f
   the type system. \<close>
 
 alphabet ('s, 'e) tt_vars = "('e reftrace, 's) rsp_vars" +
-  ref :: "'e refevent refusal"
+  ref :: "'e refusal"
   pat :: "bool" 
 
 type_synonym ('\<sigma>,'\<phi>) ttcircus = "('\<sigma>, '\<phi>) tt_vars"
