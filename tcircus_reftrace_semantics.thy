@@ -122,14 +122,17 @@ subsection \<open> Refusal Traces \<close>
 
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFE P = { tockify t | t.
-                  \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
+"tttracesFE P = { s | t s.
+                  \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
+                \<and> s \<in> tockifications t }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { tockify t@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool).
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<rbrakk>` }"
+"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<rbrakk>`
+                \<and> s \<in> tockifications t}"
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesTI P = { tockify t @ [otick] | t .
-                  \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }"
+"tttracesTI P = { s @ [otick] | t s .
+                  \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
+               \<and> s \<in> tockifications t}"
 fun tttraces :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttraces P = tttracesFE P \<union> tttracesFR P \<union> tttracesTI P"
 
@@ -260,6 +263,19 @@ subsubsection \<open> Refusal Trace Structure \<close>
 lemma tockifyEmpty: "([] = tockify t) = (t = [])"
   by (metis list.distinct(1) tockify.elims)
 
+lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
+proof -
+  have "t = [] \<Longrightarrow> ET = tockifications t" by auto
+  moreover {
+    assume "t \<noteq> []"
+    then obtain th tr where "t = th # tr"
+      by (meson neq_Nil_conv)
+    then have "tockifications t \<noteq> {[]}"
+      by (cases "th"; auto)
+  }
+  ultimately show ?thesis by auto
+qed
+
 lemma tockifyUnticked: "range tockify \<subseteq> (untickeds::'\<theta> oreftrace set)"
 proof -
   {
@@ -275,41 +291,59 @@ proof -
   thus ?thesis by blast
 qed
 
+lemma tockificationsUnticked: "tockifications t \<subseteq> (untickeds::'\<theta> oreftrace set)"
+proof (induct t)
+  case Nil
+  then show ?case
+    by auto
+next
+  case (Cons th tl)
+  then have "tockifications (th # tl) = {th' @ tl' | th' tl' . th' \<in> tockifications [th]
+                                                     \<and> tl' \<in> tockifications tl}"
+    using tockificationsCons by blast
+  moreover have "tockifications [th] \<subseteq> untickeds"
+    by (cases th; auto)
+  ultimately show ?case
+    by (smt (z3) Cons.hyps UnE mem_Collect_eq set_append subset_iff)
+qed
+
 lemma TTT1sUnticked: "TTT1s = untickeds"
   by (simp add: Suc_le_eq in_set_conv_nth TTT1s_def)
 
-lemma tockifyTTT1s: "range tockify \<subseteq> TTT1s"
-  using TTT1sUnticked tockifyUnticked by blast
+lemma tockificationsTTT1s: "\<Union>(range tockifications) \<subseteq> TTT1s"
+  using TTT1sUnticked tockificationsUnticked by blast
 
-lemma tockifyTTT1: "range tockify \<subseteq> TTT1"
-  using tockifyUnticked TTT1TickedOrUnticked by blast
+lemma tockificationsTTT1: "\<Union>(range tockifications) \<subseteq> TTT1"
+  using tockificationsUnticked TTT1TickedOrUnticked by blast
 
-lemma tttracesFETockify: "tttracesFE P \<subseteq> range tockify"
+lemma tttracesFETockifications: "tttracesFE P \<subseteq> \<Union>(range tockifications)"
   by auto
 
-lemma tockifyTicked: "tockify t@[otick] \<in> tickeds"
-  using tockifyUnticked by auto
+lemma tockificationsTicked: "s \<in> tockifications t \<Longrightarrow> s@[otick] \<in> tickeds"
+  using tockificationsUnticked by auto
 
 lemma TTT1sAppend: "t \<in> TTT1s \<Longrightarrow> s \<in> TTT1 \<Longrightarrow> t@s \<in> TTT1"
   by (simp add: TTT1s_def TTT1_def nth_append)
 
 lemma tttracesFETTT1: "tttracesFE P \<subseteq> (TTT1::'\<theta> oreftrace set)"
-  using tttracesFETockify tockifyTTT1 by auto
+  using tttracesFETockifications tockificationsTTT1 by auto
 
 lemma tttracesFRTTT1: "tttracesFR P \<subseteq> (TTT1::'\<theta> oreftrace set)"
 proof
   fix x
   assume "(x::'\<theta> oreftrace) \<in> tttracesFR P"
-  then obtain t X where "x = tockify t@[oref X]"
+  then obtain t s X where "x = s@[oref X] \<and> s \<in> tockifications t"
     by auto
   then show "x \<in> TTT1"
-    by (simp add: TTT1_def;
-        metis mem_Collect_eq nth_append nth_mem rangeI subset_eq tockifyUnticked)
+    by (simp add: TTT1_def)
+       (metis basic_trans_rules(31) mem_Collect_eq nth_append nth_mem
+              tockificationsUnticked)
 qed
 
 lemma tttracesTITTT1: "tttracesTI P \<subseteq> (TTT1::'\<theta> oreftrace set)"
-  apply(simp add: TTT1_def)
-  by (smt Collect_mono TTT1TickedOrUnticked TTT1_def UnCI mem_Collect_eq tockifyTicked)
+  by (simp add: TTT1_def)
+     (smt (verit, ccfv_threshold) Collect_mono TTT1TickedOrUnticked TTT1_def
+                                  UnCI mem_Collect_eq tockificationsTicked)
 
 lemma tttracesTTT1: "tttraces P \<subseteq> TTT1"
   by (rule tttracesSubset; auto simp only: tttracesFETTT1 tttracesFRTTT1 tttracesTITTT1)
@@ -317,65 +351,86 @@ lemma tttracesTTT1: "tttraces P \<subseteq> TTT1"
 lemma TTT2sStronger: "TTT2s \<subseteq> TTT2"
   by (simp add: Collect_mono TTT2_def TTT2s_def)
 
-lemma TTT2sAppend: "t \<in> TTT2s \<Longrightarrow> s \<in> TTT2 \<Longrightarrow> t @ s \<in> TTT2"
+lemma TTT2Append: "t \<in> TTT2s \<Longrightarrow> s \<in> TTT2 \<Longrightarrow> t @ s \<in> TTT2"
   apply(auto simp add: TTT2_def TTT2s_def)
   by (smt Suc_diff_Suc diff_Suc_Suc linordered_semidom_class.add_diff_inverse nat_add_left_cancel_less not_less_eq not_less_iff_gr_or_eq nth_append range_eqI)
 
-lemma tockifyTTT2s: "range tockify \<subseteq> (TTT2s::'\<theta> oreftrace set)"
+lemma TTT2sAppend: "t \<in> TTT2s \<Longrightarrow> s \<in> TTT2s \<Longrightarrow> t @ s \<in> TTT2s"
+  apply(auto simp add: TTT2s_def)
+  apply (smt (z3) Suc_lessI Suc_pred' add.right_neutral cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_Suc_1 diff_right_commute length_greater_0_conv less_Suc_eq less_not_refl list.size(3) not_add_less1 nth_append range_eqI)
+  by (smt Suc_diff_Suc diff_Suc_Suc linordered_semidom_class.add_diff_inverse nat_add_left_cancel_less not_less_eq not_less_iff_gr_or_eq nth_append range_eqI)
+
+(* Rather intense! *)
+lemma tockificationsTTT2s: "\<Union> (range tockifications) \<subseteq> (TTT2s::'\<theta> oreftrace set)"
 proof -
   {
-    fix t
-    have "tockify t \<in> (TTT2s::'\<theta> oreftrace set)" proof (induct t)
+    fix t::"'\<theta> reftrace"
+    have "tockifications t \<subseteq> (TTT2s::'\<theta> oreftrace set)" proof (induct t)
       case Nil
-      then show ?case using TTT2s_def by auto
+      then show ?case
+        using TTT2s_def by auto
     next
       case (Cons a ts)
-      then show ?case proof (cases a)
-        case (Tock X)
-        thus ?thesis
-          apply(auto simp add: TTT2s_def split: tev.splits)
-          using Cons.hyps TTT2s_def less_Suc_eq_0_disj apply fastforce
-          by (smt Cons.hyps Suc_eq_plus1 TTT2s_def diff_Suc_1 less_Suc_eq_0_disj mem_Collect_eq nth_Cons' oevent.distinct(3) rangeI)
-      next
-        case (Evt e)
-        thus ?thesis
-          apply(simp add: TTT2s_def split: tev.splits)
-          by (smt Cons.hyps Suc_eq_plus1 TTT2s_def diff_Suc_1 imageE less_Suc_eq_0_disj mem_Collect_eq nth_Cons' oevent.distinct(1))
-      qed
+      {
+        fix s
+        assume "(s \<in> tockifications (a # ts))"
+        then obtain sh sl where 3: "s = sh @ sl \<and> sh \<in> tockifications [a] \<and> sl \<in> tockifications ts"
+          by (smt (verit) mem_Collect_eq tockificationsCons)
+        then consider
+          "\<exists> e. sh = [oevt e]"
+        | "\<exists> X. (sh = [oref X, otock]) \<and> reftock \<notin> X"
+          by(cases a; auto)
+        then have "sh \<in> TTT2s" proof(cases)
+          case 1
+          then show ?thesis
+            by (auto simp add: TTT2s_def)
+        next
+          case 2
+          then show ?thesis
+            by (simp add: TTT2s_def)
+               (metis Suc_lessI gr0I image_iff length_Cons list.size(3) not_less_eq nth_Cons_0 nth_Cons_Suc oevent.distinct(3))
+        qed
+        moreover have "sl \<in> TTT2s"
+            using 3 Cons by auto
+          ultimately have "s \<in> TTT2s"
+            using 3 TTT2sAppend by blast
+      }
+      thus ?case by blast
     qed
   }
-  thus ?thesis by blast
+  thus ?thesis
+    by blast
 qed
 
 lemma tttracesFETTT2: "tttracesFE P \<subseteq> (TTT2::'\<theta> oreftrace set)"
-  using TTT2sStronger tockifyTTT2s by fastforce
+  using TTT2sStronger tockificationsTTT2s by fastforce
 
 lemma tttracesFRTTT2: "tttracesFR P \<subseteq> (TTT2::'\<theta> oreftrace set)"
 proof
   fix x
   assume "(x::'\<theta> oreftrace) \<in> tttracesFR P"
-  then obtain t X where "x = tockify t@[oref X]"
+  then obtain t s X where 1: "x = s@[oref X] \<and> s \<in> tockifications t"
     by auto
-  moreover have "tockify t \<in> TTT2s"
-    using tockifyTTT2s by auto
+  moreover have "s \<in> TTT2s"
+    using tockificationsTTT2s 1 by auto
   moreover have "[oref X] \<in> TTT2"
     using TTT2_def by auto
   ultimately show "x \<in> TTT2"
-    using TTT2sAppend by blast
+    using TTT2Append by blast
 qed
-
+  
 lemma tttracesTITTT2: "tttracesTI P \<subseteq> (TTT2::'\<theta> oreftrace set)"
 proof
   fix x
   assume "(x::'\<theta> oreftrace) \<in> tttracesTI P"
-  then obtain t where "x = tockify t@[otick]"
+  then obtain t s where 1: "x = s@[otick] \<and> s \<in> tockifications t"
     by auto
-  moreover have "tockify t \<in> TTT2s"
-    using tockifyTTT2s by auto
+  moreover have "s \<in> TTT2s"
+    using tockificationsTTT2s 1 by auto
   moreover have "[otick] \<in> TTT2"
     using TTT2_def by auto
   ultimately show "x \<in> TTT2"
-    using TTT2sAppend by blast
+    using TTT2Append by blast
 qed
 
 lemma tttracesTTT2: "tttraces P \<subseteq> TTT2"
@@ -413,49 +468,59 @@ proof -
 qed
 
 
-lemma tockifyTTT3: "range tockify \<subseteq> (TTT3::'\<theta> oreftrace set)"
+lemma tockificationsTTT3: "\<Union> (range tockifications) \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof -
   {
-    fix t
-    have "tockify t \<in> (TTT3::'\<theta> oreftrace set)" proof (induct t)
+    fix t::"'\<theta> reftrace"
+    have "tockifications t \<subseteq> TTT3" proof (induct t)
       case Nil
       then show ?case
         by (simp add: TTT3_def)
     next
       case (Cons x ts)
-      then show ?case proof (cases x)
-        case (Tock X)
-        then have "tockify (x # ts) = oref (torefset X) # otock # tockify ts"
-          by simp
-        moreover have "[oref (torefset X), otock] \<in> TTT3"
-          by (simp add: TTT3_def nth_Cons')
-        ultimately show ?thesis
-          using Cons TTT3Append by fastforce
-      next
-        case (Evt e)
-        then have "tockify (x # ts) = oevt e # tockify ts"
-          by simp
-        moreover have "[oevt e] \<in> TTT3"
-          by (simp add: TTT3_def nth_Cons')
-        ultimately show ?thesis
-          using Cons TTT3Append by fastforce
-      qed
+      {
+        fix s
+        assume "s \<in> tockifications (x # ts)"
+        then obtain sh sl where 4: "s = sh @ sl \<and> sh \<in> tockifications [x] \<and> sl \<in> tockifications ts"
+          by (smt (verit) mem_Collect_eq tockificationsCons)
+        then consider
+          "\<exists> e. sh = [oevt e]"
+        | "\<exists> X. (sh = [oref X, otock]) \<and> reftock \<notin> X"
+          by (cases x; auto)
+        then have "sh \<in> TTT3" proof (cases)
+          case 1
+          then show ?thesis
+            using TTT3_def nth_Cons' by auto
+        next
+          case 2
+          then obtain X where 5: "sh = [oref X, otock]"
+            by auto
+          then show ?thesis
+            by (auto simp add: TTT3_def)
+               (metis gr0I nth_Cons_0 oevent.distinct(3))
+        qed
+        moreover have "sl \<in> TTT3"
+          using "4" Cons.hyps by blast
+        ultimately have "s \<in> TTT3"
+          using "4" TTT3Append by blast
+      }
+      thus ?case by auto
     qed
   }
   thus ?thesis by blast 
 qed
 
 lemma tttracesFETTT3: "tttracesFE P \<subseteq> (TTT3::'\<theta> oreftrace set)"
-  using tockifyTTT3 tttracesFETockify by auto
+  using tockificationsTTT3 tttracesFETockifications by auto
 
 lemma tttracesFRTTT3: "tttracesFR P \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof
   fix x
   assume "(x::'\<theta> oreftrace) \<in> tttracesFR P"
-  then obtain t X where "x = tockify t@[oref X]"
+  then obtain t s X where 1: "x = s@[oref X] \<and> s \<in> tockifications t"
     by auto
-  moreover have "tockify t \<in> TTT3"
-    using tockifyTTT3 by auto
+  moreover have "s \<in> TTT3"
+    using tockificationsTTT3 1 by auto
   moreover have "[oref X] \<in> TTT3"
     using TTT3_def by auto
   ultimately show "x \<in> TTT3"
@@ -466,10 +531,10 @@ lemma tttracesTITTT3: "tttracesTI P \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof
   fix x
   assume "(x::'\<theta> oreftrace) \<in> tttracesTI P"
-  then obtain t where "x = tockify t@[otick]"
+  then obtain t s where 1: "x = s@[otick] \<and> s \<in> tockifications t"
     by auto
-  moreover have "tockify t \<in> TTT3"
-    using tockifyTTT3 by auto
+  moreover have "s \<in> TTT3"
+    using 1 tockificationsTTT3 by auto
   moreover have "[otick] \<in> TTT3"
     using TTT3_def by auto
   ultimately show "x \<in> TTT3"
@@ -482,14 +547,14 @@ lemma tttracesTTT3: "tttraces P \<subseteq> TTT3"
 lemma TTTStructure: "tttraces P \<subseteq> TTT1 \<inter> TTT2 \<inter> TTT3"
   by (meson semilattice_inf_class.inf.bounded_iff tttracesTTT1 tttracesTTT2 tttracesTTT3)
 
-lemma tockifyTTTss: "range tockify \<subseteq> TTTss"
-  using tockifyTTT1s tockifyTTT2s tockifyTTT3 by auto
+lemma tockificationsTTTss: "\<Union> (range tockifications) \<subseteq> TTTss"
+  using tockificationsTTT1s tockificationsTTT2s tockificationsTTT3 by auto
 
-lemma tockifyTTTs: "range tockify \<subseteq> TTT1 \<inter> TTT2 \<inter> TTT3"
-  using TTT2sStronger tockifyTTT1 tockifyTTT2s tockifyTTT3 by auto
+lemma tockificationsTTTs: "\<Union> (range tockifications) \<subseteq> TTT1 \<inter> TTT2 \<inter> TTT3"
+  using TTT2sStronger tockificationsTTT1 tockificationsTTT2s tockificationsTTT3 by auto
 
 lemma TTTsAppend: "t \<in> TTTss \<Longrightarrow> s \<in> TTTs \<Longrightarrow> t@s \<in> TTTs"
-  by (simp add: TTT1sAppend TTT2sAppend TTT3Append)
+  by (simp add: TTT1sAppend TTT2Append TTT3Append)
 
 subsubsection \<open> Reasoning about tttrace sets \<close>
 
@@ -511,11 +576,14 @@ lemma tttracesEqTicked:
     shows "P = Q"
   by (metis (mono_tags, lifting) assms splitTick)
 
-lemma tockifyNoFR: "ta @ [oref X] \<notin> range tockify"
-  by (smt TTT2s_def length_append_singleton lessI mem_Collect_eq not_less_eq nth_append_length rangeI subsetD tockifyTTT2s)
+lemma TTT2sNoFR: "ta @ [oref X] \<notin> TTT2s"
+  by (auto simp add: TTT2s_def)
 
-lemma tockifyNoTI: "ta @ [otick] \<notin> range tockify"
-  by (smt tockifyUnticked in_mono in_set_conv_decomp mem_Collect_eq)
+lemma tockificationsNoFR: "ta @ [oref X] \<notin> \<Union> (range tockifications)"
+  by (meson TTT2sNoFR in_mono TTT2s_def tockificationsTTT2s)
+
+lemma tockificationsNoTI: "ta @ [otick] \<notin> \<Union> (range tockifications)"
+  by (metis tockificationsUnticked UN_subset_iff in_set_conv_decomp mem_Collect_eq subset_eq)
 
 lemma tttracesDisjointRegions:
   shows "tttracesFR P \<inter> FE = {}"
@@ -525,7 +593,7 @@ lemma tttracesDisjointRegions:
     and "tttracesFE P \<inter> TI = {}"
     and "tttracesFR P \<inter> TI = {}"
   apply(auto simp add: FE_def FR_def TI_def)
-  using tockifyNoTI tockifyNoFR by blast+
+  using tockificationsNoTI tockificationsNoFR by blast+
 
 lemma tttracesRegionSubsets:
   shows "tttracesFE P \<subseteq> FE"
@@ -533,7 +601,7 @@ lemma tttracesRegionSubsets:
     and "tttracesTI P \<subseteq> TI"
 proof -
   have "tttracesFE P = tttracesFE P \<inter> TTTs"
-    using tockifyTTTs by auto
+    using tockificationsTTTs by fastforce
   thus "tttracesFE P \<subseteq> FE"    
     by (metis Un_empty_right coveringRegions distrib_lattice_class.inf_sup_distrib1 semilattice_inf_class.inf.order_iff tttracesDisjointRegions(3) tttracesDisjointRegions(5))
 next
@@ -566,7 +634,7 @@ proof -
   also have "\<dots> = TTTs \<inter> tttracesFE P \<inter> FE"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesFE P"
-    by (metis Int_absorb2 Int_subset_iff semilattice_inf_class.inf.absorb_iff2 tockifyTTTs tttracesFETockify tttracesRegionSubsets(1))
+    by (metis Int_absorb2 Int_subset_iff semilattice_inf_class.inf.absorb_iff2 tockificationsTTTs tttracesFETockifications tttracesRegionSubsets(1))
   finally show "tttraces P \<inter> FE = tttracesFE P"
     by blast
 next
