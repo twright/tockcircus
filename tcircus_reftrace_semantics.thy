@@ -14,6 +14,24 @@ fun tooutput :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace" where
 fun torefset :: "'\<theta> set \<Rightarrow> '\<theta> refevent set" where
 "torefset X = {refevt e | e. e \<in> X}"
 
+lemma torefsetInjective: "torefset X = torefset Y \<Longrightarrow> X = Y"
+proof -
+  assume 1: "torefset X = torefset Y"
+  {
+    fix e
+    have "(e \<in> X) = (refevt e \<in> torefset X)"
+      by simp
+    also have "\<dots> = (refevt e \<in> torefset Y)"
+      using "1" by blast
+    also have "\<dots> = (e \<in> Y)"
+      by simp
+    finally have "(e \<in> X) = (e \<in> Y)"
+      by auto
+  }
+  thus ?thesis
+    by (simp add: Set.set_eqI)
+qed
+
 fun fromrefevent :: "'\<theta> refevent \<Rightarrow> '\<theta> set" where
 "fromrefevent (refevt e) = {e}"|
 "fromrefevent reftick = {}"|
@@ -271,6 +289,19 @@ proof -
     then obtain th tr where "t = th # tr"
       by (meson neq_Nil_conv)
     then have "tockifications t \<noteq> {[]}"
+      by (cases "th"; auto)
+  }
+  ultimately show ?thesis by auto
+qed
+
+lemma tockificationsEmptyS: "([] \<in> tockifications t) = (t = [])"
+proof -
+  have "t = [] \<Longrightarrow> ET = tockifications t" by auto
+  moreover {
+    assume "t \<noteq> []"
+    then obtain th tr where "t = th # tr"
+      by (meson neq_Nil_conv)
+    then have "[] \<notin> tockifications t"
       by (cases "th"; auto)
   }
   ultimately show ?thesis by auto
