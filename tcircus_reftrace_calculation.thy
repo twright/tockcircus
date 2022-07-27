@@ -388,39 +388,41 @@ fun otimelength :: "'\<theta> oreftrace \<Rightarrow> nat" where
   "otimelength (otick # xs) = otimelength xs" |
   "otimelength [] = 0"
 
-(*
-lemma tocksTimeLength: "t \<in> tocks X \<Longrightarrow> otimelength(tockify t) = length t"
-proof (induct t)
+lemma tocksTimeLength: "t \<in> tocks X \<Longrightarrow> s \<in> tockifications t \<Longrightarrow> otimelength s = length t"
+proof (induct t arbitrary: s)
   case Nil
   then show ?case by auto
 next
   case (Cons a t)
-  then obtain Y where "a = Tock Y"
-    by (metis tev.exhaust tocks_Evt)
+  assume 1: "s \<in> tockifications (a # t)"
+  obtain Y where 2: "a = Tock Y"
+    using Cons by (metis tev.exhaust tocks_Evt)
+  then obtain s' Z where "s = oref Z # otock # s' \<and> s' \<in> tockifications t"
+    using Cons by auto
   then show ?case
-    by (metis Cons.hyps Cons.prems length_Cons list.discI list.inject otimelength.simps(1) otimelength.simps(2) tockSeqTocks tockSequence.simps tockify.simps(2))
+    by (metis "2" Cons.hyps Cons.prems(1) length_Cons list.distinct(1) list.sel(3) otimelength.simps(1) otimelength.simps(2) tockSeqTocks tockSequence.simps tockify.simps(2))
 qed
 
 lemma tttracesTIWait: "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = {t@[otick]| t. tockSequence UNIV t \<and> (otimelength t = n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength)
-  by (metis rangeE tockSeqTocks tocksTimeLength tockSequenceTockify)
+  apply(simp_all add: tockSeqTocks tocksTimeLength rangeE tockSequenceTockifications tockSeqTockificationTocks)
+  by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t@[oref X]| t X. tockSequence UNIV t \<and> (otimelength t < n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength)
-  by (metis rangeE tockSeqTocks tocksTimeLength tockSequenceTockify)
+  apply(simp_all add: tockSeqTocks tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
+  by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tttracesFEWait: "tttracesFE (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength)
-  by (metis le_eq_less_or_eq rangeE tockSeqTocks tocksTimeLength tockSequenceTockify)
+  apply(simp_all add: tockSeqTocks tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
+  by (metis UN_iff le_eq_less_or_eq tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tockSequenceTTTss: "tockSequence UNIV t \<Longrightarrow> t \<in> TTTss"
-  by (meson tockSequenceTockify subsetD tockifyTTTss)
+  by (meson subset_eq tockSequenceTockifications tockificationsTTTss)
 
 lemma tockSequenceRefTTTs: "tockSequence UNIV t \<Longrightarrow> t@[oref X] \<in> TTTs"
 proof -
@@ -457,7 +459,6 @@ next
   show "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = ?TI"
     using tttracesTIWait by blast
 qed
-*)
 
 subsection \<open> Do \<close>
 
