@@ -14,6 +14,23 @@ fun tooutput :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace" where
 fun torefset :: "'\<theta> set \<Rightarrow> '\<theta> refevent set" where
 "torefset X = {refevt e | e. e \<in> X}"
 
+
+lemma torefsetSubsetReftick: "torefset X \<subseteq> torefset Y \<union> {reftick} \<Longrightarrow> X \<subseteq> Y"
+proof 
+  fix x
+  assume 1: "torefset X \<subseteq> torefset Y \<union> {reftick}"
+  assume 2: "x \<in> X"
+  then have "refevt x \<in> torefset X"
+    by simp
+  then have "refevt x \<in> torefset Y \<union> {reftick}"
+    using "1" by blast
+  thus "x \<in> Y"
+    by simp
+qed
+
+lemma torefsetSubset: "torefset X \<subseteq> torefset Y \<Longrightarrow> X \<subseteq> Y"
+  by (meson semilattice_sup_class.le_supI1 torefsetSubsetReftick)
+
 lemma torefsetInjective: "torefset X = torefset Y \<Longrightarrow> X = Y"
 proof -
   assume 1: "torefset X = torefset Y"
@@ -126,6 +143,341 @@ next
   qed
   finally show ?case
     by blast
+qed
+
+lemma tockifyEmpty: "([] = tockify t) = (t = [])"
+  by (metis list.distinct(1) tockify.elims)
+
+lemma tockifyEq: "(tockify t = tockify s) = (t = s)"
+proof 
+  show "t = s \<Longrightarrow> tockify t = tockify s"
+    by auto
+next
+  assume "tockify t = tockify s"
+  then show "t = s" proof (induction t arbitrary: s)
+    case Nil
+    then show ?case by (auto simp add: tockifyEmpty)
+  next
+    case (Cons a t)
+    assume 1: "tockify (a # t) = tockify s"
+    then show "a # t = s"
+    proof (cases a)
+      case (Tock X)
+      then have "\<exists> s' . s = Tock X # s'"
+        apply(cases s)
+        apply (simp add: Tock)
+        apply (metis Cons.prems list.simps(3) tockifyEmpty)
+        by (metis Cons.prems nth_Cons_0 oevent.distinct(1) oevent.inject(1) tockify.elims tockify.simps(2) tockifyEmpty torefsetInjective)
+      then obtain s' where 3: "s = Tock X # s'"
+        by auto
+      then have "tockify t = tockify s'"
+        using Cons.prems Tock by fastforce
+      then have "t = s'"
+        using Cons.IH by presburger
+      then show ?thesis
+        by (simp add: "3" Tock)
+    next
+      case (Evt e)
+      then obtain s' where 2: "s = Evt e # s'"
+        by (metis Cons.prems list.inject oevent.distinct(1) oevent.inject(2) tockify.elims tockify.simps(1) tockifyEmpty)
+      then have "tockify t = tockify s'"
+        using Cons.prems Evt by fastforce
+      then have "t = s'"
+        using Cons.IH by presburger
+      then show ?thesis
+        using "2" Evt by fastforce
+    qed
+  qed
+qed
+
+value "tockifications ([Tock ({}::int set)])"
+value "tockifications [Tock ({}::int set)] \<inter> tockifications [Tock {}]"
+
+lemma tockificationsNonEmpty: "{} \<notin> ((range tockifications) :: '\<sigma> oreftrace set set)"
+proof -
+  {
+    fix x :: "'\<sigma> reftrace"
+    assume "tockifications x = {}"
+    then have False proof (induction x)
+      case Nil
+      then show ?case by auto
+    next
+      case (Cons a x)
+      then show ?case
+        by (cases a; auto)
+    qed
+  }
+  thus ?thesis by auto
+qed
+
+fun tickCanonical :: "'\<theta> oreftrace \<Rightarrow> '\<theta> oreftrace" where
+"tickCanonical [] = []"|
+"tickCanonical (otick # xs) = otick # tickCanonical xs"|
+"tickCanonical (otock # xs) = otock # tickCanonical xs"|
+"tickCanonical (oevt e # xs) = oevt e # tickCanonical xs"|
+"tickCanonical (oref X # xs) = oref (X - {reftick}) # tickCanonical xs"
+
+lemma tickCanonicalTockify: "tickCanonical (tockify t) = tockify t"
+  apply(induct t)
+  apply(auto)
+  apply(case_tac a)
+  apply(auto)
+  done
+
+lemma tickCanonicalLength: "length (tickCanonical t) = length t"
+  apply(induct t)
+  apply(auto)
+  apply(case_tac a)
+  apply(auto)
+  done
+
+lemma "x \<in> tockifications t \<Longrightarrow> (tickCanonical x = tockify t)"
+  apply(induct t arbitrary: x)
+  apply(auto)
+  apply(case_tac a)
+  apply(auto)
+  done
+
+lemma tickCanonicalEmpty: "(tickCanonical x = []) = (x = [])"
+  apply(auto)
+  apply(cases rule: tickCanonical.cases)
+  apply(auto)
+  done
+
+inductive refEquiv :: "'\<theta> oreftrace \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
+refEquiv0: "refEquiv [] []"|
+refEquiv1: "\<lbrakk>refEquiv s t\<rbrakk> \<Longrightarrow> (refEquiv (oevt e # s) (oevt e # t))"|
+refEquiv2: "\<lbrakk>refEquiv s t\<rbrakk> \<Longrightarrow> (refEquiv (otick # s) (otick # t))"|
+refEquiv3: "\<lbrakk>refEquiv s t\<rbrakk> \<Longrightarrow> (refEquiv (otock # s) (otock # t))"|
+refEquiv4: "\<lbrakk>refEquiv s t; (X - {reftick} = Y - {reftick})\<rbrakk> \<Longrightarrow> (refEquiv (oref X # s) (oref Y # t))"
+
+lemma refEquivLen: "refEquiv s t \<Longrightarrow> (length s = length t)"
+  by (induct rule: refEquiv.induct; simp)
+
+lemma refEquivRefl: "refEquiv s s"
+  apply(induct s)
+  apply(simp add: refEquiv0)
+  apply(case_tac a)
+  apply(simp_all add: refEquiv1 refEquiv2 refEquiv3 refEquiv4)
+  done
+
+lemma refEquivSym: "refEquiv s t = refEquiv t s"
+  by (rule; induct rule: refEquiv.induct)
+     (simp_all add: refEquiv0 refEquiv1 refEquiv2 refEquiv3 refEquiv4)
+
+(* Could do a simpler proof using tickCanonical *)
+lemma refEquivTrans: "refEquiv s t \<Longrightarrow> refEquiv t r \<Longrightarrow> refEquiv s r"
+proof (induction arbitrary: r rule: refEquiv.induct)
+  case refEquiv0
+  then show ?case by simp
+next
+  case (refEquiv1 s t e)
+  assume "refEquiv (oevt e # t) r"
+  then obtain rt where "r = oevt e # rt \<and> refEquiv t rt"
+    using refEquiv.cases by force
+  then have "r = oevt e # rt \<and> refEquiv s rt"
+    by (simp add: refEquiv1.IH)
+  then show "refEquiv (oevt e # s) r"
+    by (simp add: refEquiv.refEquiv1)
+next
+  case (refEquiv2 s t)
+  assume "refEquiv (otick # t) r"
+  then obtain rt where "r = otick # rt \<and> refEquiv t rt"
+    using refEquiv.cases by force
+  then have "r = otick # rt \<and> refEquiv s rt"
+    by (simp add: refEquiv2.IH)
+  then show "refEquiv (otick # s) r"
+    by (simp add: refEquiv.refEquiv2)
+next
+  case (refEquiv3 s t)
+  assume "refEquiv (otock # t) r"
+  then obtain rt where "r = otock # rt \<and> refEquiv t rt"
+    using refEquiv.cases by force
+  then have "r = otock # rt \<and> refEquiv s rt"
+    by (simp add: refEquiv3.IH)
+  then show "refEquiv (otock # s) r"
+    by (simp add: refEquiv.refEquiv3)
+next
+  case (refEquiv4 s t X Y)
+  assume "refEquiv (oref Y # t) r"
+  then obtain rt Z where "r = oref Z # rt \<and> refEquiv t rt"
+    by (smt (verit, ccfv_SIG) list.distinct(1) list.inject refEquiv.cases)
+  then have "r = oref Z # rt \<and> refEquiv s rt"
+    by (simp add: refEquiv4.IH)
+  then show "refEquiv (oref X # s) r"
+    by (smt (verit, ccfv_SIG) list.sel(1) oevent.inject(1) refEquiv.simps refEquiv4.hyps(2) refEquiv4.prems)
+qed
+
+lemma refEquivEmpty: "refEquiv s [] = (s = [])"
+  using refEquiv.cases refEquivRefl by blast
+
+lemma refEquivTockCanonical: "refEquiv s t = (tickCanonical s = tickCanonical t)"
+proof
+  assume "refEquiv s t"
+  then show "tickCanonical s = tickCanonical t"
+    by (induct rule: refEquiv.induct; auto)
+next
+  show "tickCanonical s = tickCanonical t \<Longrightarrow> refEquiv s t"
+  proof (cases "length s = length t")
+    case True
+    then show "tickCanonical s = tickCanonical t \<Longrightarrow> refEquiv s t" proof (induct rule: list_induct2)
+      case Nil
+      then show ?case
+        by (simp add: refEquiv0)
+    next
+      case (Cons x xs y ys)
+      then show ?case
+        by (cases x; cases y; auto simp add: refEquiv.intros)
+    qed
+  next
+    case False
+    then have "tickCanonical s \<noteq> tickCanonical t"
+      using tickCanonicalLength
+      by metis
+    then show "tickCanonical s = tickCanonical t \<Longrightarrow> refEquiv s t"
+      by simp
+  qed
+qed
+
+lemma torefsetRange: "reftick \<notin> X \<Longrightarrow> reftock \<notin> X \<Longrightarrow> \<exists> X'. X = torefset X'"
+proof -
+  assume 1: "reftick \<notin> X"
+  assume 2: "reftock \<notin> X"
+  have 3: "\<And>x. x \<in> X \<Longrightarrow> \<exists> e. x=refevt e"
+  by (metis "1" "2" fromrefevent.cases)
+  obtain X' where 4: "X' = {e | e . refevt e \<in> X}"
+    by blast
+  have "\<And>x. x \<in> X \<Longrightarrow> x \<in> torefset X'"
+    using "3" "4" by auto
+  moreover have "\<And>x. x \<in> torefset X' \<Longrightarrow> x \<in> X"
+    using "4" by auto
+  ultimately show ?thesis
+    by auto
+qed
+
+lemma torefsetReftick: "reftick \<notin> torefset X"
+  by simp
+
+lemma torefsetReftock: "reftock \<notin> torefset X"
+  by simp
+
+lemma tockificationsTockify: "r \<in> tockifications t = refEquiv r (tockify t)"
+proof 
+  assume "r \<in> tockifications t"
+  then show "refEquiv r (tockify t)"
+    apply(induct t arbitrary: r)
+    apply(simp add: refEquivEmpty)
+    apply(case_tac a)
+    apply(simp_all add: refEquiv.intros)
+    apply (metis (no_types, lifting) insertCI insert_Diff1 refEquiv3 refEquiv4)
+    by (meson refEquiv1)
+next 
+  assume "refEquiv r (tockify t)"
+  then show "r \<in> tockifications t"
+  proof (induction t arbitrary: r)
+    case Nil
+    then show ?case
+      using refEquivEmpty by auto
+  next
+    case (Cons a t)
+    then show ?case proof (cases a)
+      case (Tock X)
+      assume "refEquiv r (tockify (a # t))"
+      then have "refEquiv r (oref (torefset X) # otock # tockify t)"
+        by (simp add: Tock)
+      then obtain rt1 Y where "r = oref Y # rt1 \<and> refEquiv rt1 (otock # tockify t) \<and> (torefset X = Y - {reftick})"
+        by (smt (verit) Diff_empty Diff_insert0 list.distinct(1) list.inject oevent.inject(1) refEquiv.simps torefsetReftick)
+      then obtain rt where "r = oref Y # otock # rt \<and> refEquiv rt (tockify t) \<and> (torefset X = Y - {reftick})"
+        by (smt (verit) list.distinct(1) list.inject oevent.distinct(3) refEquiv.simps)
+      then have "r = oref Y # otock # rt \<and> rt \<in> tockifications t \<and> (torefset X = Y - {reftick})"
+        using Cons.IH by presburger
+      then have "r = [oref Y, otock] @ rt \<and> rt \<in> tockifications t \<and> [oref Y, otock] \<in> tockifications [a]"
+        by (auto simp add: Tock)
+      then show "r \<in> tockifications (a # t)"
+        by (metis (mono_tags, lifting) mem_Collect_eq tockificationsCons)
+    next
+      case (Evt e)
+      assume "refEquiv r (tockify (a # t))"
+      then have "refEquiv r (oevt e # tockify t)"
+        by (simp add: Evt)
+      then obtain rt where "r = oevt e # rt \<and> refEquiv rt (tockify t)"
+        by (smt (verit, del_insts) list.distinct(1) list.inject oevent.distinct(1) refEquiv.simps)
+      then show "r \<in> tockifications (a # t)"
+        by (simp add: Cons.IH Evt)
+    qed
+  qed
+qed
+
+(*
+lemma refEquivTockifyStep: "length t = n \<Longrightarrow> length s = n \<Longrightarrow> refEquiv (tockify t) (tockify s) \<Longrightarrow> (t = s)"
+proof (induction "n" arbitrary: t s)
+  case 0
+  then show ?case
+    by blast
+next
+  case (Suc n)
+  then obtain tx t' sx s' where 1: "t = tx # t' \<and> s = sx # s'"
+    by (metis Suc_length_conv)
+  assume 2: "refEquiv (tockify t) (tockify s)"
+  show ?case proof (cases tx)
+    case 3: (Tock X)
+    then show ?thesis proof (cases sx)
+      case 4: (Tock Y)
+      then have "refEquiv (tockify t') (tockify s')"
+        sorry
+      then show ?thesis
+        oops
+    next
+      case (Evt f)
+      then show ?thesis
+        by (smt (verit, best) "1" Suc.prems(3) 2 list.inject oevent.distinct(1) refEquiv.simps tockify.simps(1) tockify.simps(2))
+    qed
+  next
+    case 5: (Evt e)
+    then show ?thesis proof (cases sx)
+      case (Tock Y)
+      then show ?thesis
+        by (smt (verit, best) "1" 5 Suc.prems(3) list.inject oevent.distinct(1) refEquiv.simps tockify.simps(1) tockify.simps(2))
+    next
+      case 6: (Evt f)
+      then have "refEquiv (tockify t') (tockify s')"
+        by (smt (verit, ccfv_SIG) "1" "2" "5" Suc.prems(2) Zero_not_Suc length_0_conv list.inject refEquiv.simps tockify.simps(1) tockifyEmpty)
+      then show ?thesis
+        by (smt (verit, ccfv_threshold) "1" "2" "5" "6" Suc.IH Suc.prems(1) Suc.prems(2) length_Cons list.inject nat.inject oevent.distinct(1) oevent.inject(2) refEquiv.simps tockify.simps(1))
+    qed
+  qed
+qed
+*)
+
+lemma refEquivTockify: "refEquiv (tockify t) (tockify s) = (t = s)"
+proof
+  show "t = s \<Longrightarrow> refEquiv (tockify t) (tockify s)"
+    by (simp add: refEquivRefl)
+next
+  assume "refEquiv (tockify t) (tockify s)"
+  then have "tickCanonical (tockify t) = tickCanonical (tockify s)"
+    by (simp add: refEquivTockCanonical)
+  then have "tockify t = tockify s"
+    by (simp add: tickCanonicalTockify)
+  then show "t = s"
+    by (simp add: tockifyEq)
+qed
+
+lemma tockifificationsEq: "((tockifications t \<inter> tockifications s) \<noteq> {}) = (t = s)"
+proof
+  assume "t = s"
+  then show "((tockifications t) \<inter> (tockifications s)) \<noteq> {}"
+    using tockificationsNonEmpty by auto
+next
+  assume "tockifications t \<inter> tockifications s \<noteq> {}"
+  then obtain r where "r \<in> tockifications t \<and> r \<in> tockifications s"
+    by blast
+  then have "refEquiv r (tockify t) \<and> refEquiv r (tockify s)"
+    by (simp add: tockificationsTockify)
+  then have "refEquiv (tockify t) (tockify s)"
+    using refEquivSym refEquivTrans by blast
+  then show "t = s"
+    by (simp add: refEquivTockify)
 qed
 
 subsection \<open> Traces \<close>
@@ -278,8 +630,7 @@ qed
 
 subsubsection \<open> Refusal Trace Structure \<close>
 
-lemma tockifyEmpty: "([] = tockify t) = (t = [])"
-  by (metis list.distinct(1) tockify.elims)
+
 
 lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
 proof -
