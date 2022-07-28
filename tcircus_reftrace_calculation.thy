@@ -57,52 +57,6 @@ qed
 
 subsection \<open> Untimed Stop \<close>
 
-lemma torefsetRange: "reftick \<notin> X \<Longrightarrow> reftock \<notin> X \<Longrightarrow> \<exists> X'. X = torefset X'"
-proof -
-  assume 1: "reftick \<notin> X"
-  assume 2: "reftock \<notin> X"
-  have 3: "\<And>x. x \<in> X \<Longrightarrow> \<exists> e. x=refevt e"
-  by (metis "1" "2" fromrefevent.cases)
-  obtain X' where 4: "X' = {e | e . refevt e \<in> X}"
-    by blast
-  have "\<And>x. x \<in> X \<Longrightarrow> x \<in> torefset X'"
-    using "3" "4" by auto
-  moreover have "\<And>x. x \<in> torefset X' \<Longrightarrow> x \<in> X"
-    using "4" by auto
-  ultimately show ?thesis
-    by auto
-qed
-
-lemma torefsetReftick: "reftick \<notin> torefset X"
-  by simp
-
-lemma torefsetReftock: "reftock \<notin> torefset X"
-  by simp
-
-lemma finalrefsetTick: "reftick \<in> finalrefset p refterm X = refterm"
-  by (smt (z3) UnE UnI2 finalrefset.elims insertCI refevent.distinct(5) singletonD torefsetReftick)
-
-lemma finalrefsetTock: "(reftock \<in> finalrefset p refterm X) \<noteq> p"
-  by (smt (z3) UnE UnI2 finalrefset.elims insertCI insert_absorb refevent.distinct(5) singleton_insert_inj_eq' torefsetReftock)
-
-lemma finalrefsetRange: "\<exists> X' p refterm. X = finalrefset p refterm X'"
-proof -
-  have "reftock \<in> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset False True X'"
-    apply(simp only: finalrefset.simps)
-    by (metis (no_types, lifting) Un_insert_right insert_eq_iff insert_is_Un lattice_class.inf_sup_aci(5) mk_disjoint_insert refevent.distinct(5) torefsetRange)
-  moreover have "reftock \<in> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset False False X'"
-    apply(simp only: finalrefset.simps)
-    by (metis insertI2 insert_is_Un mk_disjoint_insert semilattice_sup_class.sup_commute torefsetRange)
-  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset True True X'"
-    apply(simp only: finalrefset.simps)
-    by (metis Un_commute insertCI insert_is_Un mk_disjoint_insert torefsetRange)
-  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset True False X'"
-    apply(simp only: finalrefset.simps)
-    using torefsetRange by blast
-  ultimately show "?thesis"
-    by meson
-qed
-
 lemma "tttraces Stop\<^sub>U = {[]} \<union> {[oref X] | X . True}" (is "?l = ET \<union> ?r2")
 proof (rule tttracesEqRem)
   have "(ET \<union> ?r2) - FR - TI = ET"
@@ -207,7 +161,7 @@ next
   then obtain ta where 3: "t \<in> tockifications ta"
     by blast
   obtain Ya where 4: "Y - {reftick} = torefset Ya"
-    by (smt (verit, ccfv_threshold) Diff_cancel Diff_iff Un_Diff_cancel Un_absorb Un_commute Un_insert_left insert_absorb insert_iff insert_subset tcircus_reftrace_calculation.torefsetRange tcircus_reftrace_calculation.torefsetReftock tockSequence1.hyps(3))
+    by (smt (verit, ccfv_threshold) Diff_cancel Diff_iff Un_Diff_cancel Un_absorb Un_commute Un_insert_left insert_absorb insert_iff insert_subset torefsetRange torefsetReftock tockSequence1.hyps(3))
   have "oref (Y) # otock # t \<in> tockifications (Tock Ya # ta)"
     apply(simp add: 3)
     using 4 by auto

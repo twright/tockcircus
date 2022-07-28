@@ -170,6 +170,30 @@ lemma torefsetReftick: "reftick \<notin> torefset X"
 lemma torefsetReftock: "reftock \<notin> torefset X"
   by simp
 
+lemma finalrefsetTick: "reftick \<in> finalrefset p refterm X = refterm"
+  by (smt (z3) UnE UnI2 finalrefset.elims insertCI refevent.distinct(5) singletonD torefsetReftick)
+
+lemma finalrefsetTock: "(reftock \<in> finalrefset p refterm X) \<noteq> p"
+  by (smt (z3) UnE UnI2 finalrefset.elims insertCI insert_absorb refevent.distinct(5) singleton_insert_inj_eq' torefsetReftock)
+
+lemma finalrefsetRange: "\<exists> X' p refterm. X = finalrefset p refterm X'"
+proof -
+  have "reftock \<in> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset False True X'"
+    apply(simp only: finalrefset.simps)
+    by (metis (no_types, lifting) Un_insert_right insert_eq_iff insert_is_Un lattice_class.inf_sup_aci(5) mk_disjoint_insert refevent.distinct(5) torefsetRange)
+  moreover have "reftock \<in> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset False False X'"
+    apply(simp only: finalrefset.simps)
+    by (metis insertI2 insert_is_Un mk_disjoint_insert semilattice_sup_class.sup_commute torefsetRange)
+  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<in> X \<Longrightarrow> \<exists> X'. X = finalrefset True True X'"
+    apply(simp only: finalrefset.simps)
+    by (metis Un_commute insertCI insert_is_Un mk_disjoint_insert torefsetRange)
+  moreover have "reftock \<notin> X \<Longrightarrow> reftick \<notin> X \<Longrightarrow> \<exists> X'. X = finalrefset True False X'"
+    apply(simp only: finalrefset.simps)
+    using torefsetRange by blast
+  ultimately show "?thesis"
+    by meson
+qed
+
 (*
 lemma tockifificationsEq: "((tockifications t \<inter> tockifications s) \<noteq> {}) = (t = s)"
 proof
@@ -338,8 +362,6 @@ qed
 
 
 subsubsection \<open> Refusal Trace Structure \<close>
-
-
 
 lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
 proof -
