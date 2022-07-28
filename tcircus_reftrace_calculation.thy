@@ -462,56 +462,61 @@ qed
 
 subsection \<open> Do \<close>
 
-(*
-lemma tocksTockifyFinal: "t \<in> tocks (- {refevt e})
-  \<Longrightarrow> \<exists>s. tockify (t @ [Evt e]) = s @ [oevt e] \<and> tockSequence (- {refevt e}) s \<and> (\<exists>X. \<not> refevt e \<in> X)"
-  by (metis insert_absorb insert_not_empty tockSeqTocks tockify.simps(1) tockify.simps(3) tockifyAppend)
+lemma tocksTockificationsFinal:
+  assumes "s \<in> (tockifications (w @ [Evt e]))" and "w \<in> tocks (- {e})"
+  shows "\<exists>t. (s = t @ [oevt e]) \<and> tockSequence (- {e}) t"
+  using assms(1) apply(simp add: tockificationsAppend)
+  using assms(2) using tockSeqTockificationTocks by auto
 
-lemma tocksTockifyFinalTock:
-    "tockSequence (- {refevt e}) t
- \<Longrightarrow> \<not> refevt e \<in> X
- \<Longrightarrow> \<exists>ta. t @ [oevt e] = tockify ta \<and> (\<exists>tb. tb \<in> tocks (- {refevt e}) \<and> (\<exists>x. ta = tb @ x \<and> x \<subseteq>\<^sub>t [Evt e]))"
+lemma tocksTockificationsFinalTock:
+    "tockSequence (- {e}) t
+ \<Longrightarrow> \<exists>ta. t @ [oevt e] \<in> tockifications ta \<and> (\<exists>tb. tb \<in> tocks (- {e}) \<and> (\<exists>x. ta = tb @ x \<and> x \<subseteq>\<^sub>t [Evt e]))"
 proof -
-  assume 1: "tockSequence (- {refevt e}) t"
-  assume 2: "\<not> refevt e \<in> X"
-  obtain "tc" where 3: "t = tockify tc"
-    by (meson tockSequenceTockify "1" image_iff)
-  have 3: "t @ [oevt e] = tockify(tc @ [Evt e])"
-    by (simp add: "3" tockifyAppend)
-  have 4: "tc \<in> tocks (- {refevt e})"
-    by (metis "1" "3" append_eq_append_conv tockSeqTocks tockify.simps(1) tockify.simps(3) tockifyAppend)
-  show ?thesis
-    using "3" "4" tock_ord_refl by auto
+  assume 1: "tockSequence (- {e}) t"
+  obtain "tc" where 3: "t \<in> tockifications tc"
+    using "1" tockSequenceTockifications by auto
+  have "t @ [oevt e] \<in> tockifications (tc @ [Evt e])"
+    by (simp add: "3" tockificationsAppend)
+  moreover have "tc \<in> tocks (- {e})"
+    using 1 3 by (simp add: tockSeqTockificationTocks)
+  ultimately show ?thesis
+    using tock_ord_refl by auto
 qed
 
+lemma refevtInFinalrefset: "(refevt e \<in> finalrefset p refterm X) = (e \<in> X)"
+  by (cases p; cases refterm; auto)
+
 lemma tttracesDo: "tttraces (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp)
-                 = ( {t . tockSequence (-{refevt e}) t}
+                 = ( {t . tockSequence (-{e}) t}
                    \<union> { t@[oevt e]
-                     | t X . tockSequence (-{refevt e}) t })
-                 \<union> {t@[oref X] | t X . tockSequence (-{refevt e}) t
+                     | t. tockSequence (-{e}) t })
+                 \<union> {t@[oref X] | t X . tockSequence (-{e}) t
                               \<and> X \<subseteq> (-{refevt e})}
                  \<union> { t@[oevt e, otick]
-                   | t X . tockSequence (-{refevt e}) t
-                         \<and> X \<subseteq> (-{refevt e})}" (is "?l = ?FE \<union> ?FR \<union> ?TI")
+                   | t. tockSequence (-{e}) t }" (is "?l = ?FE \<union> ?FR \<union> ?TI")
 proof (rule tttracesCalc)
   show "tttracesFE (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FE"
     apply(rdes_simp)
     apply(rel_auto)
-    using tockSeqTocks apply blast
-    apply (meson tocksTockifyFinal)
-    apply (meson tocksTockifyFinal)
-    apply (metis image_iff rfnil_mem_dest tockSeqTocks tockSequenceTockify)
-    by (meson empty_iff tocksTockifyFinalTock)
+    apply (meson tockSeqTockificationTocks)
+    apply (meson tocksTockificationsFinal)
+    apply (meson tocksTockificationsFinal)
+    apply (metis UN_iff rmember.simps(1) tockSeqTockificationTocks tockSequenceTockifications)
+    by (meson tocksTockificationsFinalTock)
 next
   show "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FR"
     apply(rdes_simp)
     apply(rel_auto)
-    using tockSeqTocks apply blast
-    by (metis image_iff tockSeqTocks tockSequenceTockify)
+    using tockSeqTockificationTocks apply blast
+    apply (simp add: refevtInFinalrefset)
+    by (metis UN_iff finalrefsetRange refevtInFinalrefset tockSeqTockificationTocks tockSequenceTockifications)
 next
   show "tttracesTI (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?TI"
-    by (rdes_simp; rel_auto; auto simp add: tocksTockifyFinal tocksTockifyFinalTock)
+    apply (rdes_simp; rel_auto)
+    apply (simp add: tocksTockificationsFinal)
+    by (meson tocksTockificationsFinalTock)
 qed
+
 
 subsection \<open> Sequential composition \<close>
 
@@ -522,7 +527,6 @@ lemma
 lemma tracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
   apply(rdes_simp)
   apply(rel_simp)
-  apply(simp add: tockifyEq)
   by blast
 
 lemma tockifySetEq: "({tockify t| t. P} = {tockify t| t. Q}) = ({t. P} = {t. Q})"
@@ -541,7 +545,6 @@ lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
     \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttraces Q}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockifyEq)
   oops
 
 subsection \<open> External choice \<close>
@@ -550,11 +553,15 @@ fun oidleprefix :: "'\<phi> oreftrace \<Rightarrow> '\<phi> oreftrace" where
 "oidleprefix (oref X # otock # xs) = oref X # otock # oidleprefix xs"|
 "oidleprefix xs = []"
 
+(* Needs some healthiness conditions on p
 lemma oidleprefixTockSequence: "tockSequence UNIV (oidleprefix p)"
 proof (induct p rule: oidleprefix.induct)
   case (1 X xs)
+  have b: "X \<subseteq> torefset UNIV \<union> {reftick}"
+    oops
   then show ?case
-    by (simp add: tockSequence1)
+    apply simp
+    apply (simp add: tockSequence1)
 next
   case "2_1"
   then show ?case
