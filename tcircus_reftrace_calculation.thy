@@ -282,6 +282,35 @@ lemma tttracesRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttraces Q \<subseteq
 lemma "tttraces (P \<squnion> Q) \<subseteq> tttraces P"
   by (meson semilattice_inf_class.inf.cobounded1 tttracesRefine)
 
+(* A contradiction to conjunctivity for a nasty process *)
+
+lemma "{[], [oevt 1], [oevt 2]} \<subseteq> tttraces (U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> $pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))"
+  apply(rdes_simp)
+  apply(rel_simp)
+  apply(auto)
+  using tockificationsEmptyS apply blast
+  using tockificationsEmptyS apply fastforce
+  by force
+
+lemma "{[], [oevt 1], [oevt 2]} \<subseteq> tttraces (U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> \<not>$pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))"
+  apply(rdes_simp)
+  apply(rel_simp)
+  apply(auto)
+  apply(force)
+  apply fastforce
+  by (metis (mono_tags, lifting) mem_Collect_eq tockifications.simps(1) tockificationsEmptyS)
+
+lemma "(U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> $pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil) \<and> (((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> \<not>$pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))::nat ttcsp) = U($ref = rfnil \<and> &tt = [])"
+  by (rel_auto)
+
+lemma "[oevt 1] \<notin> tttraces (U($ref = rfnil \<and> &tt = []))"
+  by (rdes_simp; rel_auto)
+
+(* This law does not make sense even ignoring $pat, in cases
+   when processes can perform the same trace on different
+   branches. *)
+
+(*
 lemma "tttraces (P \<squnion> Q) = tttraces P \<inter> tttraces Q"
 proof 
   have "P \<sqsubseteq> P \<squnion> Q" and "Q \<sqsubseteq> P \<squnion> Q"
@@ -290,10 +319,27 @@ proof
     by (meson tttracesRefine)+
   thus "tttraces (P \<squnion> Q) \<subseteq> tttraces P \<inter> tttraces Q"
     by blast
-next
-  oops
-
-(*
+  {
+    fix t
+    assume 1: "t \<in> tttracesFE P \<inter> tttracesFE Q"
+    have "t \<in> tttracesFE P"
+      using 1 by blast
+    then obtain s where 2: "t \<in> tockifications s" and 3: "\<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+      by auto
+    have "t \<in> tttracesFE Q"
+      using 1 by blast
+    then obtain s' where 4: "t \<in> tockifications s'" and 5: "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s'\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+      by auto
+    have "s = s'"
+      using 2 4 by (meson tockificationsDisjoint)
+    then have "\<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`" and "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+      using 3 5 by blast+
+    then have "\<not>( `(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>
+                \<or>  (\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` )"
+      apply(rdes_simp)
+      apply(rel_auto)
+      nitpick
+  }
   have "tttracesFE P \<inter> tttracesFE Q \<subseteq> tttracesFE (P \<squnion> Q)"
     apply(rdes_simp; rel_auto)
     oops
