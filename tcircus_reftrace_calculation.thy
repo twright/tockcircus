@@ -147,52 +147,6 @@ inductive tockSequence :: "('\<theta> event) set \<Rightarrow> '\<theta> oreftra
 tockSequence0: "tockSequence X []"|
 tockSequence1: "\<lbrakk>tockSequence X t; Y \<subseteq> torefset X \<union> {reftick}\<rbrakk> \<Longrightarrow> tockSequence X (oref Y # otock # t)"
 
-lemma tockSeqTocks: "(tockSequence X (tockify t)) = (t \<in> tocks X)"
-proof (induct t)
-  case Nil
-  then show ?case
-    by (simp add: tockSequence0)
-next
-  case (Cons a t)
-  then show ?case proof (cases a)
-    case (Tock Y)
-    then have "(a # t \<in> tocks X) \<Longrightarrow> (tockSequence X (tockify (a # t)))" proof -
-      assume 1: "a # t \<in> tocks X"
-      then have "Y \<subseteq> X"
-        by (simp add: Tock tocks_def)
-      then have "torefset Y \<subseteq> torefset X \<union> {reftick}"
-        by force
-      moreover have "tockSequence X (tockify t)"
-        by (metis "1" Cons.hyps Cons_eq_appendI append_self_conv2 tocks_append)
-      ultimately show "tockSequence X (tockify (a # t))"
-        apply(simp only: tockify.simps Tock)
-        using tockSequence1 by blast
-    qed
-    moreover have "(tockSequence X (tockify (a # t))) \<Longrightarrow> (a # t \<in> tocks X)"
-    proof -
-      assume 2: "tockSequence X (tockify (a # t))"
-      have "torefset Y \<subseteq> torefset X \<union> {reftick}"
-        by (metis Tock 2 list.discI list.inject oevent.inject(1) tockSequence.simps tockify.simps(2))
-      then have "Y \<subseteq> X"
-        by (rule torefsetSubsetReftick)
-      moreover have "t \<in> tocks X"
-        using Tock 2 tockSequence.simps Cons.hyps by auto
-      ultimately show "a # t \<in> tocks X"
-        by (simp add: Tock tocks_Cons)
-    qed
-    ultimately show ?thesis
-      by auto
-  next
-    case (Evt e)
-    hence "a # t \<notin> tocks X"
-      by simp
-    moreover hence "\<not> tockSequence X (tockify (a # t))"
-      using Evt tockSequence.simps by auto
-    ultimately show "(tockSequence X (tockify (a # t))) = (a # t \<in> tocks X)"
-      by blast
-  qed
-qed
-
 lemma tockSeqTockificationTocks: "s \<in> tockifications t \<Longrightarrow> (tockSequence X s) = (t \<in> tocks X)"
 proof (induct t arbitrary: s)
   case Nil
@@ -242,27 +196,6 @@ next
   qed
 qed
 
-lemma tockSeqRefEquiv: "refEquiv s t \<Longrightarrow> (tockSequence X s = tockSequence X t)"
-  oops
-
-(* No longer true
-lemma tockSequenceTockify: "tockSequence X t \<Longrightarrow> t \<in> range tockify"
-proof (induct t rule: tockSequence.induct)
-  case (tockSequence0)
-  then show ?case
-    by (metis range_eqI tockify.simps(3))
-next
-  case (tockSequence1 t Y)
-    assume 2: "t \<in> range tockify"
-    then obtain ta where 3: "t = tockify ta"
-      by blast
-    have "oref Y # otock # t = tockify (Tock Y # ta)"
-      sledgehammer
-    then show "oref Y # otock # t \<in> range tockify"
-      by blast
-  qed
-*)
-
 lemma tockSequenceTockifications: "tockSequence X t \<Longrightarrow> t \<in> \<Union> (range tockifications)"
 proof (induct t rule: tockSequence.induct)
   case (tockSequence0)
@@ -285,7 +218,7 @@ qed
 lemma tttracesFEStop: "tttracesFE Stop = {t. tockSequence UNIV t}"
   apply(rdes_simp)
   apply(rel_simp)
-  using tockSequenceTockifications tockSeqTocks tockSeqTockificationTocks by force
+  using tockSequenceTockifications tockSeqTockificationTocks by force
 
 lemma tttracesTIStop: "tttracesTI Stop = {}"
   by (rdes_simp)
@@ -392,31 +325,34 @@ proof (induct t arbitrary: s)
   then show ?case by auto
 next
   case (Cons a t)
-  assume 1: "s \<in> tockifications (a # t)"
-  obtain Y where 2: "a = Tock Y"
+  assume 1: "(a # t) \<in> tocks X"
+  assume 2: "s \<in> tockifications (a # t)"
+  obtain Y where 3: "a = Tock Y"
     using Cons by (metis tev.exhaust tocks_Evt)
-  then obtain s' Z where "s = oref Z # otock # s' \<and> s' \<in> tockifications t"
+  then obtain s' Z where 4: "s = oref Z # otock # s'" and 5: "s' \<in> tockifications t"
     using Cons by auto
+  have "otimelength s' = length t"
+    by (metis 1 5 Cons.hyps "2" "4" list.distinct(1) list.sel(3) tockSeqTockificationTocks tockSequence.simps) 
   then show ?case
-    by (metis "2" Cons.hyps Cons.prems(1) length_Cons list.distinct(1) list.sel(3) otimelength.simps(1) otimelength.simps(2) tockSeqTocks tockSequence.simps tockify.simps(2))
+    by (simp add: "4")
 qed
 
 lemma tttracesTIWait: "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = {t@[otick]| t. tockSequence UNIV t \<and> (otimelength t = n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength rangeE tockSequenceTockifications tockSeqTockificationTocks)
+  apply(simp_all add: tocksTimeLength rangeE tockSequenceTockifications tockSeqTockificationTocks)
   by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t@[oref X]| t X. tockSequence UNIV t \<and> (otimelength t < n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
+  apply(simp_all add: tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
   by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tttracesFEWait: "tttracesFE (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}"
   apply(rdes_simp)
   apply(rel_auto)
-  apply(simp_all add: tockSeqTocks tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
+  apply(simp_all add: tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
   by (metis UN_iff le_eq_less_or_eq tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
 
 lemma tockSequenceTTTss: "tockSequence UNIV t \<Longrightarrow> t \<in> TTTss"
