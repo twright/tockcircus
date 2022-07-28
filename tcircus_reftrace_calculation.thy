@@ -253,6 +253,63 @@ next
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
 
+
+subsection \<open> Conjunction \<close>
+
+lemma finalrefsetInjective: "(finalrefset p refterm X = finalrefset p' refterm' X')
+                           = ((p = p') \<and> (refterm = refterm') \<and> (X = X'))"
+  by (cases p; cases p'; cases refterm; cases refterm'; auto)
+
+
+lemma tttracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
+  apply(rdes_simp)
+  apply(rel_simp)
+  by blast
+
+lemma tttracesFRRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFR Q \<subseteq> tttracesFR P"
+  apply(rdes_simp)
+  apply(rel_simp)
+  by blast
+
+lemma tttracesTIRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesTI Q \<subseteq> tttracesTI P"
+  apply(rdes_simp)
+  apply(rel_simp)
+  by blast
+
+lemma tttracesRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttraces Q \<subseteq> tttraces P"
+  by (metis semilattice_inf_class.le_inf_iff tttracesFERefine tttracesFRRefine tttracesSubregions(1) tttracesSubregions(2) tttracesSubregions(3) tttracesSubset tttracesTIRefine)
+
+lemma "tttraces (P \<squnion> Q) \<subseteq> tttraces P"
+  by (meson semilattice_inf_class.inf.cobounded1 tttracesRefine)
+
+lemma "tttraces (P \<squnion> Q) = tttraces P \<inter> tttraces Q"
+proof 
+  have "P \<sqsubseteq> P \<squnion> Q" and "Q \<sqsubseteq> P \<squnion> Q"
+    by simp_all
+  then have "tttraces (P \<squnion> Q) \<subseteq> tttraces P" and "tttraces (P \<squnion> Q) \<subseteq> tttraces Q"
+    by (meson tttracesRefine)+
+  thus "tttraces (P \<squnion> Q) \<subseteq> tttraces P \<inter> tttraces Q"
+    by blast
+next
+  oops
+
+(*
+  have "tttracesFE P \<inter> tttracesFE Q \<subseteq> tttracesFE (P \<squnion> Q)"
+    apply(rdes_simp; rel_auto)
+    oops
+  have "tttracesFR P \<inter> tttracesFR Q \<subseteq> tttracesFR (P \<squnion> Q)"
+    apply(rdes_simp; rel_simp)
+    apply(simp add: finalrefsetInjective)
+    oops
+  have "tttracesTI P \<inter> tttracesFE Q \<subseteq> tttracesTI (P \<squnion> Q)"
+    apply(rdes_simp; rel_auto)
+    apply (metis basic_trans_rules(31) in_set_conv_decomp mem_Collect_eq tockificationsUnticked)
+    by (meson UNIV_I UN_iff tockificationsNoTI)
+  show "tttraces P \<inter> tttraces Q \<subseteq> tttraces (P \<squnion> Q)"
+    apply(rdes_simp; rel_auto)
+    oops
+qed *)
+
 subsection \<open> Wait \<close>
 
 fun otimelength :: "'\<theta> oreftrace \<Rightarrow> nat" where
