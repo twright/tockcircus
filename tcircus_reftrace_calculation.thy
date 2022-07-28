@@ -356,28 +356,26 @@ lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockS
 
 subsection \<open> Internal Choice \<close>
 
-(*
 lemma "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
 proof (rule tttracesEq)
   show "tttraces P \<union> tttraces Q \<subseteq> TTTs"
     using TTTStructure by blast
 next
   have "tttracesFE (P \<sqinter> Q) = tttracesFE P \<union> tttracesFE Q"
-    by (auto; rel_simp; simp_all add: tockifyEq; metis)
+    by (auto; rel_simp; blast)
   thus "tttracesFE (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FE"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(1))
 next
   have "tttracesFR (P \<sqinter> Q) = tttracesFR P \<union> tttracesFR Q"
-    by (auto; rel_simp; simp_all add: tockifyEq; metis)
+    by (auto; rel_simp; blast)
   thus "tttracesFR (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FR"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(2))
 next
   have "tttracesTI (P \<sqinter> Q) = tttracesTI P \<union> tttracesTI Q"
-    by (auto; (rel_auto | rel_simp); auto simp add: tockifyEq)
+    by (auto; rel_simp; blast)
   thus "tttracesTI (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> TI"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
-*)
 
 subsection \<open> Wait \<close>
 
