@@ -10,22 +10,15 @@ subsection \<open> Div \<close>
 lemma tttracesDiv: "tttraces Div = {[]}" (is "tttraces Div = ?r")
 proof (rule tttracesEqRem)
   show "tttracesTI Div = ?r \<inter> TI"
-    apply(simp add: TI_def)
-    apply(rdes_simp)
-    done
+    by (simp add: TI_def; rdes_simp)
 next
   show "tttracesFR Div = ?r \<inter> FR"
-    apply(simp add: FR_def)
-    apply(rdes_simp)
-    apply(rel_auto)
-    done
+    by (simp add: FR_def; rdes_simp; rel_auto)
 next
   have "?r - FR - TI = ?r"
     by (auto simp add: FR_def TI_def)
   moreover have "tttracesFE Div = ?r"
-    apply(rdes_simp simps: FR_def TI_def)
-    apply(rel_auto)
-    done
+    by (rdes_simp simps: FR_def TI_def; rel_auto)
   ultimately show "tttracesFE Div = ?r - FR - TI"
     by auto
 qed
@@ -38,20 +31,16 @@ proof (rule tttracesEqRem)
   have "?r - FR - TI = {[]}"
     by (auto simp add: FR_def TI_def TTT1_def TTT2_def TTT3_def)
   moreover have "tttracesFE Skip = {[]}"
-    apply(rdes_simp)
-    by (rel_auto)
+    by (rdes_simp; rel_auto)
   ultimately show "tttracesFE Skip = ?r - FR - TI"
     by auto
 next
   show "tttracesTI Skip = ?r \<inter> TI"
     apply(rdes_simp simps: TI_def)
-    using TTT1_def TTT2_def TTT3_def apply(rel_auto)
-    done
+    using TTT1_def TTT2_def TTT3_def by (rel_auto)
 next
   show "tttracesFR Skip = ?r \<inter> FR"
-    apply(rdes_simp simps: FR_def)
-    apply(rel_auto)
-    done
+    by (rdes_simp simps: FR_def; rel_auto)
 qed
 
 
