@@ -194,8 +194,121 @@ proof -
     by meson
 qed
 
-(*
-lemma tockifificationsEq: "((tockifications t \<inter> tockifications s) \<noteq> {}) = (t = s)"
+
+lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
+proof -
+  have "t = [] \<Longrightarrow> {[]} = tockifications t" by auto
+  moreover {
+    assume "t \<noteq> []"
+    then obtain th tr where "t = th # tr"
+      by (meson neq_Nil_conv)
+    then have "tockifications t \<noteq> {[]}"
+      by (cases "th"; auto)
+  }
+  ultimately show ?thesis by auto
+qed
+
+lemma tockificationsEmptyS: "([] \<in> tockifications t) = (t = [])"
+proof -
+  have "t = [] \<Longrightarrow> {[]} = tockifications t" by auto
+  moreover {
+    assume "t \<noteq> []"
+    then obtain th tr where "t = th # tr"
+      by (meson neq_Nil_conv)
+    then have "[] \<notin> tockifications t"
+      by (cases "th"; auto)
+  }
+  ultimately show ?thesis by auto
+qed
+
+lemma tockificationsCaseEvt:
+  assumes "oevt e # s \<in> tockifications t"
+  shows "\<exists> t'. (t = Evt e # t' \<and> s \<in> tockifications t')"
+proof (cases t rule: tockifications.cases)
+  case (1 e ts)
+  then show ?thesis
+    using assms by force
+next
+  case (2 X ts)
+  then have "False"
+    using assms by simp
+  then show ?thesis
+    by blast
+next
+  case 3
+  then show ?thesis
+    using assms by auto
+qed
+
+lemma tockificationsCaseTock:
+  assumes "oref (torefset X) # otock # s \<in> tockifications t"
+  shows "\<exists> t'. (t = Tock X # t' \<and> s \<in> tockifications t')"
+proof (cases t rule: tockifications.cases)
+  case (1 e ts)
+  then show ?thesis
+    using assms by auto
+next
+  case (2 Y ts)
+  then show ?thesis
+    using assms by auto
+next
+  case 3
+  then show ?thesis
+    using assms by auto
+qed
+
+
+lemma tockificationsCaseTockReftick:
+  assumes "oref (torefset X \<union> {reftick}) # otock # s \<in> tockifications t"
+  shows "\<exists> t'. (t = Tock X # t' \<and> s \<in> tockifications t')"
+proof (cases t rule: tockifications.cases)
+  case (1 e ts)
+  then show ?thesis
+    using assms by auto
+next
+  case (2 Y ts)
+  then show ?thesis
+    using assms by auto
+next
+  case 3
+  then show ?thesis
+    using assms by auto
+qed
+
+lemma tockificationsDisjoint: "s \<in> tockifications t \<Longrightarrow> s \<in> tockifications t' \<Longrightarrow> t = t'"
+proof (induct t' arbitrary: s t)
+  case Nil
+  then show ?case
+    using tockificationsEmptyS by auto
+next
+  case (Cons a t')
+  assume 1: "s \<in> tockifications t"
+  assume 2: "s \<in> tockifications (a # t')"
+  then obtain s' s'' where 3: "s = s' @ s''" and 4: "s' \<in> tockifications [a]" and 5: "s'' \<in> tockifications t'"
+    by (smt (verit, best) mem_Collect_eq tockificationsCons)
+  {
+    have "\<exists> t''. t = a # t'' \<and> s'' \<in> tockifications t''" proof (cases a)
+      case (Tock X)
+      consider "s' = [oref (torefset X), otock]" | "s' = [oref (torefset X \<union> {reftick}), otock]"
+        using 1 4 Tock by auto
+      then show ?thesis
+        apply(cases)
+        using Tock 1 by (simp_all add: 3 tockificationsCaseTock tockificationsCaseTockReftick)
+    next
+      case (Evt e)
+      then show ?thesis
+        using 1 4 by (simp add: 3 tockificationsCaseEvt)
+    qed
+  }
+  then obtain t'' where 6: "t = a # t''" and 7: "s'' \<in> tockifications t''"
+    using "5" by blast
+  have "t' = t''"
+    using "5" "7" Cons.hyps by blast
+  then show ?case
+    by (simp add: "6")
+qed
+
+lemma tockificationsEq: "((tockifications t \<inter> tockifications s) \<noteq> {}) = (t = s)"
 proof
   assume "t = s"
   then show "((tockifications t) \<inter> (tockifications s)) \<noteq> {}"
@@ -204,14 +317,9 @@ next
   assume "tockifications t \<inter> tockifications s \<noteq> {}"
   then obtain r where "r \<in> tockifications t \<and> r \<in> tockifications s"
     by blast
-  then have "refEquiv r (tockify t) \<and> refEquiv r (tockify s)"
-    by (simp add: tockificationsTockify)
-  then have "refEquiv (tockify t) (tockify s)"
-    using refEquivSym refEquivTrans by blast
   then show "t = s"
-    by (simp add: refEquivTockify)
+    using tockificationsDisjoint by blast
 qed
-*)
 
 subsection \<open> Traces \<close>
 
@@ -362,32 +470,6 @@ qed
 
 
 subsubsection \<open> Refusal Trace Structure \<close>
-
-lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
-proof -
-  have "t = [] \<Longrightarrow> ET = tockifications t" by auto
-  moreover {
-    assume "t \<noteq> []"
-    then obtain th tr where "t = th # tr"
-      by (meson neq_Nil_conv)
-    then have "tockifications t \<noteq> {[]}"
-      by (cases "th"; auto)
-  }
-  ultimately show ?thesis by auto
-qed
-
-lemma tockificationsEmptyS: "([] \<in> tockifications t) = (t = [])"
-proof -
-  have "t = [] \<Longrightarrow> ET = tockifications t" by auto
-  moreover {
-    assume "t \<noteq> []"
-    then obtain th tr where "t = th # tr"
-      by (meson neq_Nil_conv)
-    then have "[] \<notin> tockifications t"
-      by (cases "th"; auto)
-  }
-  ultimately show ?thesis by auto
-qed
 
 lemma tockificationsUnticked: "tockifications t \<subseteq> (untickeds::'\<theta> oreftrace set)"
 proof (induct t)
