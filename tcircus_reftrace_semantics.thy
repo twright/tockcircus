@@ -356,22 +356,49 @@ lemma tttracesSubset:
 
 subsubsection \<open> Structural Conditions \<close>
 
-definition TTT1 :: "('\<theta> oreftrace) set" where
-"TTT1 = { t. \<forall> i::nat . Suc i < length t \<longrightarrow> t ! i \<noteq> otick}"
+named_theorems TTTsimps
+
+definition TTT1 :: "('\<theta> oreftrace) set"  where
+[TTTsimps]: "TTT1 = { t. \<forall> i::nat . Suc i < length t \<longrightarrow> t ! i \<noteq> otick}"
 definition TTT1s :: "('\<theta> oreftrace) set" where
-"TTT1s = { t. \<forall> i::nat . Suc i \<le> length t \<longrightarrow> t ! i \<noteq> otick}"
+[TTTsimps]: "TTT1s = { t. \<forall> i::nat . Suc i \<le> length t \<longrightarrow> t ! i \<noteq> otick}"
 
 definition TTT2 :: "('\<theta> oreftrace) set" where
-"TTT2 = { t . \<forall> i::nat. Suc i < length t \<and> t ! i \<in> range oref \<longrightarrow> t ! (i + 1) = otock}"
+[TTTsimps]: "TTT2 = { t . \<forall> i::nat. Suc i < length t \<and> t ! i \<in> range oref \<longrightarrow> t ! (i + 1) = otock}"
 
 definition TTT2s :: "('\<theta> oreftrace) set" where
-"TTT2s = { t . \<forall> i::nat. i < length t \<and> t ! i \<in> range oref \<longrightarrow> Suc i < length t \<and> t ! (i + 1) = otock}"
+[TTTsimps]: "TTT2s = { t . \<forall> i::nat. i < length t \<and> t ! i \<in> range oref \<longrightarrow> Suc i < length t \<and> t ! (i + 1) = otock}"
 definition TTT3 :: "('\<theta> oreftrace) set" where
-"TTT3 = { t . \<forall> i::nat. i < length t \<and> t ! i = otock \<longrightarrow> i > 0 \<and> t ! (i - 1) \<in> range oref}"
+[TTTsimps]: "TTT3 = { t . \<forall> i::nat. i < length t \<and> t ! i = otock \<longrightarrow> i > 0 \<and> t ! (i - 1) \<in> range oref}"
 
 abbreviation "TTTs \<equiv> TTT1 \<inter> TTT2 \<inter> TTT3"
 
 abbreviation "TTTss \<equiv> TTT1s \<inter> TTT2s \<inter> TTT3"
+
+named_theorems TTsimps
+
+definition TT0 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
+[TTsimps]: "TT0 P = (P \<noteq> {})"
+
+definition TT1 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
+[TTsimps]: "TT1 P = (\<forall> \<rho> \<sigma>. \<rho> \<le> \<sigma> \<and> \<sigma> \<in> P \<longrightarrow> \<rho> \<in> P)"
+
+definition TT2 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
+[TTsimps]: "TT2 P = (\<forall> \<rho> \<sigma> X Y. \<rho> @ [oref X] @ \<sigma> \<in> P
+                   \<and> (Y \<inter> ({refevt e| e. \<rho> @ [oevt e] \<in> P}
+                         \<union> (if \<rho> @ [otick] \<in> P then {reftick} else {})
+                         \<union> (if \<rho> @ [oref X, otock] \<in> P then {reftock} else {})) = {})
+                 \<longrightarrow> \<rho> @ [oref (X \<union> Y)] \<in> P)"
+
+definition TT3i :: "'\<theta> oreftrace \<Rightarrow> bool"  where
+[TTsimps]: "TT3i t = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X, otock] @ \<sigma> = t \<longrightarrow> reftock \<notin> X)"
+
+definition TT3 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
+[TTsimps]: "TT3 P = (\<forall> t. t \<in> P \<longrightarrow> TT3i t)"
+
+definition TT4 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
+[TTsimps]: "TT4 P = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X] @ \<sigma> \<in> P \<longrightarrow> \<rho> @ [oref (X \<union> {reftick})] @ \<sigma> \<in> P)"
+
 
 subsubsection \<open> Designated Subsets \<close>
 
@@ -384,11 +411,14 @@ lemma tickedsUntickedsDisj: "untickeds \<inter> tickeds = {}"
   by auto
 
 lemma emptyTTTs: "ET \<subseteq> TTTs"
-  by (simp add: TTT1_def TTT2_def TTT3_def)
+  by (simp add: TTTsimps)
 
-definition "FR \<equiv> {t@[oref X] | t X  . True} \<inter> TTTs"
-definition "TI \<equiv> {t@[otick] | t . True} \<inter> TTTs"
-definition "FE \<equiv> TTTs - (FR \<union> TI)"
+definition [TTTsimps]: "FR \<equiv> {t@[oref X] | t X  . True} \<inter> TTTs"
+definition [TTTsimps]: "TI \<equiv> {t@[otick] | t . True} \<inter> TTTs"
+definition [TTTsimps]: "FE \<equiv> TTTs - (FR \<union> TI)"
+
+declare in_set_conv_nth[TTTsimps]
+declare nth_append[TTTsimps]
 
 subsubsection \<open> General Relationships \<close>
 
@@ -398,11 +428,10 @@ lemma distinctRegions:
     and "FE \<inter> FR = {}"
     and "FE \<inter> TI = {}"
     and "FR \<inter> TI = {}"
-  by (auto simp add: FE_def FR_def TI_def emptyTTTs)
+  by (auto simp add: TTTsimps)
 
 lemma emptyFE: "ET \<subseteq> FE"
-  apply (simp add: FE_def FR_def TI_def)
-  using emptyTTTs by blast
+  by (simp add: TTTsimps)
 
 lemma disjointRegions: "\<lbrakk> A \<in> {FE, FR, TI}; B \<in> {FE, FR, TI}; A \<noteq> B \<rbrakk> \<Longrightarrow> A \<inter> B = {}"
 proof -
@@ -419,21 +448,21 @@ proof -
     by auto
   then show "A \<inter> B = {}"
     apply (cases)
-    by (auto simp add: FE_def FR_def TI_def)
+    by (auto simp add: TTTsimps)
 qed
 
 lemma coveringRegions: "(TTTs::'\<theta> oreftrace set) = FE \<union> FR \<union> TI" (is "TTTs = ?regions")
-  by (auto simp add: FE_def FR_def TI_def TTT1_def TTT2_def TTT3_def)
+  by (auto simp add: TTTsimps)
 
 lemma TTT1TickedOrUnticked: "TTT1 = tickeds \<union> untickeds"
 proof -
   have "TTT1 \<subseteq> tickeds \<union> untickeds"
-    apply (auto simp add: TTT1_def in_set_conv_nth)
+    apply (auto simp add: TTTsimps)
     by (metis Suc_inject Suc_lessI hd_drop_conv_nth length_append_singleton less_trans_Suc not_less nth_take take_all take_hd_drop) 
   moreover have "untickeds \<subseteq> TTT1"
-    by (auto simp add: TTT1_def in_set_conv_nth)
+    by (auto simp add: TTTsimps)
   moreover have "tickeds \<subseteq> TTT1"
-    by (auto simp add: TTT1_def in_set_conv_nth nth_append)
+    by (auto simp add: TTTsimps)
   ultimately show ?thesis by blast
 qed
 
@@ -452,17 +481,17 @@ proof -
   next
     case AFE
     have "A \<subseteq> TTT1"
-      by (auto simp add: AFE FE_def)
+      by (auto simp add: AFE TTTsimps)
     moreover have "A \<inter> tickeds = {}"
-      by (auto simp add: AFE FE_def FR_def TI_def TTT3_def)
+      by (auto simp add: AFE TTTsimps)
     ultimately show "A \<subseteq> untickeds"
       by (rule untickedTTT1) 
   next
     case AFR
     have "A \<subseteq> TTT1"
-      by (auto simp add: AFR FR_def)
+      by (auto simp add: AFR TTTsimps)
     moreover have "A \<inter> tickeds = {}"
-      by (auto simp add: AFR FR_def TTT3_def)
+      by (auto simp add: AFR TTTsimps)
     ultimately show "A \<subseteq> untickeds"
       by (rule untickedTTT1)
   qed
@@ -736,6 +765,46 @@ lemma tockificationsTTTs: "\<Union> (range tockifications) \<subseteq> TTT1 \<in
 lemma TTTsAppend: "t \<in> TTTss \<Longrightarrow> s \<in> TTTs \<Longrightarrow> t@s \<in> TTTs"
   by (simp add: TTT1sAppend TTT2Append TTT3Append)
 
+subsubsection \<open> TT3 \<close>
+
+lemma tockificationsTT3i: "s \<in> tockifications t \<Longrightarrow> TT3i s"
+proof (simp add: TTsimps; rule; rule; rule; rule; induction t arbitrary: s \<rho> \<sigma> X)
+  case Nil
+  then show ?case
+    by auto
+next
+  case (Cons x t)
+  then show "reftock \<notin> X" proof (cases x)
+    case (Tock Y)
+    then obtain w Y' where 1: "\<rho> @ [oref X, otock] @ \<sigma> = oref Y' # otock # w" and 2: "(Y' = torefset Y) \<or> (Y' = torefset Y \<union> {reftick})"  and 3: "w \<in> tockifications t"
+      using Cons by auto
+    moreover have "Y' \<subseteq> torefset Y \<union> {reftick}"
+      using "2" by blast
+    ultimately show ?thesis
+    proof (cases "\<rho>")
+      case Nil
+      then show ?thesis
+        using "1" "2" by force
+    next
+      case 4: (Cons y tl)
+      then have "y = oref Y'"
+        using 1 by fastforce
+      then show ?thesis
+        using 1 3 4
+        by (metis (no_types, lifting) Cons.IH append_eq_Cons_conv list.inject oevent.simps(6))
+    qed
+  next
+    case (Evt e)
+    then obtain w where 1: "\<rho> @ [oref X, otock] @ \<sigma> = oevt e # w" and 2: "w \<in> tockifications t"
+      using Cons by auto
+    then show ?thesis
+      by (metis (no_types, lifting) Cons.IH Cons_eq_append_conv append_Cons nth_append_length oevent.distinct(1))
+  qed
+qed
+
+lemma tockificationsTT3: "TT3(tockifications t)"
+  by (simp add: TT3_def tockificationsTT3i)  
+
 subsubsection \<open> Reasoning about tttrace sets \<close>
 
 lemma splitTick: "(P::'\<theta> oreftrace set) \<subseteq> TTT1 \<Longrightarrow> P = (P \<inter> untickeds) \<union> (P \<inter> tickeds)"
@@ -772,8 +841,9 @@ lemma tttracesDisjointRegions:
     and "tttracesTI P \<inter> FR = {}"
     and "tttracesFE P \<inter> TI = {}"
     and "tttracesFR P \<inter> TI = {}"
-  apply(auto simp add: FE_def FR_def TI_def)
-  using tockificationsNoTI tockificationsNoFR by blast+
+  apply(auto simp add: TTTsimps)
+  using tockificationsNoTI tockificationsNoFR
+  by (force+)
 
 lemma tttracesRegionSubsets:
   shows "tttracesFE P \<subseteq> FE"

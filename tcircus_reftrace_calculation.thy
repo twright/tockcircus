@@ -10,10 +10,10 @@ subsection \<open> Div \<close>
 lemma tttracesDiv: "tttraces Div = {[]}" (is "tttraces Div = ?r")
 proof (rule tttracesEqRem)
   show "tttracesTI Div = ?r \<inter> TI"
-    by (simp add: TI_def; rdes_simp)
+    by (rdes_simp simps: TI_def)
 next
   show "tttracesFR Div = ?r \<inter> FR"
-    by (simp add: FR_def; rdes_simp; rel_auto)
+    by (rdes_simp simps: FR_def; rel_auto)
 next
   have "?r - FR - TI = ?r"
     by (auto simp add: FR_def TI_def)
@@ -515,6 +515,19 @@ lemma tockifySetEq: "({tockify t| t. P} = {tockify t| t. Q}) = ({t. P} = {t. Q})
 lemma "tttracesFE P \<subseteq> tttracesFE (P ;; Q)"
   oops
 
+lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI II \<and> s \<in> tttracesTI Q}"
+  apply(simp)
+  apply(rdes_simp)
+  by (rel_auto)
+
+lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI Q \<and> s \<in> tttracesTI II}"
+  apply(simp)
+  apply(rdes_simp)
+  apply(rel_auto)
+  apply blast
+  by blast
+
+(* Healthiness conditions probably required here! *)
 lemma "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
   apply(rdes_simp)
   apply(rel_auto)
