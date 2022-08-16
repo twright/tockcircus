@@ -275,6 +275,40 @@ next
     using assms by auto
 qed
 
+lemma tockificationsCaseTock':
+  assumes "oref X # otock # s \<in> tockifications t"
+  shows "\<exists> t' Y. (((X = torefset Y) \<or> (X = torefset Y \<union> {reftick})) \<and> (t = Tock Y # t') \<and> s \<in> tockifications t')"
+proof (cases t rule: tockifications.cases)
+  case (1 e ts)
+  then show ?thesis
+    using assms by auto
+next
+  case (2 Y ts)
+  then show ?thesis
+    using assms by auto
+next
+  case 3
+  then show ?thesis
+    using assms by auto
+qed
+
+lemma tockificationsCaseTock'':
+  assumes "oref X # s \<in> tockifications t"
+  shows "\<exists> t' s' Y. (((X = torefset Y) \<or> (X = torefset Y \<union> {reftick})) \<and> (t = Tock Y # t') \<and> (s = otock # s') \<and> s' \<in> tockifications t')"
+proof (cases t rule: tockifications.cases)
+  case (1 e ts)
+  then show ?thesis
+    using assms by auto
+next
+  case (2 Y ts)
+  then show ?thesis
+    using assms by auto
+next
+  case 3
+  then show ?thesis
+    using assms by auto
+qed
+
 lemma tockificationsDisjoint: "s \<in> tockifications t \<Longrightarrow> s \<in> tockifications t' \<Longrightarrow> t = t'"
 proof (induct t' arbitrary: s t)
   case Nil
@@ -802,8 +836,113 @@ next
   qed
 qed
 
-lemma tockificationsTT3: "TT3(tockifications t)"
-  by (simp add: TT3_def tockificationsTT3i)  
+lemma tockificationsCases: "xs \<in> tockifications s \<Longrightarrow>
+  (xs = []) \<or> (\<exists> e ys. xs = oevt e # ys) \<or> (\<exists> X ys. xs = oref X # otock # ys)"
+proof (cases s)
+  case Nil
+  assume "xs \<in> tockifications s"
+  then have "xs = []"
+    by (simp add: Nil tockificationsEmpty)
+  then show ?thesis
+    by blast
+next
+  case (Cons a s')
+  assume 1: "xs \<in> tockifications s"
+  then show ?thesis proof (cases a)
+    case (Tock X)
+    then have "\<exists> ys Y'. xs = oref Y' # otock # ys"
+      using Tock local.Cons 1 by fastforce
+    then show ?thesis
+      by fastforce
+  next
+    case (Evt e)
+    then have "\<exists> ys. xs = oevt e # ys"
+      using Evt local.Cons 1 by fastforce
+    then show ?thesis
+      by fastforce
+  qed
+qed
+
+lemma tockificationsRefSplit: "\<rho> @ oref X # \<sigma> \<in> tockifications s
+   \<Longrightarrow> \<exists> s' s''. (s = s' @ s'')
+               \<and> (\<rho> \<in> tockifications s')
+               \<and> (oref X # \<sigma> \<in> tockifications s'')"
+proof (induction \<rho> arbitrary: s rule: length_induct)
+  case a: (1 \<rho>)
+  assume b: "\<rho> @ oref X # \<sigma> \<in> tockifications s"
+  then consider "\<rho> @ oref X # \<sigma> = []" | "\<exists> e ys. \<rho> @ oref X # \<sigma> = oevt e # ys" | "\<exists> Y ys. \<rho> @ oref X # \<sigma> = oref Y # otock # ys"
+    by (meson tockificationsCases)
+  then show ?case proof (cases)
+    case 1
+    then show ?thesis
+      by blast
+  next
+    case 2
+    then obtain e ys where "\<rho> @ oref X # \<sigma> = oevt e # ys"
+      by auto
+    then obtain \<rho>' where 6: "\<rho> = oevt e # \<rho>'" and 5: "length \<rho>' < length \<rho>"
+      by (metis Prefix_Order.strict_prefixI' Prefix_Order.strict_prefix_simps(3) length_Cons lessI list.size(3) neq_Nil_conv nth_Cons_0 nth_append_length oevent.distinct(1))
+    then obtain s' where 2: "s = Evt e # s'" and "\<rho>' @ oref X # \<sigma> \<in> tockifications s'"
+      using b tockificationsCaseEvt by force
+    then obtain s'' s''' where "s' = s'' @ s'''" and 7: "\<rho>' \<in> tockifications s''" and 4: "oref X # \<sigma> \<in> tockifications s'''"
+      using a 5 by blast
+    moreover then have "s = (Evt e # s'') @ s'''"
+      by (simp add: 2)
+    moreover have "oevt e # \<rho>' \<in> tockifications (Evt e # s'')"
+      using 7 by simp
+    ultimately show ?thesis
+      using 6 by blast
+  next
+    case 3
+    then obtain Y ys where 4: "\<rho> @ oref X # \<sigma> = oref Y # ys"
+      by auto
+    then show ?thesis proof (cases "length \<rho>")
+      case 0
+      then show ?thesis
+        by (metis append_Nil b insert_iff length_0_conv tockifications.simps(3))
+    next
+      case (Suc nat)
+      then obtain \<rho>' where 6: "\<rho> = oref Y # \<rho>'" and 5: "length \<rho>' < length \<rho>"
+        by (metis 4 Zero_not_Suc hd_append length_0_conv length_Suc_conv lessI list.sel(1))
+      then obtain t' s' Y' where 7: 
+          "(Y = torefset Y') \<or> (Y = torefset Y' \<union> {reftick})" and 8: "s = Tock Y' # t'" and 9: "\<rho>' @ oref X # \<sigma> = otock # s'" and 10: "s' \<in> tockifications t'"
+        by (metis append_Cons b tockificationsCaseTock'')
+      obtain \<rho>'' where 11: "\<rho>' = otock # \<rho>''"
+        by (metis "9" hd_Cons_tl hd_append list.sel(1) oevent.distinct(3))
+      then have 12: "\<rho>'' @ oref X # \<sigma> = s'"
+        using "9" by force
+     obtain s'' s''' where "t' = s'' @ s'''" and 13: "\<rho>'' \<in> tockifications s''" and 14: "oref X # \<sigma> \<in> tockifications s'''"
+       by (metis 11 12 10 6 a.IH length_Cons not_less_eq not_less_iff_gr_or_eq)
+      moreover then have "s = (Tock Y' # s'') @ s'''"
+        by (simp add: "8")
+      moreover have "oref Y #  \<rho>' \<in> tockifications (Tock Y' # s'')"
+        apply(simp add: 11 13)
+        using 7 by force
+      ultimately show ?thesis
+        using "6" by blast
+    qed
+  qed
+qed
+
+lemma tockificationsTT4: "TT4(tockifications t)"
+proof (clarsimp simp add: TTsimps)
+  fix \<rho> X \<sigma> s
+  assume 2: "\<rho> @ oref X # \<sigma> \<in> tockifications s"
+  then obtain s' s'' where 3: "s = s' @ s''"
+                       and 4: "\<rho> \<in> tockifications s'"
+                       and 5: "oref X # \<sigma> \<in> tockifications s''"
+    by (meson tockificationsRefSplit)
+  then obtain s''' \<sigma>' Y
+      where 6: "(X = torefset Y) \<or> (X = torefset Y \<union> {reftick})"
+        and 7: "s'' = Tock Y # s'''"
+        and 8: "\<sigma> = otock # \<sigma>'"
+        and 9: "\<sigma>' \<in> tockifications s'''"
+    by (meson tockificationsCaseTock'')
+  then have "oref (insert reftick X) # otock # \<sigma>' \<in> tockifications s''"
+    by (simp add: 4; meson insert_absorb2)
+  then show "\<rho> @ oref (insert reftick X) # \<sigma> \<in> tockifications s"
+    using "3" "4" "8" tockificationsAppend by fastforce
+qed
 
 subsubsection \<open> Reasoning about tttrace sets \<close>
 
