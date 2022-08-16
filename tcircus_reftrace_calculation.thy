@@ -517,7 +517,7 @@ lemma "tttracesFE P \<subseteq> tttracesFE (P ;; Q)"
 
 lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI II \<and> s \<in> tttracesTI Q}"
   apply(simp)
-  apply(rdes_simp)
+  apply(rdes_simp) 
   by (rel_auto)
 
 lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI Q \<and> s \<in> tttracesTI II}"
@@ -532,7 +532,149 @@ lemma "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<
   apply(rdes_simp)
   apply(rel_auto)
   oops
-  
+
+lemma TRRconcretify:
+  assumes "P is TRR"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,true, true,true, true, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>)"
+proof -
+  have "$pat \<sharp> P" "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+    by (auto simp add: unrest TRR_implies_RR assms)
+  thus ?thesis
+    by pred_auto
+qed
+
+
+lemma TRFUnrestConcretify:
+  assumes "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>)"
+  using assms by pred_auto
+
+lemma TRFconcretify:
+  assumes "P is TRF"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>)"
+proof -
+  have "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
+  thus ?thesis
+    by (rule TRFUnrestConcretify)
+qed
+
+(* It should be possible to generalize this to tick-tock reactive
+ * contracts since in this case we can conclude that post\<^sub>R is TRF *)
+
+lemma TRFtttracesTI:
+  assumes "P is TRF"
+  shows "tttracesTI P = { s @ [otick] | t s .
+     `P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
+               \<and> s \<in> tockifications t}"
+  apply(subst (1 9) TRFconcretify)
+  apply(simp_all add: assms)
+  apply(pred_auto)
+  done
+
+declare [[show_types]]
+
+lemma TRFSeqExpand:
+  assumes "P is TRF" "Q is TRF"
+  shows "(P ;; Q) = (\<^bold>\<exists> tr\<^sub>0 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
+                     P\<lbrakk>tr\<^sub>0,st\<^sub>0/$tr\<acute>,$st\<acute>\<rbrakk>
+                   \<and> Q\<lbrakk>tr\<^sub>0,st\<^sub>0/$tr,$st\<rbrakk>)"
+  apply(subst (1 3 7 10) TRFconcretify)
+  using assms apply pred_auto
+  using assms apply pred_auto
+  using assms apply pred_auto
+  using assms apply pred_auto
+  apply(simp only: seqr_unfold)
+  (* apply(simp add: unrest usubst) *) 
+  apply (pred_auto)
+  using lit.rep_eq apply metis
+  done
+
+lemma TRFSeqExpand2:
+  fixes P::"('b, 'a) tt_vars hrel" and Q::"('b, 'a) tt_vars hrel"
+  assumes "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+      and "$pat \<sharp> Q" "$pat\<acute> \<sharp> Q" "$ref \<sharp> Q" "$ref\<acute> \<sharp> Q" "$ok \<sharp> Q" "$ok\<acute> \<sharp> Q" "$wait \<sharp> Q" "$wait\<acute> \<sharp> Q"
+  shows "(P ;; Q) = (\<^bold>\<exists> tr\<^sub>0 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
+                     P\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr\<acute>,$st\<acute>\<rbrakk>
+                   \<and> Q\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$st\<rbrakk>)"
+  apply(subst (24 16 3 1) TRFUnrestConcretify)
+  apply(simp_all only: assms)
+  apply(simp only: seqr_unfold)
+  (* apply(simp add: unrest usubst) *)
+  apply(pred_auto)
+  done
+
+lemma TRFSubstUnrests:
+  fixes "tt\<^sub>1"
+  assumes "P is TRF"
+  shows "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$pat\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+proof -
+  have "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
+  thus "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$pat\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+    by (auto simp add: unrest)
+qed
+
+(*
+lemma trSubstTRF:
+  fixes "tt\<^sub>1"
+  assumes "P is TRF"
+  shows "P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk> is TRF"
+  sorry
+*)
+
+lemma TRFSeqExpandTr:
+  assumes "P is TRF" "Q is TRF"
+  shows "(P ;; Q) = (\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
+                       P\<lbrakk>0,\<guillemotleft>tt\<^sub>1\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$tr\<acute>,$st\<acute>\<rbrakk>
+                     \<and> Q\<lbrakk>0,\<guillemotleft>tt\<^sub>2\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$tr\<acute>,$st\<rbrakk>
+                     \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>))"
+proof -
+  have 1: "P = TRF(P)"
+    using assms unfolding Healthy_def by auto
+  have 2: "\<And>tt\<^sub>1. $pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $pat\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "\<And>tt\<^sub>1. $wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+    by (auto simp add: assms TRFSubstUnrests)
+  have "(P ;; Q) = (R2(P) ;; R2(Q))"
+    by (simp add: Healthy_if RR_implies_R2 TRF_implies_TRR TRR_implies_RR assms)
+  also have "\<dots> = (\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet>
+     ((P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>) ;; (Q\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>2\<guillemotright>/$tr\<acute>\<rbrakk>))
+   \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>))"
+    by (simp add: R2_seqr_form)
+  also have "\<dots> = (\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet>
+     (\<^bold>\<exists> tr\<^sub>0 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
+                     (P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>)\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr\<acute>,$st\<acute>\<rbrakk>
+                   \<and> (Q\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>2\<guillemotright>/$tr\<acute>\<rbrakk>)\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$st\<rbrakk>)
+   \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>))"
+    by (simp add: TRFSeqExpand2 assms TRFSubstUnrests)
+  also have "\<dots> = (\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet>
+     (\<^bold>\<exists> st\<^sub>0 \<bullet>
+                     (P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>)\<lbrakk>\<guillemotleft>st\<^sub>0\<guillemotright>/$st\<acute>\<rbrakk>
+                   \<and> (Q\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>2\<guillemotright>/$tr\<acute>\<rbrakk>)\<lbrakk>\<guillemotleft>st\<^sub>0\<guillemotright>/$st\<rbrakk>)
+   \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>))"
+    by pred_auto
+  also have "\<dots> = (\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
+                     P\<lbrakk>0,\<guillemotleft>tt\<^sub>1\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$tr\<acute>,$st\<acute>\<rbrakk>
+                   \<and> Q\<lbrakk>0,\<guillemotleft>tt\<^sub>2\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$tr\<acute>,$st\<rbrakk>
+                   \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>))"
+    by pred_auto
+  finally show ?thesis .
+qed
+
+lemma tttracesTITRFSeq:
+  assumes "P is TRF" "Q is TRF"
+  shows "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
+proof -
+  have 1: "(P ;; Q) is TRF"
+    by (metis (no_types, lifting) Healthy_if Healthy_intro RA1 TRF_def TRF_implies_TRR TRR3_def TRR_closed_seq assms)
+  show ?thesis
+    apply(simp only: assms 1 TRFtttracesTI)
+    apply(simp only: assms TRFSeqExpandTr)
+    apply(rel_auto)
+    apply(simp add: tockificationsAppend)
+    using append.assoc apply blast
+    using tockificationsAppend apply fastforce
+    done
+qed
 
 lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
     \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttraces Q}"
