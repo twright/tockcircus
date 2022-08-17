@@ -525,7 +525,8 @@ lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI Q \<and> s \<in> t
   apply(rdes_simp)
   apply(rel_auto)
   apply blast
-  by blast
+    apply blast
+  done
 
 (* Healthiness conditions probably required here! *)
 lemma "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
@@ -542,8 +543,19 @@ lemma TRFtttracesTI:
   shows "tttracesTI P = { s @ [otick] | t s .
      `P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
                \<and> s \<in> tockifications t}"
-  apply(subst (1 9) TRFconcretify)
+  apply(subst (1) TRFconcretify)
   apply(simp_all add: assms)
+  apply(pred_simp)
+  done
+
+lemma TCtttracesTI:
+  assumes "P is TC"
+  shows "tttracesTI P = { s @ [otick] | t s .
+     `post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
+               \<and> s \<in> tockifications t}"
+  apply simp
+  apply(subst (3) TRFconcretify)
+  apply(simp add: TRFconcretify TC_inner_closures assms)
   apply(pred_auto)
   done
 
@@ -570,6 +582,59 @@ proof -
     apply(simp only: assms 1 TRFtttracesTI)
     apply(simp only: assms TRFTRRSeqExpandTr TRF_implies_TRR)
     apply(rel_auto)
+    apply(simp add: tockificationsAppend)
+    using append.assoc apply blast
+    using tockificationsAppend apply fastforce
+    done
+qed
+
+lemma postRSeqSRD:
+  assumes "P is NSRD" "Q is NSRD" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
+proof -
+  have "post\<^sub>R(P;;Q) = (pre\<^sub>R P \<and> post\<^sub>R P wp\<^sub>r pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    using assms by rdes_simp
+  also have "\<dots> = (true\<^sub>r \<and> post\<^sub>R P wp\<^sub>r true\<^sub>r \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    by (simp add: assms)
+  also have "\<dots> = (post\<^sub>R P ;; post\<^sub>R Q)"
+    by pred_auto
+  finally show ?thesis .
+qed
+
+(* Not quite working yet -- need to figure out how the preconditions
+ * figure in
+lemma postRSeqSRD:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
+proof -
+  have "post\<^sub>R(P;;Q) = (pre\<^sub>R P \<and> post\<^sub>R P wp\<^sub>r pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    using assms apply rdes_simp
+  also have "\<dots> = (true\<^sub>r \<and> post\<^sub>R P wp\<^sub>r true\<^sub>r \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    by (simp add: assms)
+  also have "\<dots> = (post\<^sub>R P ;; post\<^sub>R Q)"
+    by pred_auto
+  finally show ?thesis .
+qed
+*)
+
+(* Not quite true because of preconditions *)
+lemma postRSeqTC:
+  assumes "P is TC" "Q is TC"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
+  sorry
+
+lemma tttracesTITCSeq:
+  assumes "P is TC" "Q is TC"
+  shows "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
+proof -
+  have 1: "(P ;; Q) is TC"
+    by (simp add: assms TC_closed_seqr)
+  have 2: "post\<^sub>R P is TRF" "post\<^sub>R Q is TRF"
+    by (simp_all add: TC_inner_closures(3) assms)
+  show ?thesis
+    apply(simp only: assms 1 TCtttracesTI postRSeqTC)
+    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(pred_auto)
     apply(simp add: tockificationsAppend)
     using append.assoc apply blast
     using tockificationsAppend apply fastforce
