@@ -57,6 +57,10 @@ fun fromrefevent :: "'\<theta> refevent \<Rightarrow> '\<theta> set" where
 fun fromrefset :: "'\<theta> refevent set \<Rightarrow> '\<theta> set" where
 "fromrefset X = \<Union> {fromrefevent x | x. x\<in>X}"
 
+(* 
+ * Arg 1: patience (if false then refuse tock)
+ * Arg 2: unterminatability (if true then refuse tick)
+ *)
 fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> refevent set" where
 "finalrefset True False X = torefset X"|
 "finalrefset True True X = torefset X \<union> {reftick}"|
@@ -363,17 +367,71 @@ fun traces :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 
 abbreviation "ET \<equiv> {[]}"
 
+(*
+fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> refevent set" where
+"finalrefset True False X = torefset X"|
+"finalrefset True True X = torefset X \<union> {reftick}"|
+"finalrefset False False X = torefset X \<union> {reftock}"|
+"finalrefset False True X = torefset X \<union> {reftock, reftick}"
+*)
+
+(*
+fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> refevent set" where
+"finalrefset True False X = torefset X"|
+"finalrefset True True X = torefset X \<union> {reftick}"|
+"finalrefset False False X = torefset X \<union> {reftock}"|
+"finalrefset False True X = torefset X \<union> {reftock, reftick}"
+*)
+
+
 subsection \<open> Refusal Traces \<close>
 
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
+\<comment>\<open> How should p actually be used? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFE P = { s | t s.
                   \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                 \<and> s \<in> tockifications t }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<rbrakk>`
+"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  (\<not>`\<not>(peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`)
+                \<and> (($pat\<acute> \<sharp> peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>) \<longrightarrow> acctock)
                 \<and> s \<in> tockifications t}"
+(*
+"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  (if acctock
+                   then
+                      \<not>`\<not>(peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`
+                   else
+                      \<not>`\<not>((  (\<not> peri\<^sub>R P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)
+                           \<and> (peri\<^sub>R P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk>)
+                           )\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`)
+                \<and> s \<in> tockifications t}" *)
+(*
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  (\<forall> (p::bool).
+                  (p \<longrightarrow> acctock) \<and>
+                   \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`) 
+                \<and> s \<in> tockifications t}"
+*)
+(*
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`
+                \<and> s \<in> tockifications t}"
+*)
+(*
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`
+                \<and> s \<in> tockifications t}" *)
+(*
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (q::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`
+                \<and> (q \<longrightarrow> p)
+                \<and> s \<in> tockifications t}" *)
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { s @ [otick] | t s .
                   \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`

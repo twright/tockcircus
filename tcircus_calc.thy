@@ -29,7 +29,7 @@ text \<open> We also need unstable intermediate observations, which the followin
   has no set associated, since no refusal set is observed. \<close>
 
 definition tc_unstable :: "'s upred \<Rightarrow> ('e tev list, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<U>'(_, _')") where
-[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = false)"
+[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> \<not>$pat\<acute>)"
 
 text \<open> A final observation is similar to a stable observation, except it can update the state 
   variables and does not characterise a refusal set. \<close>
