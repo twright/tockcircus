@@ -85,15 +85,8 @@ next
     { s@[oref (finalrefset acctock refterm X)]
     | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
      t = [] \<and> s \<in> tockifications t}"
-    (* TODO: revisit definition to make this less ugly *)
     apply(rdes_simp)
     apply(rel_auto)
-    (*
-    apply(blast)
-    apply(blast)
-    apply(blast)
-    apply(simp add: tockificationsEmptyS)
-    apply(metis (full_types)) *)
     done
   also have "... = ?r2"
     apply(rel_auto)
@@ -285,6 +278,7 @@ lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockS
 
 subsection \<open> Internal Choice \<close>
 
+(*
 lemma "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
 proof (rule tttracesEq)
   show "tttraces P \<union> tttraces Q \<subseteq> TTTs"
@@ -308,7 +302,7 @@ next
   thus "tttracesTI (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> TI"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
-
+*)
 
 subsection \<open> Conjunction \<close>
 
@@ -334,11 +328,13 @@ lemma tttracesTIRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesTI Q \<subs
   apply(rel_simp)
   by blast
 
+(*
 lemma tttracesRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttraces Q \<subseteq> tttraces P"
   by (metis semilattice_inf_class.le_inf_iff tttracesFERefine tttracesFRRefine tttracesSubregions(1) tttracesSubregions(2) tttracesSubregions(3) tttracesSubset tttracesTIRefine)
 
 lemma "tttraces (P \<squnion> Q) \<subseteq> tttraces P"
   by (meson semilattice_inf_class.inf.cobounded1 tttracesRefine)
+*)
 
 (* A contradiction to conjunctivity for a nasty process *)
 
@@ -423,6 +419,16 @@ fun otimelength :: "'\<theta> oreftrace \<Rightarrow> nat" where
   "otimelength (otick # xs) = otimelength xs" |
   "otimelength [] = 0"
 
+lemma otimelengthFinalRef: "otimelength (xs @ [oref X]) = otimelength xs"
+proof (induction xs)
+  case Nil
+  then show ?case by simp
+next
+  case (Cons a xs)
+  then show ?case
+    by (cases a; simp)
+qed
+
 lemma tocksTimeLength: "t \<in> tocks X \<Longrightarrow> s \<in> tockifications t \<Longrightarrow> otimelength s = length t"
 proof (induct t arbitrary: s)
   case Nil
@@ -452,7 +458,73 @@ lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t
   apply(rdes_simp)
   apply(rel_auto)
   apply(simp_all add: tocksTimeLength tockSeqTockificationTocks finalrefsetRange)
-  by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength)
+  oops
+(*  by (metis UN_iff tockSeqTockificationTocks tockSequenceTockifications tocksTimeLength) *)
+
+lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t | t. finalRefTockSequence UNIV t \<and> (otimelength t < n)}"
+proof - 
+  have "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {
+      s@[oref (finalrefset True refterm X)]
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+      t \<in> tocks UNIV \<and> length t < n \<and> s \<in> tockifications t}"
+    apply(rdes_simp)
+    apply(rel_simp)
+    by (smt (z3) Collect_cong)
+  also have "\<dots> = {
+      s@[oref (finalrefset True refterm X)]
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+      t \<in> tocks UNIV 
+    \<and> otimelength s < n \<and> s \<in> tockifications t}"
+    using tocksTimeLength by force
+  also have "\<dots> = {
+      s@[oref (finalrefset True refterm X)]
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+      tockSequence UNIV s
+    \<and> otimelength s < n
+    \<and> s \<in> tockifications t}"
+    using tockSeqTockificationTocks by blast
+  also have "\<dots> = {
+      s@[oref (finalrefset True refterm X)]
+    | (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+      tockSequence UNIV s
+    \<and> otimelength s < n }"
+    using tockSequenceTockifications by blast
+  also have "\<dots> = {
+      s@[oref (torefset X \<union> Ti)]
+    | (X::'\<theta> set) Ti (s::'\<theta> oreftrace).
+      Ti \<subseteq> {reftick}
+    \<and> tockSequence UNIV s
+    \<and> otimelength s < n}"
+  proof -
+    {
+      fix u
+      have "(\<exists> X refterm s.
+            (u::'\<theta> oreftrace) = s @ [oref (finalrefset True refterm X)] \<and> tockSequence UNIV s \<and> otimelength s < n)
+          = (\<exists> X s. (\<exists> refterm.
+             u = s @ [oref (finalrefset True refterm X)]) \<and> tockSequence UNIV s \<and> otimelength s < n)" (is "?l1 = ?r2")
+        by blast
+      also have "\<dots> = (\<exists> X s. (\<exists>Ti. u = s @ [oref (torefset X \<union> Ti)] \<and> Ti \<subseteq> {reftick})
+                              \<and> tockSequence UNIV s \<and> otimelength s < n)"
+        by (simp add: finalrefsetPatientForm)
+      also have "\<dots> = (\<exists> X Ti s. u = s @ [oref (torefset X \<union> Ti)] \<and> Ti \<subseteq> {reftick}
+                              \<and> tockSequence UNIV s \<and> otimelength s < n)" (is "?l3 = ?r3")
+        by blast
+      finally have "?l1 = ?r3" .
+    }
+    thus ?thesis by simp
+  qed
+  also have "\<dots> = {
+      s@[oref (torefset X \<union> Ti)]
+    | (X::'\<theta> set) Ti (s::'\<theta> oreftrace).
+      Ti \<subseteq> {reftick}
+    \<and> tockSequence UNIV s
+    \<and> otimelength (s@[oref (torefset X \<union> Ti)]) < n}"
+    by (simp add: otimelengthFinalRef)
+  also have "\<dots> = { s | s.
+    finalRefTockSequence UNIV s \<and> otimelength s < n}"
+    by (auto simp add: finalRefTockSequence_def)
+  finally show ?thesis .  
+qed
 
 lemma tttracesFEWait: "tttracesFE (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}"
   apply(rdes_simp)
@@ -486,7 +558,7 @@ proof -
 qed
 
 lemma tttracesWait: "tttraces (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}
-                                         \<union> {t@[oref X]| t X. tockSequence UNIV t \<and> (otimelength t < n)}
+                                         \<union> {t| t X. finalRefTockSequence UNIV t \<and> (otimelength t < n)}
                                          \<union> {t@[otick]| t. tockSequence UNIV t \<and> (otimelength t = n)}" (is "?l = ?FE \<union> ?FR \<union> ?TI")
 proof (rule tttracesCalc)
   show "tttracesFE (Wait \<guillemotleft>n\<guillemotright>) = ?FE"
@@ -529,8 +601,7 @@ lemma tttracesDo: "tttraces (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> t
                  = ( {t . tockSequence (-{e}) t}
                    \<union> { t@[oevt e]
                      | t. tockSequence (-{e}) t })
-                 \<union> {t@[oref X] | t X . tockSequence (-{e}) t
-                              \<and> X \<subseteq> (-{refevt e})}
+                 \<union> {t | t . finalRefTockSequence (-{e}) t }
                  \<union> { t@[oevt e, otick]
                    | t. tockSequence (-{e}) t }" (is "?l = ?FE \<union> ?FR \<union> ?TI")
 proof (rule tttracesCalc)
@@ -543,19 +614,54 @@ proof (rule tttracesCalc)
     apply (metis UN_iff rmember.simps(1) tockSeqTockificationTocks tockSequenceTockifications)
     by (meson tocksTockificationsFinalTock)
 next
-  show "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FR"
+  have "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = {s @ [oref (finalrefset True refterm X)]
+    | t X refterm s.
+      t \<in> tocks (- {e}) \<and> X \<subseteq> -{e}
+    \<and> s \<in> tockifications t}"
     apply(rdes_simp)
-    apply(rel_auto)
-    using tockSeqTockificationTocks apply blast
-    apply (simp add: refevtInFinalrefset)
-    by (metis UN_iff finalrefsetRange refevtInFinalrefset tockSeqTockificationTocks tockSequenceTockifications)
+    apply(rel_simp)
+    by (force)
+  also have "\<dots> = {s @ [oref (finalrefset True refterm X)]
+    | t X refterm s.
+      tockSequence (- {e}) s \<and> X \<subseteq> -{e}
+    \<and> s \<in> tockifications t}"
+    using tockSeqTockificationTocks by blast
+  also have "\<dots> = {s @ [oref (finalrefset True refterm X)]
+    | X refterm s.
+      tockSequence (- {e}) s \<and> X \<subseteq> -{e}}"
+    using tockSequenceTockifications by blast
+  also have "\<dots> = {s @ [oref (torefset X \<union> Ti)]
+    | X Ti s.
+      tockSequence (- {e}) s \<and> Ti \<subseteq> {reftick} \<and> X \<subseteq> -{e}}"
+  proof -
+    {
+      fix u::"'\<phi> oreftrace"
+      have "(\<exists> X refterm s.
+             u = s @ [oref (finalrefset True refterm X)]
+           \<and> tockSequence (-{e}) s \<and> X \<subseteq> -{e})
+          = (\<exists> X s. (\<exists> refterm.
+             u = s @ [oref (finalrefset True refterm X)])
+          \<and> tockSequence (-{e}) s \<and> X \<subseteq> -{e})" (is "?l1 = ?r2")
+        by blast
+      also have "\<dots> = (\<exists> X s. (\<exists>Ti. u = s @ [oref (torefset X \<union> Ti)] \<and> Ti \<subseteq> {reftick})
+                                 \<and> tockSequence (-{e}) s  \<and> X \<subseteq> -{e})"
+        by (simp add: finalrefsetPatientForm)
+      also have "\<dots> = (\<exists> X s Ti. u = s @ [oref (torefset X \<union> Ti)] \<and> Ti \<subseteq> {reftick}
+                               \<and> tockSequence (-{e}) s \<and> X \<subseteq> -{e})" (is "?l3 = ?r3")
+        by blast
+      finally have "?l1 = ?r3" .
+    }
+    thus ?thesis by auto
+  qed
+  also have "\<dots> = {s | s. finalRefTockSequence (- {e}) s}"
+    by (auto simp add: finalRefTockSequence_def)
+  finally show "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FR" .
 next
   show "tttracesTI (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?TI"
     apply (rdes_simp; rel_auto)
     apply (simp add: tocksTockificationsFinal)
     by (meson tocksTockificationsFinalTock)
 qed
-
 
 subsection \<open> Sequential composition \<close>
 
@@ -942,6 +1048,7 @@ proof -
 qed
 *)
 
+(*
 lemma TCtttracesFR:
   assumes "P is TC"
   shows "tttracesFR P = { s | t X s .
@@ -979,6 +1086,7 @@ lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
   apply(rdes_simp)
   apply(rel_auto)
   oops
+*)
 
 subsection \<open> External choice \<close>
 
