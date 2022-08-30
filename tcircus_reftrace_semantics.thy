@@ -390,11 +390,11 @@ subsection \<open> Refusal Traces \<close>
 \<comment>\<open> How should p actually be used? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFE P = { s | t s.
-                  \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
+                  \<not>`(\<not> pre\<^sub>R P \<or> (\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P))\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                 \<and> s \<in> tockifications t }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  (\<not>`\<not>(peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`)
+                  (\<not>`\<not>(pre\<^sub>R P \<and> peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
                 \<and> (\<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>True\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>` \<longrightarrow> acctock)
                 \<and> s \<in> tockifications t}"
 (*
@@ -434,7 +434,7 @@ fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
                 \<and> s \<in> tockifications t}" *)
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { s @ [otick] | t s .
-                  \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
+                  \<not>`(\<not>pre\<^sub>R P \<or> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                \<and> s \<in> tockifications t}"
 fun tttraces :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttraces P = tttracesFE P \<union> tttracesFR P \<union> tttracesTI P"
@@ -1077,7 +1077,7 @@ proof -
   also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FE)
                         \<union> (tttracesFR P \<inter> FE)
                         \<union> (tttracesTI P \<inter> FE))"
-    by force
+    by (simp add: boolean_algebra_cancel.inf1 distrib_lattice_class.inf_sup_distrib2)
   also have "\<dots> = TTTs \<inter> tttracesFE P \<inter> FE"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesFE P"
@@ -1090,7 +1090,7 @@ next
   also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FR)
                         \<union> (tttracesFR P \<inter> FR)
                         \<union> (tttracesTI P \<inter> FR))"
-    by force
+    by (simp add: Int_Un_distrib2 semilattice_inf_class.inf.assoc)
   also have "\<dots> = TTTs \<inter> tttracesFR P \<inter> FR"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesFR P"
@@ -1103,7 +1103,7 @@ next
   also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> TI)
                         \<union> (tttracesFR P \<inter> TI)
                         \<union> (tttracesTI P \<inter> TI))"
-    by force
+    by (simp add: distrib_lattice_class.inf_sup_distrib2 semilattice_inf_class.inf.assoc)
   also have "\<dots> = TTTs \<inter> tttracesTI P \<inter> TI"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesTI P"

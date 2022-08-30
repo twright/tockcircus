@@ -304,17 +304,17 @@ next
 qed
 *)
 
-subsection \<open> Conjunction \<close>
+subsection \<open> Refinements \<close>
 
 lemma finalrefsetInjective: "(finalrefset p refterm X = finalrefset p' refterm' X')
                            = ((p = p') \<and> (refterm = refterm') \<and> (X = X'))"
   by (cases p; cases p'; cases refterm; cases refterm'; auto)
 
 
-lemma tttracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
+lemma tttracesFERefine: "pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
   apply(rdes_simp)
   apply(rel_simp)
-  by blast
+  by meson
 
 (*
 lemma tttracesFRRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFR Q \<subseteq> tttracesFR P"
@@ -323,92 +323,13 @@ lemma tttracesFRRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFR Q \<subs
   by blast
 *)
 
-lemma tttracesTIRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesTI Q \<subseteq> tttracesTI P"
-  apply(rdes_simp)
-  apply(rel_simp)
-  by blast
-
-(*
-lemma tttracesRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttraces Q \<subseteq> tttraces P"
-  by (metis semilattice_inf_class.le_inf_iff tttracesFERefine tttracesFRRefine tttracesSubregions(1) tttracesSubregions(2) tttracesSubregions(3) tttracesSubset tttracesTIRefine)
-
-lemma "tttraces (P \<squnion> Q) \<subseteq> tttraces P"
-  by (meson semilattice_inf_class.inf.cobounded1 tttracesRefine)
-*)
-
-(* A contradiction to conjunctivity for a nasty process *)
-
-lemma "{[], [oevt 1], [oevt 2]} \<subseteq> tttraces (U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> $pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))"
-  apply(rdes_simp)
-  apply(rel_simp)
-  apply(auto)
-  using tockificationsEmptyS apply blast
-  using tockificationsEmptyS apply fastforce
-  by force
-
-lemma "{[], [oevt 1], [oevt 2]} \<subseteq> tttraces (U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> \<not>$pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))"
-  apply(rdes_simp)
-  apply(rel_simp)
-  apply(auto)
-  apply(force)
-  apply fastforce
-  by (metis (mono_tags, lifting) mem_Collect_eq tockifications.simps(1) tockificationsEmptyS)
-
-lemma "(U(((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> $pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil) \<and> (((&tt = [Evt 1] \<or> &tt = []) \<triangleleft> \<not>$pat \<triangleright> (&tt = [Evt 2] \<or> &tt = [])) \<and> ($ref = rfnil)))::nat ttcsp) = U($ref = rfnil \<and> &tt = [])"
+lemma "(P :: '\<phi> ttcsp) \<sqsubseteq> Q \<Longrightarrow> Q = P \<squnion> Q"
   by (rel_auto)
 
-lemma "[oevt 1] \<notin> tttraces (U($ref = rfnil \<and> &tt = []))"
-  by (rdes_simp; rel_auto)
-
-(* This law does not make sense even ignoring $pat, in cases
-   when processes can perform the same trace on different
-   branches. *)
-
-(*
-lemma "tttraces (P \<squnion> Q) = tttraces P \<inter> tttraces Q"
-proof 
-  have "P \<sqsubseteq> P \<squnion> Q" and "Q \<sqsubseteq> P \<squnion> Q"
-    by simp_all
-  then have "tttraces (P \<squnion> Q) \<subseteq> tttraces P" and "tttraces (P \<squnion> Q) \<subseteq> tttraces Q"
-    by (meson tttracesRefine)+
-  thus "tttraces (P \<squnion> Q) \<subseteq> tttraces P \<inter> tttraces Q"
-    by blast
-  {
-    fix t
-    assume 1: "t \<in> tttracesFE P \<inter> tttracesFE Q"
-    have "t \<in> tttracesFE P"
-      using 1 by blast
-    then obtain s where 2: "t \<in> tockifications s" and 3: "\<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
-      by auto
-    have "t \<in> tttracesFE Q"
-      using 1 by blast
-    then obtain s' where 4: "t \<in> tockifications s'" and 5: "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s'\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
-      by auto
-    have "s = s'"
-      using 2 4 by (meson tockificationsDisjoint)
-    then have "\<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`" and "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
-      using 3 5 by blast+
-    then have "\<not>( `(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>
-                \<or>  (\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>s\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` )"
-      apply(rdes_simp)
-      apply(rel_auto)
-      nitpick
-  }
-  have "tttracesFE P \<inter> tttracesFE Q \<subseteq> tttracesFE (P \<squnion> Q)"
-    apply(rdes_simp; rel_auto)
-    oops
-  have "tttracesFR P \<inter> tttracesFR Q \<subseteq> tttracesFR (P \<squnion> Q)"
-    apply(rdes_simp; rel_simp)
-    apply(simp add: finalrefsetInjective)
-    oops
-  have "tttracesTI P \<inter> tttracesFE Q \<subseteq> tttracesTI (P \<squnion> Q)"
-    apply(rdes_simp; rel_auto)
-    apply (metis basic_trans_rules(31) in_set_conv_decomp mem_Collect_eq tockificationsUnticked)
-    by (meson UNIV_I UN_iff tockificationsNoTI)
-  show "tttraces P \<inter> tttraces Q \<subseteq> tttraces (P \<squnion> Q)"
-    apply(rdes_simp; rel_auto)
-    oops
-qed *)
+lemma tttracesTIRefine: "(pre\<^sub>R P = pre\<^sub>R Q) \<Longrightarrow> P \<sqsubseteq> Q \<Longrightarrow> tttracesTI Q \<subseteq> tttracesTI P"
+  apply(rdes_simp)
+  apply(rel_simp)
+  by meson
 
 subsection \<open> Wait \<close>
 
@@ -665,15 +586,6 @@ qed
 
 subsection \<open> Sequential composition \<close>
 
-lemma
-"true \<sqsubseteq> Q"
-  by (rel_simp)
-
-lemma tracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
-  apply(rdes_simp)
-  apply(rel_simp)
-  by blast
-
 lemma tockifySetEq: "({tockify t| t. P} = {tockify t| t. Q}) = ({t. P} = {t. Q})"
   by (auto)
 
@@ -690,29 +602,30 @@ lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI Q \<and> s \<in> t
   apply(rdes_simp)
   apply(rel_auto)
   apply blast
-    apply blast
+  apply blast
   done
 
 (* It should be possible to generalize this to tick-tock reactive
  * contracts since in this case we can conclude that post\<^sub>R is TRF *)
 
 lemma TRFtttracesTI:
-  assumes "P is TRF"
+  assumes "P is TRF" "pre\<^sub>R P = true\<^sub>r"
   shows "tttracesTI P = { s @ [otick] | t s .
      `P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
                \<and> s \<in> tockifications t}"
-  apply(subst (1) TRFconcretify)
+  apply(simp add: assms(2))
+  apply(subst (8) TRFconcretify)
   apply(simp_all add: assms)
   apply(pred_simp)
   done
 
 lemma TCtttracesTI:
-  assumes "P is TC"
+  assumes "P is TC" "pre\<^sub>R P = true\<^sub>r"
   shows "tttracesTI P = { s @ [otick] | t s .
      `post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
                \<and> s \<in> tockifications t}"
-  apply simp
-  apply(subst (3) TRFconcretify)
+  apply (simp add: assms(2))
+  apply(subst (7) TRFconcretify)
   apply(simp add: TRFconcretify TC_inner_closures assms)
   apply(pred_auto)
   done
@@ -730,6 +643,7 @@ lemma TRRtttracesTI:
   done
 *)
 
+(*
 lemma tttracesTITRFSeq:
   assumes "P is TRF" "Q is TRF"
   shows "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
@@ -745,6 +659,7 @@ proof -
     using tockificationsAppend apply fastforce
     done
 qed
+*)
 
 lemma postRSeqSRD:
   assumes "P is NSRD" "Q is NSRD" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
@@ -799,18 +714,18 @@ lemma periRSeqTC:
   shows "peri\<^sub>R(P ;; Q) = (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q)"
   by (simp add: TC_implies_NRD assms periRSeqNRD)
 
-
-
 lemma tttracesTITCSeq:
   assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
   shows "tttracesTI (P ;; Q) = {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesTI Q}"
 proof -
   have 1: "(P ;; Q) is TC"
     by (simp add: assms TC_closed_seqr)
+  have 3: "pre\<^sub>R(P ;; Q) = true\<^sub>r"
+    by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wp_rea_def)
   have 2: "post\<^sub>R P is TRF" "post\<^sub>R Q is TRF"
     by (simp_all add: TC_inner_closures(3) assms)
   show ?thesis
-    apply(simp only: assms 1 TCtttracesTI postRSeqTC)
+    apply(simp only: assms 1 3 TCtttracesTI postRSeqTC)
     apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
     apply(rel_auto)
     apply(simp_all add: tockificationsAppend)
@@ -956,15 +871,15 @@ qed
 *)
 
 lemma TCtttracesFE:
-  assumes "P is TC"
+  assumes "P is TC" "pre\<^sub>R P = true\<^sub>r"
   shows "tttracesFE P = { s | t s .
      \<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>
       \<and> \<not>post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>`
       \<and> s \<in> tockifications t}"
-  apply simp
-  apply(subst (3) TRRconcretify)
+  apply (simp add: assms)
+  apply(subst (7) TRRconcretify)
    apply(simp add: TC_inner_closures assms)
-  apply(subst (13) TRFconcretify)
+  apply(subst (17) TRFconcretify)
   apply(simp add: TC_inner_closures assms)
   apply(pred_auto)
   done
@@ -994,13 +909,16 @@ proof -
     by (simp add: assms TC_closed_seqr)
   have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
     by (simp_all add: closure assms)
+  have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
+    by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wp_rea_def)
   show ?thesis
-    apply(simp only: assms 1 TCtttracesFE periRSeqTC postRSeqTC)
-    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: assms 3 TCtttracesFE periRSeqTC postRSeqTC)
+    apply(simp add: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
     apply(rdes_simp)
     apply(rel_auto)
-    apply(simp_all add: tockificationsAppend)
+     apply(auto simp add: tockificationsAppend)
     apply blast
+     apply blast
     apply blast
     done
 qed
@@ -1014,13 +932,15 @@ proof -
     by (simp add: assms TC_closed_seqr)
   have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
     by (simp_all add: closure assms)
+  have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
+    by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wp_rea_def)
   show ?thesis
-    apply(simp only: assms 1 TCtttracesFE periRSeqTC postRSeqTC)
+    apply(simp add: assms 3 1 TCtttracesFE periRSeqTC postRSeqTC)
     apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
     apply(rdes_simp)
     apply(rel_auto)
     oops
-qed
+(*qed *)
 
 (*
 lemma "tttracesTI P = tttracesTI ($ref\<acute> =\<^sub>u \<guillemotleft>rfnil\<guillemotright> \<and> \<not>$pat\<acute> \<and> P)"
