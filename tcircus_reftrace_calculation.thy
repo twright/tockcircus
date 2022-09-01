@@ -85,7 +85,7 @@ next
     { s@[oref (finalrefset acctock refterm X)]
     | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
      t = [] \<and> s \<in> tockifications t}"
-    apply(rdes_simp)
+    apply(rdes_simp cls: patient_def)
     apply(rel_auto)
     done
   also have "... = ?r2"
@@ -242,7 +242,7 @@ proof -
   have "?l = { s@[oref (finalrefset True refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
                   t \<in> tocks UNIV
                 \<and> s \<in> tockifications t}"
-    apply(rdes_simp)
+    apply(rdes_simp cls: patient_def)
     apply(rel_simp)
     by force
   also have "... = { s@[oref (finalrefset True refterm X)] | (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
@@ -278,14 +278,177 @@ lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockS
 
 subsection \<open> Internal Choice \<close>
 
+(* Need to properly tackle patience of conjunctions *)
+
+lemma 
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = pre\<^sub>R Q" "\<And> t X. patient P t X = patient Q t X"
+  shows "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
+    (*
+       = tttraces (\<^bold>R(pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))
+       \<union> tttraces (\<^bold>R(pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R Q \<diamondop> post\<^sub>R Q))"
+      (is "tttraces ?PQ = tttraces ?P \<union> tttraces ?Q")
+    *)
+proof (rule tttracesEq)
+  show "tttraces P \<union> tttraces Q \<subseteq> TTTs"
+    using TTTStructure
+    by blast
+next
+  have "tttracesFE (P \<sqinter> Q) = tttracesFE P \<union> tttracesFE Q"
+    apply(rdes_calc)
+    apply(simp add: assms)
+    apply(rel_auto)
+    by (blast+)
+    (* by (auto; rel_simp; blast) *)
+  thus "tttracesFE (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FE"
+    by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(1))
+next
+  have "tttracesFR (P \<sqinter> Q) = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> (peri\<^sub>R P \<or> peri\<^sub>R Q))`)
+        \<and>
+        (patient (P \<sqinter> Q) t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t}"
+    apply(rdes_calc)
+    apply(simp add: assms)
+    apply(rel_auto)
+    done
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> ((pre\<^sub>R Q \<and> peri\<^sub>R P) \<or> (pre\<^sub>R Q \<and> peri\<^sub>R Q))`)
+        \<and>
+        (patient (P \<sqinter> Q) t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t}"
+    apply(rdes_calc)
+    apply(rel_auto)
+    apply(blast+)
+    done
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`)
+        \<or> (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`))
+        \<and>
+        (patient (P \<sqinter> Q) t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t}"
+    apply(rdes_calc)
+    apply(rel_auto)
+    apply(blast+)
+    done
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`)
+        \<or> (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`))
+        \<and>
+        ((patient P t X \<or> patient Q t X) \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t}"
+    by (simp add: assms patient_disj_eq)
+  (*
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`)
+        \<or> (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`))
+        \<and>
+        (patient P t X \<longrightarrow> acctock) \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t}"
+    by (simp add: assms patient_disj_eq) *)
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`
+          \<and>
+        ((patient P t X \<or> patient Q t X) \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t)
+        \<or> (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`)
+        \<and>
+        ((patient P t X \<or> patient Q t X) \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t
+        )}"
+    apply(rdes_calc)
+    apply(rel_auto)
+    apply(blast+)
+    done
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`
+          \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t)
+        \<or> (\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`)
+        \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t
+        )}"
+    by (simp add: assms)
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R P)`
+          \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t))
+        } \<union> {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`)
+        \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t
+        )}"
+    apply(rdes_calc)
+    apply(rel_auto)
+    apply(blast+)
+    done
+  also have "\<dots> = {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R P \<and> peri\<^sub>R P)`
+          \<and>
+        (patient P t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t))
+        } \<union> {s @ [oref (finalrefset acctock refterm X)]
+        | t X acctock refterm s.
+         ((\<not> `\<not> [$ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R Q \<and> peri\<^sub>R Q)`)
+        \<and>
+        (patient Q t X \<longrightarrow> acctock) \<and>
+        s \<in> tockifications t
+        )}"
+    by (simp add: assms)
+  also have "... = tttracesFR P \<union> tttracesFR Q"
+    apply(rdes_calc)
+    apply(simp add: assms)
+    apply(rel_auto)
+    done
+    (* by (auto; rel_simp; blast)*)
+  finally have "tttracesFR (P \<sqinter> Q) = tttracesFR P \<union> tttracesFR Q" .
+  thus "tttracesFR (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FR"
+    by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(2))
+next
+  have 1: "(P \<sqinter> Q) is TC"
+    by (simp add: assms TC_closed_disj)
+  (*
+  have 2: "\<^bold>R (pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P) is NRD"
+  have "pre\<^sub>R ?P = (pre\<^sub>R P \<and> pre\<^sub>R Q)"
+    using assms apply (rdes_calc)
+  *)
+  have "tttracesTI (P \<sqinter> Q) = tttracesTI P \<union> tttracesTI Q"
+    apply (rdes_simp)
+    apply (simp add: assms)
+    apply(rel_auto)
+    by blast+
+  thus "tttracesTI (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> TI"
+    by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
+qed
+
 (*
-lemma "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
+lemma 
+  assumes "P is TC" "Q is TC"
+  shows "tttraces (P \<sqinter> Q)
+       = tttraces (\<^bold>R(pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))
+       \<union> tttraces (\<^bold>R(pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R Q \<diamondop> post\<^sub>R Q))"
+      (is "tttraces ?PQ = tttraces ?P \<union> tttraces ?Q")
 proof (rule tttracesEq)
   show "tttraces P \<union> tttraces Q \<subseteq> TTTs"
     using TTTStructure by blast
 next
   have "tttracesFE (P \<sqinter> Q) = tttracesFE P \<union> tttracesFE Q"
-    by (auto; rel_simp; blast)
+    sorry
+    (* by (auto; rel_simp; blast) *)
   thus "tttracesFE (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FE"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(1))
 next
@@ -297,8 +460,20 @@ next
   thus "tttracesFR (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> FR"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(2))
 next
-  have "tttracesTI (P \<sqinter> Q) = tttracesTI P \<union> tttracesTI Q"
-    by (auto; rel_simp; blast)
+  have 1: "(P \<sqinter> Q) is TC"
+    by (simp add: assms TC_closed_disj)
+  have 2: "\<^bold>R (pre\<^sub>R P \<and> pre\<^sub>R Q \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P) is NRD"
+    sledgehammer
+  have "pre\<^sub>R ?P = (pre\<^sub>R P \<and> pre\<^sub>R Q)"
+    using assms apply (rdes_calc)
+  have "tttracesTI (P \<sqinter> Q) = tttracesTI ?P \<union> tttracesTI ?Q"
+    apply (rdes_simp)
+    apply(rel_auto)
+    sledgehammer
+    (*
+    (; rel_simp)
+      apply blast *)
+(* ; blast) *)
   thus "tttracesTI (P \<sqinter> Q) = (tttraces P \<union> tttraces Q) \<inter> TI"
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
@@ -388,7 +563,7 @@ proof -
       s@[oref (finalrefset True refterm X)]
     | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
       t \<in> tocks UNIV \<and> length t < n \<and> s \<in> tockifications t}"
-    apply(rdes_simp)
+    apply(rdes_simp cls: patient_def)
     apply(rel_simp)
     by (smt (z3) Collect_cong)
   also have "\<dots> = {
@@ -539,7 +714,7 @@ next
     | t X refterm s.
       t \<in> tocks (- {e}) \<and> X \<subseteq> -{e}
     \<and> s \<in> tockifications t}"
-    apply(rdes_simp)
+    apply(rdes_simp cls: patient_def)
     apply(rel_simp)
     by (force)
   also have "\<dots> = {s @ [oref (finalrefset True refterm X)]
@@ -926,7 +1101,7 @@ qed
 
 lemma tttracesFETCSeqSup2:
   assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
-  shows "{t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q} \<subseteq> tttracesFE (P ;; Q)"
+  shows "{t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q} \<subseteq> tttracesFE (P ;; Q)" (is "?l \<subseteq> ?r")
 proof -
   have 1: "(P ;; Q) is TC"
     by (simp add: assms TC_closed_seqr)

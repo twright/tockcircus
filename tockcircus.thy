@@ -93,6 +93,42 @@ proof -
     by (metis Healthy_comp NRD_seqr_closure TC_def TC_implies_NRD assms(1) assms(2))
 qed
 
+lemma NRD_Sup_closure [closure]:
+  assumes "A \<subseteq> \<lbrakk>NRD\<rbrakk>\<^sub>H" "A \<noteq> {}"
+  shows "\<Sqinter> A is NRD"
+proof -
+  have "NRD (\<Sqinter> A) = (\<Sqinter> (NRD `A))"
+    by (simp add: ContinuousD NRD_Continuous assms(2))
+  also have "... = (\<Sqinter> A)"
+    by (simp only: Healthy_carrier_image assms)
+  finally show ?thesis by (simp add: Healthy_def)
+qed
+
+lemma intChoice_NRD_closed [closure]:
+  assumes "P is NRD" "Q is NRD"
+  shows "P \<sqinter> Q is NRD"
+  using NRD_Sup_closure[of "{P, Q}"] by (simp add: assms)
+
+lemma TC_closed_disj [closure]:
+  assumes "P is TC" "Q is TC"
+  shows "P \<sqinter> Q is TC"
+proof -
+  have "P is NRD" "Q is NRD"
+    using assms TC_implies_NRD by blast+
+  then have 1: "P \<sqinter> Q is NRD"
+    by (simp add: intChoice_NRD_closed)
+  have "P is TC1" "Q is TC1"
+    using TC_implies_TC1 assms by blast+
+  then have 2: "P \<sqinter> Q is TC1"
+    by (simp add: Healthy_def TC1_def seqr_inf_distr)
+  have "P is TC2" "Q is TC2"
+    using TC_implies_TC2 assms by blast+
+  then have 3: "P \<sqinter> Q is TC2"
+    by (simp add: Healthy_def TC2_def seqr_inf_distr)
+  from 1 2 3 show "P \<sqinter> Q is TC"
+    by (simp add: Healthy_comp TC_def)
+qed
+
 lemma TC_inner_closures [closure]:
   assumes "P is TC"
   shows "pre\<^sub>R(P) is TRC" "peri\<^sub>R(P) is TRR" "post\<^sub>R(P) is TRF" "peri\<^sub>R(P) \<sqsubseteq> \<U>(true, [])" "peri\<^sub>R P \<sqsubseteq> post\<^sub>R P ;; \<U>(true, [])"
@@ -187,6 +223,7 @@ lemma Stop\<^sub>U_TC [closure]: "Stop\<^sub>U is TC"
 
 text \<open> SDF: Check the following definition against the tick-tock paper. It only allows prefixing
   of non-tock events for now. \<close>
+text \<open> Thomas: this correspondence has now been proven \<close>
 
 definition DoT :: "('e, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("do\<^sub>T'(_')") where
 [rdes_def]: "DoT a =

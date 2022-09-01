@@ -1,7 +1,7 @@
 section \<open> Tick Tock CSP UTP Semantics \<close>
 
 theory tcircus_reftrace_semantics
-  imports "tcircus_rel" "/home/isabelle/utp-main/theories/rcircus/Refusal_Tests" "UTP.utp_full"
+  imports "tcircus_rel" "/home/isabelle/utp-main/theories/rcircus/Refusal_Tests" "tcircus_laws" "UTP.utp_full"
 begin
 
 subsection \<open> Refusal trace functions \<close>
@@ -395,7 +395,7 @@ fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
                   (\<not>`\<not>(pre\<^sub>R P \<and> peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
-                \<and> (\<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>True\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>` \<longrightarrow> acctock)
+                \<and> (patient P t X \<longrightarrow> acctock)
                 \<and> s \<in> tockifications t}"
 (*
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
