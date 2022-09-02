@@ -160,7 +160,7 @@ qed
 subsubsection \<open> Patience \<close>
 
 definition patient where
-"patient P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (pre\<^sub>R P \<and> peri\<^sub>R P)`"
+"patient P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (peri\<^sub>R P)`"
 
 lemma patient_conj:
 "P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient P t X \<Longrightarrow> patient Q t X \<Longrightarrow> patient (P \<squnion> Q) t X"
@@ -169,37 +169,32 @@ proof -
   assume 2: "patient P t X" "patient Q t X"
   from 2 show "patient (P \<squnion> Q) t X"
     apply(simp add: patient_def)
-    apply(rdes_simp cls: 1)
     apply(rel_auto)
     done
 qed
 
 lemma patient_conj':
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> patient (P \<squnion> Q) t X \<Longrightarrow> patient P t X \<and> patient Q t X"
+"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<squnion> Q) t X \<Longrightarrow> patient P t X \<and> patient Q t X"
 proof - 
   assume 1: "P is TC" "Q is TC"
-  assume 2: "pre\<^sub>R P = pre\<^sub>R Q"
   assume 3: "patient (P \<squnion> Q) t X"
   have "pre\<^sub>R (P \<squnion> Q) = (pre\<^sub>R P \<or> pre\<^sub>R Q)"
     by (rel_auto)
-  then have 4: "pre\<^sub>R (P \<squnion> Q) = pre\<^sub>R Q"
-    using 2 by auto
   from 3 show "patient P t X \<and> patient Q t X"
     apply(simp add: patient_def)
-    apply(rdes_simp cls: 1 2 4)
+    apply(rdes_simp cls: 1)
     apply(rel_auto)
     done
 qed
 
 lemma patient_disj1:
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> patient P t X \<Longrightarrow> patient (P \<sqinter> Q) t X"
+"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient P t X \<Longrightarrow> patient (P \<sqinter> Q) t X"
 proof - 
   assume 1: "P is TC" "Q is TC"
-  assume 2: "pre\<^sub>R P = pre\<^sub>R Q"
   assume 3: "patient P t X"
   from 3 show "patient (P \<sqinter> Q) t X"
     apply(simp add: patient_def)
-    apply(rdes_simp cls: 1 2)
+    apply(rdes_simp cls: 1)
     apply(rel_auto)
     done
 qed
@@ -218,31 +213,20 @@ proof -
 qed
 
 lemma patient_disj':
-"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> patient (P \<sqinter> Q) t X \<Longrightarrow> (patient P t X \<or> patient Q t X)"
+"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<sqinter> Q) t X \<Longrightarrow> (patient P t X \<or> patient Q t X)"
 proof - 
   assume 1: "P is TC" "Q is TC"
-  assume 2: "pre\<^sub>R P = pre\<^sub>R Q"
   assume 3: "patient (P \<sqinter> Q) t X"
-  have "pre\<^sub>R (P \<sqinter> Q) = (pre\<^sub>R P \<and> pre\<^sub>R Q)"
-    by (rel_auto)
-  then have 4: "pre\<^sub>R (P \<sqinter> Q) = pre\<^sub>R Q"
-    using 2 by auto
-  have 5: "peri\<^sub>R P is TRR" "peri\<^sub>R Q is TRR"
-    by (meson "1" TC_inner_closures(2))+
   from 3 show "patient P t X \<or> patient Q t X"
     apply(simp add: patient_def)
-    apply(rdes_simp cls: 1 2 4)
-    apply(subst (asm) (16 7) TRRconcretify)
-    apply(simp_all add: 5)
-    apply(subst (15 7) TRRconcretify)
-    apply(simp_all add: 5)
+    apply(rdes_simp cls: 1)
+    apply(simp add: TCpericoncretify 1)
     apply(rel_auto)
-    apply(blast+)
     done
 qed
 
 lemma patient_disj_eq:
-"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> patient (P \<sqinter> Q) t X = (patient P t X \<or> patient Q t X)"
+"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<sqinter> Q) t X = (patient P t X \<or> patient Q t X)"
   by (metis patient_disj' patient_disj1 semilattice_sup_class.sup_commute)
 
 end
