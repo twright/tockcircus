@@ -1109,14 +1109,95 @@ proof -
     by (simp_all add: closure assms)
   have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
     by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wp_rea_def)
-  show ?thesis
-    apply(simp add: assms 3 1 TCtttracesFE periRSeqTC postRSeqTC)
-    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
-    apply(rdes_simp)
-    apply(rel_auto)
-    oops
-(*qed *)
-
+  have 4: "(\<^U>(\<not> R1 true) \<or> \<not> post\<^sub>R P) = (\<not> post\<^sub>R P)"
+          "(\<^U>(\<not> R1 true) \<or> \<not> post\<^sub>R Q) = (\<not> post\<^sub>R Q)"
+    by (meson "2" tfin_theory.utp_bottom utp_pred_laws.compl_le_compl_iff utp_pred_laws.sup.absorb2)+
+  have 5: "(\<^U>(\<not> R1 true) \<or> (\<not> peri\<^sub>R Q \<and> \<not> post\<^sub>R Q)) = (\<not> peri\<^sub>R Q \<and> \<not> post\<^sub>R Q)"
+    by (metis "2"(2) "2"(3) tfin_theory.bottom_lower trel_theory.bottom_lower utp_pred_laws.compl_le_compl_iff utp_pred_laws.le_iff_sup utp_pred_laws.le_inf_iff)
+  {
+    fix x
+    assume "(x \<in> ?l)" 
+    then obtain t s where "x = t@s" "t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q"
+      by blast
+    then obtain u w where "\<not>`(\<not>pre\<^sub>R P \<or> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+                "t \<in> tockifications u"
+                "\<not>`(\<not> pre\<^sub>R Q \<or> (\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+                "s \<in> tockifications w"
+      by auto
+    then have "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+              "t \<in> tockifications u"
+              "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+              "s \<in> tockifications w"
+      by (auto simp add: assms 4 5)
+    then have "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+              "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+              "t@s \<in> tockifications (u@w)"
+      by (smt (z3) mem_Collect_eq tockificationsAppend)+
+    then have "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q \<or> post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)`"
+              "t@s \<in> tockifications (u@w)"
+    proof -
+      assume 7: "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+      assume 8: "\<not>`(\<not>peri\<^sub>R Q \<and> \<not>post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+      from 7 8 show "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q \<or> post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)`"
+        apply(rdes_calc)
+        apply(simp add: assms TCpostconcretify TCpericoncretify)
+        apply(rel_auto)
+        done
+    qed
+    then have "\<not>`\<not>((post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                 \<or> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`"
+              "t@s \<in> tockifications (u@w)"
+    proof -
+      assume "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q \<or> post\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)`"
+      thus "\<not>`\<not>((post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                 \<or> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`"      
+        by (metis subst_disj utp_pred_laws.inf_sup_distrib1)
+    qed
+    then have "\<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                 \<or> ((post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`"
+          "t@s \<in> tockifications (u@w)"
+    proof -
+      (*assume "\<not>`\<not>((post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                 \<or> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`" *)
+      have "(post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<sqsubseteq> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)"
+        apply(simp add: TRFTRRSeqExpandTr 1 2)
+        apply(simp add: assms TCpostconcretify TCpericoncretify)
+        apply(rel_auto)
+        done
+      moreover have "(post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<sqsubseteq> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)"
+        apply(simp add: TRFTRRSeqExpandTr 1 2 TRF_implies_TRR)
+        apply(simp add: assms TCpostconcretify TCpericoncretify)
+        apply(rel_auto)
+        done
+      ultimately have "((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<or> (post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> ((post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>) \<or> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))"
+         by (metis utp_pred_laws.sup_mono)
+      then show "\<not>`\<not>((post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                 \<or> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> post\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))` \<Longrightarrow> \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                     \<or> ((post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`"
+        by (smt (z3) taut_conj_elim utp_pred_laws.compl_sup utp_pred_laws.le_iff_sup)
+    qed
+    then have "\<exists> u w. \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                      \<or> ((post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`
+                  \<and> x \<in> tockifications (u@w)"
+      by (metis \<open>x = t @ s\<close>)
+    then have "\<exists> u w. \<not>`\<not>(
+                        (peri\<^sub>R P \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                      \<or> ((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>)
+                      \<or> ((post\<^sub>R P ;; post\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>/$tr,$tr\<acute>\<rbrakk>))`
+                  \<and> x \<in> tockifications (u@w)"
+      apply(rel_auto)
+      apply(blast)+
+      done
+    then have "x \<in> tttracesFE (P ;; Q)"
+      apply rdes_calc
+      apply(simp add: assms 1 3 periRSeqTC postRSeqTC)
+      apply(rel_auto)
+      apply blast+
+      done
+  }
+  then show ?thesis
+    by (smt (z3) subsetI)
+qed
 (*
 lemma "tttracesTI P = tttracesTI ($ref\<acute> =\<^sub>u \<guillemotleft>rfnil\<guillemotright> \<and> \<not>$pat\<acute> \<and> P)"
   apply(rdes_simp)
@@ -1181,6 +1262,78 @@ lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
   apply(rdes_simp)
   apply(rel_auto)
   oops
+*)
+
+lemma tttracesFESubTCSeq:
+  assumes "(P::'\<theta> ttcsp) is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "(tttracesFE P \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q}) \<subseteq> tttracesFE (P ;; Q)" (is "(?l1 \<union> ?l2) \<subseteq> ?r")
+proof -
+  have 1: "(P ;; Q) is TC"
+    by (simp add: assms TC_closed_seqr)
+  have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
+    by (simp_all add: closure assms)
+  have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
+    by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wpR_R1_right wp_rea_true)
+  have "?l1 = {s | s t . s \<in> tockifications t \<and> (\<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` \<or> \<not>`\<not>post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`) }"
+    apply(simp add: TCpostconcretify TCpericoncretify assms)
+    by (rel_auto)
+  also have "\<dots> = {s | s t . s \<in> tockifications t \<and> \<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }
+               \<union> {s | s t . s \<in> tockifications t \<and> \<not>`\<not>post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` }" (is "\<dots> = ?l1a \<union> ?l1b")
+    by auto
+  finally have 4: "?l1 = ?l1a \<union> ?l1b" .
+  have "Q \<sqsubseteq> false"
+    by (rel_simp)
+  then have "tttracesFE false \<subseteq> tttracesFE Q"
+    sorry
+  also have "[] \<in> tttracesFE false"
+        apply(simp add: TCpostconcretify TCpericoncretify closure tockificationsEmptyS)
+    apply(rel_simp)
+    sledgehammer
+
+  have "?l1b = {t |t . t@[otick] \<in> tttracesTI P}"
+    apply(auto simp add: TCpostconcretify TCpericoncretify assms)
+    apply(rel_auto)+
+    done
+  moreover have "[] \<in> tttracesFE Q"
+    apply(auto simp add: tockificationsEmptyS TCpostconcretify TCpericoncretify assms)
+    apply(rel_auto)
+    apply(simp add: tockificationsEmptyS)
+    sledgehammer
+  have "?l1b \<subseteq> ?l2"
+    sledgehammer
+  show ?thesis
+    apply(auto simp add:  assms 3)
+    apply(simp add: postRSeqTC periRSeqTC assms)
+    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: TCpostconcretify TCpericoncretify assms)
+    apply(rel_auto)
+    sledgehammer
+    apply blast
+    sledgehammer
+  done
+
+
+(*
+lemma tttracesFESubTCSeq:
+  assumes "(P::'\<theta> ttcsp) is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "tttracesFE P \<subseteq> tttracesFE (P ;; Q)"
+proof -
+  have 1: "(P ;; Q) is TC"
+    by (simp add: assms TC_closed_seqr)
+  have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
+    by (simp_all add: closure assms)
+  have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
+    by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wpR_R1_right wp_rea_true)
+  show ?thesis
+    apply(auto simp add:  assms 3)
+    apply(simp add: postRSeqTC periRSeqTC assms)
+    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: TCpostconcretify TCpericoncretify assms)
+    apply(rel_auto)
+    sledgehammer
+    apply blast
+    sledgehammer
+  done
 *)
 
 subsection \<open> External choice \<close>

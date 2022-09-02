@@ -54,6 +54,37 @@ proof -
     by (rule TRFUnrestConcretify)
 qed
 
+lemma TCpostconcretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> post\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>"
+proof -
+  assume 1: "P is TC"
+  from 1 have "P is R1"
+    by (simp add: closure)
+  then have 2: "P = R1(P)"
+    by (simp add: Healthy_def)
+  show ?thesis
+    apply(subst TRFconcretify)
+     apply(simp add: 1 closure)
+    apply(subst (2) 2)
+    apply(rel_auto)
+    done
+qed
+
+
+lemma TCpericoncretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> peri\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>"
+proof -
+  assume 1: "P is TC"
+  from 1 have "P is R1"
+    by (simp add: closure)
+  then have 2: "P = R1(P)"
+    by (simp add: Healthy_def)
+  show ?thesis
+    apply(subst TRRconcretify)
+     apply(simp add: 1 closure)
+    apply(subst (2) 2)
+    apply(rel_auto)
+    done
+qed
+
 lemma TRRSeqExpand:
   fixes P::"('b, 'a) tt_vars hrel" and Q::"('b, 'a) tt_vars hrel"
   assumes "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
