@@ -1195,10 +1195,10 @@ lemma TCtttracesFR:
    apply(simp add: TC_inner_closures assms)
   apply(pred_auto)
   done
+*)
 
-
-lemma tttracesFRTCSeqSub:
-  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+lemma tttracesFRTCSeqSubPatient:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r" "\<And>t X . patient P t X" "\<And>t X . patient Q t X" "\<And>t X . patient (P ;; Q) t X"
   shows "tttracesFR (P ;; Q) \<subseteq> (  tttracesFR P
                                 \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFR Q})"
 proof -
@@ -1207,22 +1207,41 @@ proof -
   have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
     by (simp_all add: closure assms)
   show ?thesis
-    apply(simp only: assms 1 TCtttracesFE periRSeqTC postRSeqTC)
+    apply(simp add: assms 1 periRSeqTC postRSeqTC)
     apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: assms TCpostconcretify TCpericoncretify)
     apply(rdes_simp)
     apply(rel_auto)
-    apply(simp_all add: tockificationsAppend)
-    apply blast
-    apply blast
-    done
+    apply(auto simp add: tockificationsAppend)
+    by metis
+qed
+
+
+lemma tttracesFRTCSeqSubImpatient:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r" "\<And>t X . \<not>patient P t X" "\<And>t X . \<not>patient Q t X" "\<And>t X . \<not>patient (P ;; Q) t X"
+  shows "tttracesFR (P ;; Q) \<subseteq> (  tttracesFR P
+                                \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFR Q})"
+proof -
+  have 1: "(P ;; Q) is TC"
+    by (simp add: assms TC_closed_seqr)
+  have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
+    by (simp_all add: closure assms)
+  show ?thesis
+    apply(simp add: assms 1 periRSeqTC postRSeqTC)
+    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: assms TCpostconcretify TCpericoncretify)
+    apply(rdes_simp)
+    apply(rel_auto)
+    apply(auto simp add: tockificationsAppend)
+    by metis
 qed
 
 lemma "tttraces (P ;; Q) = tttracesFE P \<union> tttracesFR Q
     \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttraces Q}"
   apply(rdes_simp)
   apply(rel_auto)
+
   oops
-*)
 
 (* TODO: how do we prove this key structural condition? *)
 (*
