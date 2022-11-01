@@ -159,7 +159,7 @@ qed
 
 subsubsection \<open> Patience \<close>
 
-definition patient where
+definition patient :: "'\<theta> ttcsp \<Rightarrow> '\<theta> reftrace \<Rightarrow> '\<theta> set \<Rightarrow> bool" where
 "patient P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (peri\<^sub>R P)`"
 
 lemma patient_conj:
@@ -228,5 +228,12 @@ qed
 lemma patient_disj_eq:
 "(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<sqinter> Q) t X = (patient P t X \<or> patient Q t X)"
   by (metis patient_disj' patient_disj1 semilattice_sup_class.sup_commute)
+
+(*
+lemma patient_seq:
+"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient Q t X = patient (P ;; Q) t X"
+  apply(simp add: patient_def)
+  apply(rel_auto)
+*)
 
 end

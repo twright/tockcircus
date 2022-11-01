@@ -589,6 +589,12 @@ proof -
   qed
 qed
 
+lemma TTTsUntickedsFEFR: "TTTs \<inter> untickeds = FE \<union> FR"
+  apply(auto simp add: coveringRegions TTTsimps)
+  by (metis Suc_lessI le_eq_less_or_eq take_Suc_conv_app_nth take_all)
+
+lemma TTTsTickedsTI: "TTTs \<inter> tickeds = TI"
+  by (auto simp add: coveringRegions TTTsimps)
 
 subsubsection \<open> Refusal Trace Structure \<close>
 
