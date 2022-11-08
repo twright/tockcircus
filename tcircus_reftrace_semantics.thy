@@ -57,7 +57,11 @@ fun fromrefevent :: "'\<theta> refevent \<Rightarrow> '\<theta> set" where
 fun fromrefset :: "'\<theta> refevent set \<Rightarrow> '\<theta> set" where
 "fromrefset X = \<Union> {fromrefevent x | x. x\<in>X}"
 
-(* 
+(* fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
+                  (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`)
+                \<and> (patient P t X \<longrightarrow> acctock)
+                \<and> s \<in> tockifications t}"
  * Arg 1: patience (if false then refuse tock)
  * Arg 2: unterminatability (if true then refuse tick)
  *)
@@ -392,11 +396,18 @@ fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
 "tttracesFE P = { s | t s.
                   \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                 \<and> s \<in> tockifications t }"
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
+fun tttracesFRI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFRI P = { s@[oref (finalrefset False refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
                   (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
-                \<and> (patient P t X \<longrightarrow> acctock)
+                \<and> (\<not>patient P t X)
                 \<and> s \<in> tockifications t}"
+fun tttracesFRP :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFRP P = { s@[oref (finalrefset True refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+                  (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
+                \<and> s \<in> tockifications t}"
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = ((tttracesFRI P) \<union> (tttracesFRP P))"
+                (* \<and> (patient P t X \<longrightarrow> acctock) *)
 (*
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
                   (if acctock
@@ -506,6 +517,8 @@ lemma emptyTTTs: "ET \<subseteq> TTTs"
   by (simp add: TTTsimps)
 
 definition [TTTsimps]: "FR \<equiv> {t@[oref X] | t X  . True} \<inter> TTTs"
+definition [TTTsimps]: "FRI \<equiv> {t@[oref X] | t X  . reftock \<in> X} \<inter> TTTs"
+definition [TTTsimps]: "FRP \<equiv> {t@[oref X] | t X  . reftock \<notin> X} \<inter> TTTs"
 definition [TTTsimps]: "TI \<equiv> {t@[otick] | t . True} \<inter> TTTs"
 definition [TTTsimps]: "FE \<equiv> TTTs - (FR \<union> TI)"
 
@@ -544,6 +557,12 @@ proof -
 qed
 
 lemma coveringRegions: "(TTTs::'\<theta> oreftrace set) = FE \<union> FR \<union> TI" (is "TTTs = ?regions")
+  by (auto simp add: TTTsimps)
+
+lemma disjointFR: "FRI \<inter> FRP = {}"
+  by (auto simp add: TTTsimps)
+
+lemma coveringFR: "FRI \<union> FRP = FR"
   by (auto simp add: TTTsimps)
 
 lemma TTT1TickedOrUnticked: "TTT1 = tickeds \<union> untickeds"
@@ -647,6 +666,12 @@ proof
               tockificationsUnticked)
 qed
 
+lemma tttracesFRITTT1: "tttracesFRI P \<subseteq> (TTT1::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT1)
+
+lemma tttracesFRPTTT1: "tttracesFRP P \<subseteq> (TTT1::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT1)
+
 lemma tttracesTITTT1: "tttracesTI P \<subseteq> (TTT1::'\<theta> oreftrace set)"
   by (simp add: TTT1_def)
      (smt (verit, ccfv_threshold) Collect_mono TTT1TickedOrUnticked TTT1_def
@@ -725,6 +750,12 @@ proof
   ultimately show "x \<in> TTT2"
     using TTT2Append by blast
 qed
+
+lemma tttracesFRITTT2: "tttracesFRI P \<subseteq> (TTT2::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT2)
+
+lemma tttracesFRPTTT2: "tttracesFRP P \<subseteq> (TTT2::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT2)
   
 lemma tttracesTITTT2: "tttracesTI P \<subseteq> (TTT2::'\<theta> oreftrace set)"
 proof
@@ -833,6 +864,12 @@ proof
   ultimately show "x \<in> TTT3"
     using TTT3Append by blast
 qed
+
+lemma tttracesFRITTT3: "tttracesFRI P \<subseteq> (TTT3::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT3)
+
+lemma tttracesFRPTTT3: "tttracesFRP P \<subseteq> (TTT3::'\<theta> oreftrace set)"
+  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT3)
 
 lemma tttracesTITTT3: "tttracesTI P \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof
@@ -1039,9 +1076,15 @@ lemma tockificationsNoTI: "ta @ [otick] \<notin> \<Union> (range tockifications)
 
 lemma tttracesDisjointRegions:
   shows "tttracesFR P \<inter> FE = {}"
+    and "tttracesFRP P \<inter> FE = {}"
+    and "tttracesFRI P \<inter> FE = {}"
     and "tttracesTI P \<inter> FE = {}"
     and "tttracesFE P \<inter> FR = {}"
+    and "tttracesFE P \<inter> FRP = {}"
+    and "tttracesFE P \<inter> FRI = {}"
     and "tttracesTI P \<inter> FR = {}"
+    and "tttracesTI P \<inter> FRP = {}"
+    and "tttracesTI P \<inter> FRI = {}"
     and "tttracesFE P \<inter> TI = {}"
     and "tttracesFR P \<inter> TI = {}"
   apply(auto simp add: TTTsimps)
@@ -1050,13 +1093,31 @@ lemma tttracesDisjointRegions:
 
 lemma tttracesRegionSubsets:
   shows "tttracesFE P \<subseteq> FE"
+    and "tttracesFRI P \<subseteq> FRI"
+    and "tttracesFRP P \<subseteq> FRP"
     and "tttracesFR P \<subseteq> FR"
     and "tttracesTI P \<subseteq> TI"
 proof -
   have "tttracesFE P = tttracesFE P \<inter> TTTs"
     using tockificationsTTTs by fastforce
-  thus "tttracesFE P \<subseteq> FE"    
-    by (metis Un_empty_right coveringRegions distrib_lattice_class.inf_sup_distrib1 semilattice_inf_class.inf.order_iff tttracesDisjointRegions(3) tttracesDisjointRegions(5))
+  thus "tttracesFE P \<subseteq> FE"
+    by (metis Int_Un_eq(3) Un_Int_eq(2) coveringRegions distinctRegions(3) distrib_lattice_class.inf_sup_distrib1 semilattice_inf_class.inf.orderI tttracesDisjointRegions(11) tttracesDisjointRegions(5))
+next
+  have "tttracesFRI P = tttracesFRI P \<inter> TTTs"
+    by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRITTT1 tttracesFRITTT2 tttracesFRITTT3)
+  also have "\<dots> \<subseteq> FRI"
+    apply (auto simp add: FRI_def)
+    by (metis finalrefsetTock)
+  finally show "tttracesFRI P \<subseteq> FRI"
+    by blast
+next
+  have "tttracesFRP P = tttracesFRP P \<inter> TTTs"
+    by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRPTTT1 tttracesFRPTTT2 tttracesFRPTTT3)
+  also have "\<dots> \<subseteq> FRP"
+    apply (auto simp add: FRP_def)
+    by (metis finalrefsetTock)
+  finally show "tttracesFRP P \<subseteq> FRP"
+    by blast
 next
   have "tttracesFR P = tttracesFR P \<inter> TTTs"
     by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRTTT1 tttracesFRTTT2 tttracesFRTTT3)
@@ -1073,8 +1134,37 @@ next
     by blast
 qed
 
+lemma tttracesFRSubregions:
+  shows "tttracesFR P \<inter> FRI = tttracesFRI P"
+    and "tttracesFR P \<inter> FRP = tttracesFRP P"
+proof -
+  have 1: "tttracesFRP P \<inter> FRI = {}"
+    by (metis disjointFR disjoint_iff_not_equal in_mono tttracesRegionSubsets(3))
+  have "tttracesFR P \<inter> FRI = (tttracesFRI P \<union> tttracesFRP P) \<inter> FRI"
+    by simp
+  also have "\<dots> = ((tttracesFRI P \<inter> FRI) \<union> (tttracesFRP P \<inter> FRI))"
+    by blast
+  also have "\<dots> = tttracesFRI P"
+    apply(simp only: 1)
+    by (metis boolean_algebra_cancel.sup0 semilattice_inf_class.inf.absorb1 tttracesRegionSubsets(2))
+  finally show "tttracesFR P \<inter> FRI = tttracesFRI P" .
+next
+  have 2: "tttracesFRI P \<inter> FRP = {}"
+    by (metis disjointFR disjoint_iff_not_equal in_mono tttracesRegionSubsets(2))
+  have "tttracesFR P \<inter> FRP = (tttracesFRI P \<union> tttracesFRP P) \<inter> FRP"
+    by simp
+  also have "\<dots> = ((tttracesFRI P \<inter> FRP) \<union> (tttracesFRP P \<inter> FRP))"
+    by blast
+  also have "\<dots> = tttracesFRP P"
+    apply(simp only: 2)
+    by (metis bounded_semilattice_sup_bot_class.sup_bot_left semilattice_inf_class.inf.absorb1 tttracesRegionSubsets(3))
+  finally show "tttracesFR P \<inter> FRP = tttracesFRP P" .  
+qed
+
 lemma tttracesSubregions:
   shows "tttraces P \<inter> FE = tttracesFE P"
+    and "tttraces P \<inter> FRI = tttracesFRI P"
+    and "tttraces P \<inter> FRP = tttracesFRP P"
     and "tttraces P \<inter> FR = tttracesFR P"
     and "tttraces P \<inter> TI = tttracesTI P"
 proof -
@@ -1091,6 +1181,36 @@ proof -
   finally show "tttraces P \<inter> FE = tttracesFE P"
     by blast
 next
+  have "tttraces P \<inter> FRP = TTTs \<inter> tttraces P \<inter> FRP"
+    using TTTStructure by blast
+  also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FRP)
+                        \<union> (tttracesFR P \<inter> FRP)
+                        \<union> (tttracesTI P \<inter> FRP))"
+    by (simp add: Int_Un_distrib2 semilattice_inf_class.inf.assoc)
+  also have "\<dots> = TTTs \<inter> tttracesFRP P \<inter> FRP"
+    apply (auto simp only: disjointRegions distinctRegions coveringFR tttracesDisjointRegions)
+    apply (metis IntI tttracesFRSubregions(2))
+    by (metis IntD1 tttracesFRSubregions(2))
+  also have "\<dots> = tttracesFRP P"
+    by (metis (no_types, lifting) FRP_def semilattice_inf_class.inf.assoc semilattice_inf_class.inf.right_idem semilattice_inf_class.inf_commute tttracesFRSubregions(2))
+  finally show "tttraces P \<inter> FRP = tttracesFRP P"
+    by blast
+next
+  have "tttraces P \<inter> FRI = TTTs \<inter> tttraces P \<inter> FRI"
+    using TTTStructure by blast
+  also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FRI)
+                        \<union> (tttracesFR P \<inter> FRI)
+                        \<union> (tttracesTI P \<inter> FRI))"
+    by (simp add: Int_Un_distrib2 semilattice_inf_class.inf.assoc)
+  also have "\<dots> = TTTs \<inter> tttracesFRI P \<inter> FRI"
+    apply (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
+    apply (metis IntI tttracesFRSubregions(1))
+    by (metis IntD1 tttracesFRSubregions(1))
+  also have "\<dots> = tttracesFRI P"
+    by (metis (no_types, lifting) FRI_def semilattice_inf_class.inf.assoc semilattice_inf_class.inf.right_idem semilattice_inf_class.inf_commute tttracesFRSubregions(1))
+  finally show "tttraces P \<inter> FRI = tttracesFRI P"
+    by blast
+next
   have "tttraces P \<inter> FR = TTTs \<inter> tttraces P \<inter> FR"
     using TTTStructure by blast
   also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FR)
@@ -1100,7 +1220,7 @@ next
   also have "\<dots> = TTTs \<inter> tttracesFR P \<inter> FR"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesFR P"
-    by (metis (no_types, lifting) FR_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(2))
+    by (metis (no_types, lifting) FR_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(4))
   finally show "tttraces P \<inter> FR = tttracesFR P"
     by blast
 next
@@ -1113,7 +1233,7 @@ next
   also have "\<dots> = TTTs \<inter> tttracesTI P \<inter> TI"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesTI P"
-    by (metis (no_types, lifting) TI_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(3))
+    by (metis (no_types, lifting) TI_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(5))
   finally show "tttraces P \<inter> TI = tttracesTI P"
     by blast
 qed
@@ -1139,6 +1259,22 @@ proof -
     by blast
 qed
 
+
+lemma tttracesEqFR:
+  assumes "B \<subseteq> (TTTs::'\<theta> oreftrace set)"
+      and "tttracesFE P = B \<inter> FE"
+      and "tttracesFRI P = B \<inter> FRI"
+      and "tttracesFRP P = B \<inter> FRP"
+      and "tttracesTI P = B \<inter> TI"
+    shows "tttraces P = B"
+proof (rule tttracesEq)
+  show "B \<subseteq> (TTTs::'\<theta> oreftrace set)" "tttracesFE P = B \<inter> FE" "tttracesTI P = B \<inter> TI"
+    using assms by auto
+next
+  show "tttracesFR P = B \<inter> FR"
+    by (metis Int_Un_distrib assms(3) assms(4) coveringFR tttracesFR.simps)
+qed
+
 lemma tttracesEqRem:
   assumes "tttracesFE P = (B - FR - TI::'\<theta> oreftrace set)"
       and "tttracesFR P = B \<inter> FR"
@@ -1151,6 +1287,20 @@ proof -
     using assms(1) assms(2) assms(3) calculation by auto
   finally show "tttraces P = B"
     by blast
+qed
+
+lemma tttracesEqFRRem:
+  assumes "tttracesFE P = (B - FR - TI::'\<theta> oreftrace set)"
+      and "tttracesFRI P = B \<inter> FRI"
+      and "tttracesFRP P = B \<inter> FRP"
+      and "tttracesTI P = B \<inter> TI"
+    shows "tttraces P = B"
+proof (rule tttracesEqRem)
+  show "tttracesFE P = (B - FR - TI)" "tttracesTI P = B \<inter> TI"
+    using assms by auto
+next
+  show "tttracesFR P = B \<inter> FR"
+    by (metis Int_Un_distrib assms(2) assms(3) coveringFR tttracesFR.simps)
 qed
 
 lemma tttracesCalc:
