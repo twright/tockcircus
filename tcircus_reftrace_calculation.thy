@@ -419,8 +419,16 @@ lemma
 
 text \<open> Counter-example to disjunction law  \<close>
 
-abbreviation "A \<equiv> TRR(\<not>$pat\<acute> \<and> $ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<and> $tr\<acute> =\<^sub>u $tr)"
-abbreviation "B \<equiv> TRR($ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<and> $tr\<acute> =\<^sub>u $tr)"
+abbreviation "A \<equiv> TRR(\<not>$pat\<acute> \<and> ($ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<or> $ref\<acute> =\<^sub>u \<guillemotleft>rfnil\<guillemotright>) \<and> $tr\<acute> =\<^sub>u $tr)"
+abbreviation "B \<equiv> TRR(($ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<or> $ref\<acute> =\<^sub>u \<guillemotleft>rfnil\<guillemotright>) \<and> $tr\<acute> =\<^sub>u $tr)"
+
+lemma A_alt_def: "A = \<E>(true,[],UNIV,false)"
+  apply(rel_auto)
+  by (metis equals0I refusal.exhaust rmember.simps(2))
+
+lemma B_alt_def: "B = \<E>(true,[],UNIV,true)"
+  apply(rel_auto)
+  by (metis equals0I refusal.exhaust rmember.simps(2))
 
 lemma CE1: "A \<sqinter> B = B"
   by (rel_auto)
