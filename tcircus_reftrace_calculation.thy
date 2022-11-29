@@ -417,6 +417,149 @@ lemma
   oops
 *)
 
+text \<open> Counter-example to disjunction law  \<close>
+
+abbreviation "A \<equiv> TRR(\<not>$pat\<acute> \<and> $ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<and> $tr\<acute> =\<^sub>u $tr)"
+abbreviation "B \<equiv> TRR($ref\<acute> =\<^sub>u \<guillemotleft>rfset {}\<guillemotright> \<and> $tr\<acute> =\<^sub>u $tr)"
+
+lemma CE1: "A \<sqinter> B = B"
+  by (rel_auto)
+
+lemma CE2: "tttracesRRFRI B = {}"
+  apply(auto simp add: patientRR_def) 
+  apply(rel_auto)
+  done
+
+lemma CE3: "tttracesRRFRI A
+          = {[oref {reftick, reftock}], [oref {reftock}]}"
+  apply (auto simp add: patientRR_def; (rel_auto | rel_simp))
+  apply (smt (z3) Un_insert_right bounded_semilattice_sup_bot_class.sup_bot_right empty_iff finalrefset.simps(3) finalrefset.simps(4) insert_iff subset_empty subset_iff torefsetRange torefsetSubsetReftick)
+  apply (auto simp add: finalrefsetTick finalrefsetTock)
+  apply (metis finalrefsetTock)
+  apply (metis finalrefsetTock)
+  apply (metis finalrefsetTock)
+  apply (smt (verit, del_insts) Un_insert_right bounded_semilattice_sup_bot_class.sup_bot_right empty_Collect_eq empty_iff finalrefset.simps(3) torefset.simps)
+  done
+
+lemma "tttracesRRFRI (A \<sqinter> B) = {}"
+  by (simp only: CE1 CE2)
+
+lemma "(tttracesRRFRI A \<union> tttracesRRFRI B) = {[oref {reftick, reftock}], [oref {reftock}]}"
+  by (auto simp only: CE2 CE3)
+
+text \<open> Simpler calculation law for TRR relation \<close>
+
+lemma
+  assumes "(P::'\<theta> ttcsp) is TRR" "Q is TRR" "\<And> t X. patientRR P t X = patientRR Q t X"
+  shows "tttracesRRFRI (P \<sqinter> Q) = tttracesRRFRI P \<union> tttracesRRFRI Q"
+proof (rule; rule)
+  fix x
+  assume "x \<in> tttracesRRFRI (P \<sqinter> Q)"
+  then obtain t s X refterm where 1: "x = s @ [oref (finalrefset False refterm X)]"
+        "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                     \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger>
+                    P) \<sqinter>
+              \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0::'\<theta> tev list,
+                     $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger>
+                    Q)`"
+        "\<not> patientRR (P \<sqinter> Q) t X"
+        "s \<in> tockifications t"
+    apply(auto)
+    apply(rel_auto)
+    done
+  from 1(2) have "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                     \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> P)`
+            \<or> \<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0::'\<theta> tev list,
+                     $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger>
+                    Q)`"
+    apply(rel_auto)
+    apply(blast)
+    done
+  moreover from 1(3) have "\<not> patientRR P t X \<or> \<not> patientRR Q t X"
+    using assms patientRR_disj_eq by blast
+  ultimately show "x \<in> tttracesRRFRI P \<union> tttracesRRFRI Q"
+    using 1(1) 1(4) apply(auto)
+    apply (metis zero_uexpr_def)
+    apply (metis "1"(3) assms(1) assms(2) patientRR_disj_eq zero_uexpr_def)
+    apply (metis "1"(3) assms(1) assms(2) patientRR_disj_eq zero_uexpr_def)
+    by (metis zero_uexpr_def)
+next
+  fix x
+  assume "x \<in> tttracesRRFRI P \<union> tttracesRRFRI Q"
+  then consider "x \<in> tttracesRRFRI P" | "x \<in> tttracesRRFRI Q"
+    by blast
+  then show "x \<in> tttracesRRFRI (P \<sqinter> Q)"
+  proof (cases)
+    case 1
+    then obtain t s X refterm where 3:
+      "x = s @ [oref (finalrefset False refterm X)]"
+      "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                   \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> P)`"
+      "\<not> patientRR P t X"
+      "s \<in> tockifications t"
+      by (auto; rel_auto)
+    from 3(2) have "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                   \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (P \<sqinter> Q))`"
+      apply(rel_auto)
+      apply(blast)
+      done
+    moreover from 3(3) have "\<not> patientRR (P \<sqinter> Q) t X"
+      (* Uses equipatience assumption *)
+      by (simp add: assms patientRR_disj_eq)
+    ultimately show "x \<in> tttracesRRFRI (P \<sqinter> Q)"
+      using 3(1) 3(4) apply(auto)
+      by (metis (no_types, lifting) "3"(2) disj_upred_def subst_conj subst_not taut_conj_elim utp_pred_laws.compl_sup zero_uexpr_def)
+  next
+    case 2
+    then obtain t s X refterm where 3:
+      "x = s @ [oref (finalrefset False refterm X)]"
+      "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                   \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> Q)`"
+      "\<not> patientRR Q t X"
+      "s \<in> tockifications t"
+      by (auto; rel_auto)
+    from 3(2) have "\<not> `\<not> \<^U>([$pat \<mapsto>\<^sub>s false, $ref \<mapsto>\<^sub>s rfnil, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> 
+                   \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (P \<sqinter> Q))`"
+      apply(rel_auto)
+      apply(blast)
+      done
+    moreover from 3(3) have "\<not> patientRR (P \<sqinter> Q) t X"
+      (* Uses equipatience assumption *)
+      by (simp add: assms patientRR_disj_eq) 
+    ultimately show "x \<in> tttracesRRFRI (P \<sqinter> Q)"
+      using 3(1) 3(4) apply(auto)
+      by (metis (no_types, lifting) "3"(2) disj_upred_def subst_conj subst_not taut_conj_elim utp_pred_laws.compl_sup zero_uexpr_def)
+  qed
+qed
+
+(* Short version *)
+lemma
+  assumes "(P::'\<theta> ttcsp) is TRR" "Q is TRR" "\<And> t X. patientRR P t X = patientRR Q t X"
+  shows "tttracesRRFRI (P \<sqinter> Q) = tttracesRRFRI P \<union> tttracesRRFRI Q"
+proof -
+  show ?thesis
+    apply(rdes_simp)
+    apply(simp add: assms patientRR_disj_eq)
+    apply(rel_auto)
+    apply blast
+    apply blast
+    using assms(3) apply blast
+    using assms(3) apply blast
+    done
+qed
+
+text \<open> Full calculation law \<close>
+
+
+
+(*
+lemma
+  assumes "P\<^sub>1 is TRC" "Q\<^sub>1 is TRR" "R\<^sub>1 is TRF" "P\<^sub>2 is TRC" "Q\<^sub>2 is TRR" "R\<^sub>2 is TRF" 
+  shows "tttracesFRI (TC(\<^bold>R(P\<^sub>1 \<turnstile> Q\<^sub>1 \<diamondop> R\<^sub>1))
+                    \<sqinter> TC(\<^bold>R(P\<^sub>2 \<turnstile> Q\<^sub>2 \<diamondop> R\<^sub>2))) = tttracesFRI \<union> tttracesFRI Q"
+  oops
+*)
+
 lemma 
   assumes "P is TC" "Q is TC" "\<And> t X. patient P t X = patient Q t X"
   shows "tttraces (P \<sqinter> Q) = tttraces P \<union> tttraces Q"
@@ -452,7 +595,7 @@ next
     apply(rel_auto)
     apply blast
     apply blast
-    (* These rely on assumption 3 *)    
+    (* These rely on assumption 3 *)
     apply blast
     apply blast
     done
@@ -519,37 +662,12 @@ next
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(5))
 qed
 
-subsection \<open> Refinements \<close>
+subsection \<open> Refinement \<close>
 
 lemma finalrefsetInjective: "(finalrefset p refterm X = finalrefset p' refterm' X')
                            = ((p = p') \<and> (refterm = refterm') \<and> (X = X'))"
   by (cases p; cases p'; cases refterm; cases refterm'; auto)
 
-lemma "P is NRD \<Longrightarrow> (P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))"
-  by (simp add: NRD_is_RD RD_reactive_tri_design)
-
-lemma TCform:
-  assumes "P is TC"
-  shows "P = \<^bold>R (pre\<^sub>R P \<turnstile> (peri\<^sub>R P \<or> \<U>(true, []) \<or> post\<^sub>R P ;; \<U>(true, [])) \<diamondop> post\<^sub>R P ;; II\<^sub>t)" (is "P = ?r")
-proof -
-  have 1: "P is NRD"
-    using TC_implies_NRD assms by auto    
-  have 2: "pre\<^sub>R P is TRC" "peri\<^sub>R P is TRR" "post\<^sub>R P is TRF"
-    using TC_inner_closures  assms by blast+
-
-  have "P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P)"
-    using 1 by (simp add: NRD_is_RD RD_reactive_tri_design)
-  then show ?thesis
-    using 2 by (metis Healthy_if TC_rdes TRF_implies_TRR assms)
-qed
-
-lemma TCformempty: "[] \<in> tttracesFE (\<^bold>R (P \<turnstile> (Q \<or> \<U>(true, []) \<or> R ;; \<U>(true, [])) \<diamondop> R ;; II\<^sub>t))"
-  apply(rdes_calc)
-  apply(rel_simp)
-  using tockificationsEmptyS by blast
-
-lemma TCtttracesFEEmpty: "P is TC \<Longrightarrow> [] \<in> tttracesFE P"
-  by (metis TCform TCformempty)
 
 lemma tttracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
   apply(rdes_simp)

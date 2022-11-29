@@ -156,11 +156,58 @@ proof -
   finally show ?thesis .
 qed
 
+lemma "P is NRD \<Longrightarrow> (P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))"
+  by (simp add: NRD_is_RD RD_reactive_tri_design)
+
+lemma TCform:
+  assumes "P is TC"
+  shows "P = \<^bold>R (pre\<^sub>R P \<turnstile> (peri\<^sub>R P \<or> \<U>(true, []) \<or> post\<^sub>R P ;; \<U>(true, [])) \<diamondop> post\<^sub>R P ;; II\<^sub>t)" (is "P = ?r")
+proof -
+  have 1: "P is NRD"
+    using TC_implies_NRD assms by auto    
+  have 2: "pre\<^sub>R P is TRC" "peri\<^sub>R P is TRR" "post\<^sub>R P is TRF"
+    using TC_inner_closures  assms by blast+
+
+  have "P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P)"
+    using 1 by (simp add: NRD_is_RD RD_reactive_tri_design)
+  then show ?thesis
+    using 2 by (metis Healthy_if TC_rdes TRF_implies_TRR assms)
+qed
 
 subsubsection \<open> Patience \<close>
 
 definition patient :: "'\<theta> ttcsp \<Rightarrow> '\<theta> reftrace \<Rightarrow> '\<theta> set \<Rightarrow> bool" where
 "patient P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (peri\<^sub>R P)`"
+
+definition patientRR :: "'\<theta> ttcsp \<Rightarrow> '\<theta> reftrace \<Rightarrow> '\<theta> set \<Rightarrow> bool" where
+"patientRR P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> P`"
+
+lemma patientPeri:
+  assumes "P is TC"
+  shows "patient P t X = patientRR (peri\<^sub>R P) t X"
+  using assms by (rdes_simp cls: patient_def patientRR_def)
+
+lemma patientRR_disj_eq:
+  "P is TRR \<Longrightarrow> Q is TRR \<Longrightarrow> (patientRR (P \<sqinter> Q) t X = (patientRR P t X \<or> patientRR Q t X))"
+proof -
+  assume 1: "P is TRR" "Q is TRR"
+  have "patientRR P t X \<Longrightarrow> patientRR (P \<sqinter> Q) t X" and "patientRR Q t X \<Longrightarrow> patientRR (P \<sqinter> Q) t X"
+    using 1 apply(simp_all add: patientRR_def)
+    apply(rdes_simp+)
+    apply(rel_auto+)
+    done
+  moreover have "patientRR (P \<sqinter> Q) t X \<Longrightarrow> patientRR P t X \<or> patientRR Q t X"
+    apply(simp_all add: patientRR_def)
+    apply(rdes_simp)
+    apply(subst (3) TRRconcretify)
+    apply(simp add: 1)
+    apply(subst (asm) (3) TRRconcretify)
+    apply(simp add: 1)
+    apply(rel_auto)
+    done
+  ultimately show ?thesis
+    by blast
+qed
 
 lemma patient_conj:
 "P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient P t X \<Longrightarrow> patient Q t X \<Longrightarrow> patient (P \<squnion> Q) t X"
@@ -234,6 +281,31 @@ lemma patient_seq:
 "(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient Q t X = patient (P ;; Q) t X"
   apply(simp add: patient_def)
   apply(rel_auto)
+*)
+
+
+(*
+lemma paitent_seq:
+  assumes "(P::'\<theta> ttcsp) is TC"
+      and "Q is TC"
+      and "pre\<^sub>R P = true"
+      and "pre\<^sub>R Q = true"
+      and "patient P t X"
+      and "patient Q t X"
+    shows "patient(P;;Q) t X"
+proof -
+  have 1: "P;;Q is TC"
+    using assms by (simp add: TC_closed_seqr)
+  have 2: "pre\<^sub>R (P;;Q) = true\<^sub>r"
+    using assms(3-4)
+    by (rdes_simp cls: assms(1-2))
+  show ?thesis
+    using assms(5-6)
+    apply(simp add: patient_def)
+    apply(rdes_simp cls: 1 2)
+    apply(rel_simp)
+    oops
+qed
 *)
 
 end

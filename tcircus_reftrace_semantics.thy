@@ -390,6 +390,13 @@ fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Righta
 
 subsection \<open> Refusal Traces \<close>
 
+
+fun tttracesRRFRI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesRRFRI (Q) = { s@[oref (finalrefset False refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+                  (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat\<rbrakk>`)
+                \<and> (\<not>patientRR Q t X)
+                \<and> s \<in> tockifications t}"
+
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
 \<comment>\<open> How should p actually be used? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
@@ -900,7 +907,47 @@ lemma tockificationsTTTs: "\<Union> (range tockifications) \<subseteq> TTT1 \<in
 lemma TTTsAppend: "t \<in> TTTss \<Longrightarrow> s \<in> TTTs \<Longrightarrow> t@s \<in> TTTs"
   by (simp add: TTT1sAppend TTT2Append TTT3Append)
 
-subsubsection \<open> TT3 \<close>
+section \<open> Healthiness conditions \<close>
+
+subsection \<open> TT0 \<close>
+
+lemma TCtttracesFEEmpty: "P is TC \<Longrightarrow> [] \<in> tttracesFE P"
+proof -
+  assume "P is TC"
+  then obtain R S T
+    where 1: "P = \<^bold>R (R \<turnstile> (S \<or> \<U>(true, []) \<or> T ;; \<U>(true, [])) \<diamondop> T ;; II\<^sub>t)"
+    using TCform by blast
+  show ?thesis
+    apply(simp add: 1)
+    apply(rdes_calc)
+    apply(rel_simp)
+    using tockificationsEmptyS by blast
+qed
+
+lemma TCtttracesTT0: "P is TC \<Longrightarrow> TT0(tttraces(P))"
+proof -
+  assume "P is TC"
+  then have "[] \<in> tttracesFE P"
+    using TCtttracesFEEmpty by blast
+  then have "[] \<in> tttraces P"
+    by simp
+  then show "TT0(tttraces(P))"
+    using TT0_def by blast
+qed
+
+subsection \<open> TT1 \<close>
+
+text \<open> Not proven since we do not in general expect a UTP reactive theory to have prefix closure.
+It is known that this is not required for the algebraic theory. Whilst this could be established via
+additional healthiness conditions as in other UTP theories, this is an orthogonal concern to the
+rest of the UTP theory. \<close>
+
+subsection \<open> TT2 \<close>
+
+text \<open> Should be doable -- need to think about shape of induction argument and required supporting
+lemmata \<close>
+
+subsection \<open> TT3 \<close>
 
 lemma tockificationsTT3i: "s \<in> tockifications t \<Longrightarrow> TT3i s"
 proof (simp add: TTsimps; rule; rule; rule; rule; induction t arbitrary: s \<rho> \<sigma> X)
