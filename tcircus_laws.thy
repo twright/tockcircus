@@ -174,138 +174,57 @@ proof -
     using 2 by (metis Healthy_if TC_rdes TRF_implies_TRR assms)
 qed
 
-subsubsection \<open> Patience \<close>
-
-definition patient :: "'\<theta> ttcsp \<Rightarrow> '\<theta> reftrace \<Rightarrow> '\<theta> set \<Rightarrow> bool" where
-"patient P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> (peri\<^sub>R P)`"
-
-definition patientRR :: "'\<theta> ttcsp \<Rightarrow> '\<theta> reftrace \<Rightarrow> '\<theta> set \<Rightarrow> bool" where
-"patientRR P t X = `[$pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>True\<guillemotright>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>rfset X\<guillemotright>, $tr \<mapsto>\<^sub>s 0, $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>] \<dagger> P`"
-
-lemma patientPeri:
-  assumes "P is TC"
-  shows "patient P t X = patientRR (peri\<^sub>R P) t X"
-  using assms by (rdes_simp cls: patient_def patientRR_def)
-
-lemma patientRR_disj_eq:
-  "P is TRR \<Longrightarrow> Q is TRR \<Longrightarrow> (patientRR (P \<sqinter> Q) t X = (patientRR P t X \<or> patientRR Q t X))"
+lemma postRSeqNRD:
+  assumes "P is NRD" "Q is NRD" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
 proof -
-  assume 1: "P is TRR" "Q is TRR"
-  have "patientRR P t X \<Longrightarrow> patientRR (P \<sqinter> Q) t X" and "patientRR Q t X \<Longrightarrow> patientRR (P \<sqinter> Q) t X"
-    using 1 apply(simp_all add: patientRR_def)
-    apply(rdes_simp+)
-    apply(rel_auto+)
+  have "post\<^sub>R(P;;Q) = (pre\<^sub>R P \<and> post\<^sub>R P wp\<^sub>r pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    apply(simp add: assms(1-2) NRD_is_RD NRD_composition_wp)
+    using assms(1-2) apply(rdes_simp)
     done
-  moreover have "patientRR (P \<sqinter> Q) t X \<Longrightarrow> patientRR P t X \<or> patientRR Q t X"
-    apply(simp_all add: patientRR_def)
-    apply(rdes_simp)
-    apply(subst (3) TRRconcretify)
-    apply(simp add: 1)
-    apply(subst (asm) (3) TRRconcretify)
-    apply(simp add: 1)
-    apply(rel_auto)
-    done
-  ultimately show ?thesis
-    by blast
+  also have "\<dots> = (true\<^sub>r \<and> post\<^sub>R P wp\<^sub>r true\<^sub>r \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    by (simp add: assms)
+  also have "\<dots> = (post\<^sub>R P ;; post\<^sub>R Q)"
+    by pred_auto
+  finally show ?thesis .
 qed
 
-lemma patient_conj:
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient P t X \<Longrightarrow> patient Q t X \<Longrightarrow> patient (P \<squnion> Q) t X"
-proof - 
-  assume 1: "P is TC" "Q is TC"
-  assume 2: "patient P t X" "patient Q t X"
-  from 2 show "patient (P \<squnion> Q) t X"
-    apply(simp add: patient_def)
-    apply(rel_auto)
-    done
-qed
+lemma postRSeqTC:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
+  by (simp add: TC_implies_NRD assms postRSeqNRD)
 
-lemma patient_conj':
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<squnion> Q) t X \<Longrightarrow> patient P t X \<and> patient Q t X"
-proof - 
-  assume 1: "P is TC" "Q is TC"
-  assume 3: "patient (P \<squnion> Q) t X"
-  have "pre\<^sub>R (P \<squnion> Q) = (pre\<^sub>R P \<or> pre\<^sub>R Q)"
-    by (rel_auto)
-  from 3 show "patient P t X \<and> patient Q t X"
-    apply(simp add: patient_def)
-    apply(rdes_simp cls: 1)
-    apply(rel_auto)
-    done
-qed
-
-lemma patient_disj1:
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient P t X \<Longrightarrow> patient (P \<sqinter> Q) t X"
-proof - 
-  assume 1: "P is TC" "Q is TC"
-  assume 3: "patient P t X"
-  from 3 show "patient (P \<sqinter> Q) t X"
-    apply(simp add: patient_def)
-    apply(rdes_simp cls: 1)
-    apply(rel_auto)
-    done
-qed
-
-lemma patient_disj2:
-"P is TC \<Longrightarrow> Q is TC \<Longrightarrow> pre\<^sub>R P = pre\<^sub>R Q \<Longrightarrow> patient Q t X \<Longrightarrow> patient (P \<sqinter> Q) t X"
-proof - 
-  assume 1: "P is TC" "Q is TC"
-  assume 2: "pre\<^sub>R P = pre\<^sub>R Q"
-  assume 3: "patient Q t X"
-  from 3 show "patient (P \<sqinter> Q) t X"
-    apply(simp add: patient_def)
-    apply(rdes_simp cls: 1 2)
-    apply(rel_auto)
-    done
-qed
-
-lemma patient_disj':
-"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<sqinter> Q) t X \<Longrightarrow> (patient P t X \<or> patient Q t X)"
-proof - 
-  assume 1: "P is TC" "Q is TC"
-  assume 3: "patient (P \<sqinter> Q) t X"
-  from 3 show "patient P t X \<or> patient Q t X"
-    apply(simp add: patient_def)
-    apply(rdes_simp cls: 1)
-    apply(simp add: TCpericoncretify 1)
-    apply(rel_auto)
-    done
-qed
-
-lemma patient_disj_eq:
-"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient (P \<sqinter> Q) t X = (patient P t X \<or> patient Q t X)"
-  by (metis patient_disj' patient_disj1 semilattice_sup_class.sup_commute)
-
-(*
-lemma patient_seq:
-"(P::'\<theta> ttcsp) is TC \<Longrightarrow> Q is TC \<Longrightarrow> patient Q t X = patient (P ;; Q) t X"
-  apply(simp add: patient_def)
-  apply(rel_auto)
-*)
-
-
-(*
-lemma paitent_seq:
-  assumes "(P::'\<theta> ttcsp) is TC"
-      and "Q is TC"
-      and "pre\<^sub>R P = true"
-      and "pre\<^sub>R Q = true"
-      and "patient P t X"
-      and "patient Q t X"
-    shows "patient(P;;Q) t X"
+lemma periRSeqNRD:
+  assumes "P is NRD" "Q is NRD" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "peri\<^sub>R(P ;; Q) = (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q)"
 proof -
-  have 1: "P;;Q is TC"
-    using assms by (simp add: TC_closed_seqr)
-  have 2: "pre\<^sub>R (P;;Q) = true\<^sub>r"
-    using assms(3-4)
-    by (rdes_simp cls: assms(1-2))
-  show ?thesis
-    using assms(5-6)
-    apply(simp add: patient_def)
-    apply(rdes_simp cls: 1 2)
-    apply(rel_simp)
-    oops
+  have "peri\<^sub>R(P;;Q) = ((pre\<^sub>R P \<and> post\<^sub>R P wp\<^sub>r pre\<^sub>R Q) \<Rightarrow>\<^sub>r (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q))"
+    apply(simp add: assms(1-2) NRD_is_RD NRD_composition_wp)
+    using assms(1-2) apply(rdes_simp)
+    done
+  also have "\<dots> = (true\<^sub>r \<and> post\<^sub>R P wp\<^sub>r true\<^sub>r \<Rightarrow>\<^sub>r (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q))"
+    by (simp add: assms)
+  also have "\<dots> = (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q)"
+    by pred_auto
+  finally show ?thesis .
 qed
-*)
+
+lemma periRSeqTC:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "peri\<^sub>R(P ;; Q) = (peri\<^sub>R P \<or> post\<^sub>R P ;; peri\<^sub>R Q)"
+  by (simp add: TC_implies_NRD assms periRSeqNRD)
+
+lemma postRSeqSRD:
+  assumes "P is NSRD" "Q is NSRD" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R(P ;; Q) = (post\<^sub>R P) ;; (post\<^sub>R Q)"
+proof -
+  have "post\<^sub>R(P;;Q) = (pre\<^sub>R P \<and> post\<^sub>R P wp\<^sub>r pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    using assms by rdes_simp
+  also have "\<dots> = (true\<^sub>r \<and> post\<^sub>R P wp\<^sub>r true\<^sub>r \<Rightarrow>\<^sub>r post\<^sub>R P ;; post\<^sub>R Q)"
+    by (simp add: assms)
+  also have "\<dots> = (post\<^sub>R P ;; post\<^sub>R Q)"
+    by pred_auto
+  finally show ?thesis .
+qed
 
 end

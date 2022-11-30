@@ -78,10 +78,10 @@ definition TRF :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRF(P) = TRR3(TRR(P))"
 
 lemma TRR_idem: "TRR(TRR(P)) = TRR(P)"
-  by (rel_auto)
+  by (rel_blast)
 
 lemma TRF_idem: "TRF(TRF(P)) = TRF(P)"
-  by (rel_auto)
+  by (rel_blast)
 
 lemma TRR_Idempotent [closure]: "Idempotent TRR"
   by (simp add: TRR_idem Idempotent_def)
@@ -96,7 +96,9 @@ lemma TRF_Continuous [closure]: "Continuous TRF"
   by (rel_blast)
 
 lemma TRR_alt_def: "TRR(P :: ('s,'e) taction) = (\<exists> $pat \<bullet> \<exists> $ref \<bullet> RR(P))"
-  by rel_blast
+  apply rel_auto
+   apply blast
+  by blast
 
 lemma TRR_intro:
   assumes "$ref \<sharp> P" "$pat \<sharp> P" "P is RR"
@@ -114,7 +116,7 @@ lemma TRR_implies_RR [closure]:
   shows "P is RR"
 proof -
   have "RR(TRR(P)) = TRR(P)"
-    by (rel_auto)
+    by (rel_blast)
   thus ?thesis
     by (metis Healthy_def assms)
 qed

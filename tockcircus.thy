@@ -210,8 +210,27 @@ text \<open> A timed deadlock does not terminate, but permits any period of time
 definition Stop :: "('s,'e) taction" where
 [rdes_def]: "Stop = \<^bold>R(true\<^sub>r \<turnstile> \<T>({}, {0..}) ;; \<E>(true, [], {}, true) \<diamondop> false)"
 
+lemma "true\<^sub>r is TRC"
+  apply (simp add: closure)
+  done
+
+lemma "\<T>({}, {0..}) ;; \<E>(true, [], {}, true) is TRR"
+  apply(rule Healthy_intro)
+  apply(trr_auto)
+  done
+
+lemma "(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<sqsubseteq> \<U>(true, [])"
+  apply(rel_simp)
+  oops
+
+lemma "false is TRF"
+  apply (simp add: closure)
+  done
+
 lemma Stop_TC [closure]: "Stop is TC"
-  by (rule Healthy_intro, rdes_eq)
+  apply (rule Healthy_intro)
+  apply (rdes_eq)
+  done
 
 text \<open> An untimed deadlock is stable, but does not accept any events. \<close>
 
@@ -317,9 +336,12 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
     \<or> time(peri\<^sub>R(Q)) \<and> active(peri\<^sub>R(P)))
   \<diamondop> (time(peri\<^sub>R(P)) \<and> post\<^sub>R(Q) \<or> time(peri\<^sub>R(Q)) \<and> post\<^sub>R(P)))"
 
+text \<open> Currently broken due to patience \<close>
+
 lemma ExtChoice_empty:
   "ExtChoice {} P = Stop"
-  by (simp add: ExtChoice_def Stop_def rpred)
+  apply (simp add: ExtChoice_def Stop_def rpred)
+  oops
 
 lemma ExtChoice_single: 
   assumes "P i is TC" "peri\<^sub>R(P i) is TIP"
@@ -331,6 +353,7 @@ proof -
     by (rdes_simp cls: assms simps: ExtChoice_def 1 Healthy_if utp_pred_laws.inf_absorb1)
 qed
 
+(*
 lemma ExtChoice_rdes_def [rdes_def]:
   assumes "\<And> i. P\<^sub>1(i) is TRC" "\<And> i. P\<^sub>2(i) is TRR" "\<And> i. P\<^sub>3(i) is TRR"
   shows "ExtChoice I (\<lambda> i. \<^bold>R(P\<^sub>1(i) \<turnstile> P\<^sub>2(i) \<diamondop> P\<^sub>3(i))) = 
@@ -371,6 +394,7 @@ next
     by (simp add: ExtChoice_def rdes assms closure False Healthy_if)
        (metis (no_types, lifting) "1" "2" rdes_tri_eq_intro rea_impl_mp)
 qed
+*)
 
 lemma ExtChoice_dual:
   assumes "P is TC" "Q is TC" "peri\<^sub>R P is TIP" "peri\<^sub>R Q is TIP"
@@ -429,8 +453,10 @@ lemma "Skip \<box> Div = Skip"
 lemma "Wait(n + 1) \<box> Div = Div"
   by (rdes_eq)
 
+(* Currently broken *)
 lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
-  by (rdes_eq)
+  apply (rdes_eq)
+  oops
 
 lemma "Stop \<box> do\<^sub>T(a) = do\<^sub>T(a)"
   apply (rdes_eq_split)
@@ -482,10 +508,14 @@ qed
 lemma extChoice_unit:
   assumes "P is TC"
   shows "Stop \<box> P = P"
-  by (rdes_eq_split cls: assms)
-
+  apply (rdes_eq_split cls: assms)
+  apply (simp_all)
+  apply(rel_auto)
+  oops
+  
 lemma "Stop \<box> \<langle>\<sigma>\<rangle>\<^sub>T = \<langle>\<sigma>\<rangle>\<^sub>T"
-  by (simp add: AssignsT_TC extChoice_unit)
+  oops
+(*  by (simp add: AssignsT_TC extChoice_unit) *)
 
 text \<open> Pedro Comment: Renaming should be a relation rather than a function. \<close>
 

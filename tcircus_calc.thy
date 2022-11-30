@@ -23,13 +23,13 @@ text \<open> We introduce a small algebra for peri- and postconditions to captur
   also update the state? \<close>
 
 definition tc_stable :: "'s upred \<Rightarrow> ('e reftrace, 's) uexpr \<Rightarrow> ('e set, 's) uexpr \<Rightarrow> 's upred \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _, _')") where
-[upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> ($pat\<acute> \<Rightarrow> \<lceil>p\<rceil>\<^sub>S\<^sub><))"
+[upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> (\<lceil>p\<rceil>\<^sub>S\<^sub>< \<Rightarrow> $pat\<acute>))"
 
 text \<open> We also need unstable intermediate observations, which the following relation provides. It
   has no set associated, since no refusal set is observed. \<close>
 
 definition tc_unstable :: "'s upred \<Rightarrow> ('e tev list, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<U>'(_, _')") where
-[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> \<not>$pat\<acute>)"
+[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
 
 text \<open> A final observation is similar to a stable observation, except it can update the state 
   variables and does not characterise a refusal set. \<close>
@@ -75,10 +75,17 @@ lemma [unrest]: "$st\<acute> \<sharp> \<U>(s, t)"
 
 text \<open> Unstable observations are subsumed by stable ones \<close>
 
+lemma patient_instability_subsumed: "\<E>(s, t, E, true) \<sqsubseteq> \<U>(s, t)"
+  by (rel_auto)
+
+lemma insistant_instability_subsumed: "\<E>(s, t, E, false) \<sqsubseteq> \<U>(s, t)"
+  by (rel_auto)
+
 lemma instability_subsumed: "\<E>(s, t, E, p) \<sqsubseteq> \<U>(s, t)"
   by (rel_auto)
 
-lemma "(\<E>(s\<^sub>1, t, E\<^sub>1, p\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
+(* Original version was p1 \<and> p2 *)
+lemma "(\<E>(s\<^sub>1, t, E\<^sub>1, p\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
 
 lemma stability_modulo_ref: "(\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<E>(s, t, E, p)) = (\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<U>(s, t))"
@@ -184,7 +191,8 @@ proof (trr_auto)
     done
 qed
 
-lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, true)"
+(* Changes from true to false *)
+lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, false)"
   by rel_auto
 
 lemma [rpred]: "idle(\<T>(X, A)) = \<T>(X, A)" 
@@ -212,7 +220,7 @@ lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
   by (rel_auto)
 
-lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
+lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
 
 lemma nat_set_simps [simp]:
@@ -248,14 +256,14 @@ lemma [rpred]: "active(\<T>(X, {0..})) = false"
 lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
 
-lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, true) \<and> idle(P)) = idle(P)"
+lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
   by (rel_auto)
 
 lemma unstable_TRF:
   assumes "P is TRF"
-  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = false)"
+  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
 proof -
-  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = false)"
+  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
     by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
