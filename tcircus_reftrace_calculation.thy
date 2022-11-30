@@ -1340,15 +1340,26 @@ fun oidleprefix :: "'\<phi> oreftrace \<Rightarrow> '\<phi> oreftrace" where
 "oidleprefix (oref X # otock # xs) = oref X # otock # oidleprefix xs"|
 "oidleprefix xs = []"
 
-(* Needs some healthiness conditions on p
-lemma oidleprefixTockSequence: "tockSequence UNIV (oidleprefix p)"
+fun orefusals :: "'\<phi> oreftrace \<Rightarrow> '\<phi> refevent set" where
+"orefusals (oref X # t) = X \<union> orefusals t" |
+"orefusals (oevt e # t) = orefusals t" |
+"orefusals (otick # t) = orefusals t" |
+"orefusals (otock # t) = orefusals t" |
+"orefusals [] = {}"
+
+(* Needs some healthiness conditions on p to establish reftock condition *)
+lemma oidleprefixTockSequence: "reftock \<notin> orefusals p \<Longrightarrow> tockSequence UNIV (oidleprefix p)"
 proof (induct p rule: oidleprefix.induct)
   case (1 X xs)
   have b: "X \<subseteq> torefset UNIV \<union> {reftick}"
-    oops
-  then show ?case
-    apply simp
-    apply (simp add: tockSequence1)
+    apply(auto)
+    using 1 apply(simp)
+    by (metis refevent.exhaust)
+  show ?case
+    apply(simp)
+    apply (rule tockSequence1)
+    using 1 apply simp
+    using b by blast
 next
   case "2_1"
   then show ?case
@@ -1383,11 +1394,13 @@ next
     by (simp add: tockSequence0)
 qed
 
-lemma "(r = (oidleprefix p :: '\<phi> oreftrace)) = ((tockSequence UNIV r) \<and> (\<forall> r2 . (tockSequence UNIV r2 \<and> r2 \<le> r @ p) \<longrightarrow> r2 \<le> r))"
+(*
+lemma "reftock \<notin> orefusals p \<Longrightarrow> (r = (oidleprefix p :: '\<phi> oreftrace)) = ((tockSequence UNIV r) \<and> (\<forall> r2 . (tockSequence UNIV r2 \<and> r2 \<le> r @ p) \<longrightarrow> r2 \<le> r))"
 proof 
+  assume 0: "reftock \<notin> orefusals p"
   assume 1: "r = oidleprefix p"
   have "tockSequence UNIV r"
-    using 1 oidleprefixTockSequence by auto
+    using 0 1 oidleprefixTockSequence by auto
   {
     fix r2 :: "'\<phi> oreftrace"
     assume "r2 \<le> r @ p"
