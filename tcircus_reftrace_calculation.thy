@@ -886,6 +886,26 @@ lemma tttracesFETCSeq:
 
 subsubsection \<open> FR Results \<close>
 
+lemma tttracesFRITCSeqSub:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "tttracesFRI (P ;; Q) \<subseteq> (  tttracesFRI P
+                               \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFRI Q})"
+proof -
+  have 1: "(P ;; Q) is TC"
+    by (simp add: assms TC_closed_seqr)
+  have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
+    by (simp_all add: closure assms)
+  show ?thesis
+    apply(simp add: assms 1 periRSeqTC postRSeqTC)
+    apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
+    apply(simp add: assms TCpostconcretify TCpericoncretify)
+    apply(rdes_simp)
+    apply(rel_auto)
+    apply(auto simp add: tockificationsAppend)
+    by metis
+qed
+
+
 lemma tttracesFRPTCSeqSub:
   assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
   shows "tttracesFRP (P ;; Q) \<subseteq> (  tttracesFRP P
@@ -903,67 +923,6 @@ proof -
     apply(rel_auto)
     apply(auto simp add: tockificationsAppend)
     by metis
-qed
-
-lemma tttracesFRITCSeqSub:
-  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
-  shows "tttracesFRI (P ;; Q) \<subseteq> (  tttracesFRI P
-                                \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFRI Q})"
-        (is "?l \<subseteq> (?r1 \<union> ?r2)")
-proof -
-  have 1: "(P ;; Q) is TC"
-    by (simp add: assms TC_closed_seqr)
-  have 2: "post\<^sub>R P is TRF" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
-    by (simp_all add: closure assms)
-  show ?thesis
-  proof (rule)
-    fix s
-    assume "s \<in> ?l"
-    then obtain z X rt w where 3: "\<not>`(\<not>peri\<^sub>R (P;;Q))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-                                  "s = z@[oref (finalrefset False rt X)]"
-                                  "z \<in> tockifications w"
-      by (auto; rel_auto)
-    from 3(1) have  "\<not>`(\<not>(peri\<^sub>R P \<or> (post\<^sub>R P ;; peri\<^sub>R Q)))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-      by (simp add: assms 1 periRSeqTC postRSeqTC)
-    hence "\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>` \<or> \<not>`(\<not>(post\<^sub>R P ;; peri\<^sub>R Q))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-      by (rel_auto)
-    then consider
-        (4) "\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-      | (5) "\<not>`(\<not>(post\<^sub>R P ;; peri\<^sub>R Q))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-      by auto
-    thus "s \<in> (?r1 \<union> ?r2)"
-    proof (cases)
-      case 4
-      then show ?thesis
-        using 4 "3"(2) "3"(3) by (auto)
-    next
-      case 5
-      then have "\<not>`(\<not>(\<^bold>\<exists> tt\<^sub>1 \<bullet> \<^bold>\<exists> tt\<^sub>2 \<bullet> post\<^sub>R P \<lbrakk>[]\<^sub>u,\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>tt\<^sub>2\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> ($tr\<acute> =\<^sub>u $tr + \<guillemotleft>tt\<^sub>1\<guillemotright> + \<guillemotleft>tt\<^sub>2\<guillemotright>)))\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-        apply(simp only: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
-        apply(rel_auto)
-        done
-      then obtain u v where 6: "w = u@v"
-                               "\<not>`\<not>post\<^sub>R P \<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
-                               "\<not>`\<not>peri\<^sub>R Q \<lbrakk>[]\<^sub>u,\<guillemotleft>v\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
-        apply(simp add: assms TCpostconcretify TCpericoncretify)
-        apply(rel_auto)
-        done
-      then obtain tu tv where 7: "z = tu@tv"
-                                 "tu \<in> tockifications u"
-                                 "tv \<in> tockifications v"
-        by (smt (verit, ccfv_threshold) "3"(3) mem_Collect_eq tockificationsAppend)
-      from 6(2) 7(2) have 8: "tu@[otick] \<in> tttracesTI P"
-        by (auto; metis (no_types, lifting) subst_not)
-
-      hence 9: "tv@[oref (finalrefset False rt X)] \<in> tttracesFRI Q"
-        using 6(3) 7(3) by auto
-      
-      have "s \<in> ?r2"
-        using 8 9 "3"(2) "7"(1) append_assoc by blast
-      thus ?thesis
-        by auto
-    qed
-  qed
 qed
 
 lemma tttracesFRTCSeqSub:
