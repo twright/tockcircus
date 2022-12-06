@@ -1307,17 +1307,18 @@ fun orefusals :: "'\<phi> oreftrace \<Rightarrow> '\<phi> refevent set" where
 "orefusals [] = {}"
 
 (* Needs some healthiness conditions on p to establish reftock condition *)
-lemma oidleprefixTockSequence: "reftock \<notin> orefusals p \<Longrightarrow> tockSequence UNIV (oidleprefix p)"
+lemma oidleprefixTockSequence: "TT3i p \<Longrightarrow> tockSequence UNIV (oidleprefix p)"
 proof (induct p rule: oidleprefix.induct)
   case (1 X xs)
+  have a: "reftock \<notin> X"
+    using 1 by (simp add: TT3i_def; blast)
   have b: "X \<subseteq> torefset UNIV \<union> {reftick}"
     apply(auto)
-    using 1 apply(simp)
-    by (metis refevent.exhaust)
+    by (metis a refevent.exhaust)
   show ?case
     apply(simp)
     apply (rule tockSequence1)
-    using 1 apply simp
+    apply (metis "1.hyps" "1.prems" Cons_eq_appendI TT3i_def)
     using b by blast
 next
   case "2_1"
@@ -1371,5 +1372,62 @@ proof
     by auto
 qed
 *)
+
+subsection \<open> Interrupt \<close>
+
+fun ofiltertocks :: "'\<phi> oreftrace \<Rightarrow> '\<phi> oreftrace" where
+"ofiltertocks (oref X # otock # xs) = oref X # otock # ofiltertocks xs"|
+"ofiltertocks (oevt e # xs) = ofiltertocks xs"|
+"ofiltertocks (oref X # _) = []"|
+"ofiltertocks (otick # _) = []"|
+"ofiltertocks (otock # _) = []"|
+"ofiltertocks [] = []"
+
+lemma ofiltertocksTockSequence: "TT3i p \<Longrightarrow> tockSequence UNIV (ofiltertocks p)"
+proof (induct p rule: ofiltertocks.induct)
+case (1 X xs)
+  have a: "reftock \<notin> X"
+    using 1 by (simp add: TT3i_def; blast)
+  have b: "X \<subseteq> torefset UNIV \<union> {reftick}"
+    apply(auto)
+    by (metis a refevent.exhaust)
+  show ?case
+    apply(simp)
+    apply (rule tockSequence1)
+    apply (metis "1.hyps" "1.prems" Cons_eq_appendI TT3i_def)
+    using b by blast
+next
+  case (2 e xs)
+  then show ?case
+    by (metis TT3i_def append_Cons ofiltertocks.simps(2))
+next
+  case ("3_1" X)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("3_2" X vb va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("3_3" X vb va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case ("3_4" X va)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case (4 uv)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case (5 uw)
+  then show ?case
+    by (simp add: tockSequence0)
+next
+  case 6
+  then show ?case
+    by (simp add: tockSequence0)
+qed
 
 end

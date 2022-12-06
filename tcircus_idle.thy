@@ -60,7 +60,7 @@ lemma active_idem [rpred]: "active(active(P)) = active(P)"
 
 lemma TRR_idle_or_active [rpred]:
   assumes "P is TRR"
-  shows "(idle(P) \<or> active(P)) = P"
+  shows "(idle(P) \<or> active(P)) = (P)"
   by (trr_auto cls: assms)
      (metis hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE tocks_Nil tocks_append)
 
@@ -70,7 +70,7 @@ lemma refine_eval_dest: "P \<sqsubseteq> Q \<Longrightarrow> \<lbrakk>Q\<rbrakk>
 lemma Healthy_after: "\<lbrakk> \<And> i. P i is H \<rbrakk> \<Longrightarrow> H \<circ> P = P"
   by (metis (mono_tags, lifting) Healthy_if fun.map_cong fun.map_id0 id_apply image_iff)
 
-lemma idle_skip [rpred]: "idle(II\<^sub>t) = II\<^sub>t"
+lemma idle_skip [rpred]: "idle(II\<^sub>t) = (II\<^sub>t)"
   by (rel_auto)
 
 lemma idle_false [rpred]: "idle(false) = false"

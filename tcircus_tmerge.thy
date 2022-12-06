@@ -40,6 +40,23 @@ syntax
 translations
   "\<And>\<^sub>t i\<in>I \<bullet> P" == "CONST tmerge I (\<lambda> i. P)"
 
+definition tmerge2 (infixr "\<and>\<^sub>t" 75) where
+[upred_defs]: 
+  "P \<and>\<^sub>t Q = 
+      U(R1
+        (\<exists> t es. &tt = \<guillemotleft>t @ es\<guillemotright>
+               \<and> \<guillemotleft>t\<guillemotright> \<in> tocks UNIV 
+               \<and> (\<guillemotleft>es\<guillemotright> = [] 
+                  \<or> hd(\<guillemotleft>es\<guillemotright>) \<in> range(Evt))
+               \<and> ( (\<exists> $st\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> P\<lbrakk>\<guillemotleft>t\<guillemotright>/&tt\<rbrakk>)
+                 \<squnion> (\<exists> $st\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> Q\<lbrakk>\<guillemotleft>t\<guillemotright>/&tt\<rbrakk>) )
+               \<and> (P \<sqinter> Q) 
+               ))"
+
+
+lemma tmerge2_alt_def: "P \<and>\<^sub>t Q = tmerge {P, Q} id"
+  by rel_auto
+
 text \<open> The time merge operator merges the delay traces of one relation with active traces of another. \<close>
 
 utp_const merge_time tmerge
@@ -92,6 +109,9 @@ lemma TRR_tmerge_single [closure]: "P i is TRR \<Longrightarrow> tmerge {i} P is
 lemma TRR_tmerge_dual [closure]: "\<lbrakk> P i is TRR; P j is TRR \<rbrakk> \<Longrightarrow> tmerge {i, j} P is TRR"
   by (auto intro: closure)
 
+lemma TRR_tmerge2 [closure]: "\<lbrakk> P is TRR; Q is TRR \<rbrakk> \<Longrightarrow> P \<and>\<^sub>t Q is TRR"
+  by (simp add: closure tmerge2_alt_def)
+
 lemma tmerge_single:
   assumes "P i is TRR" "P i is TIP"
   shows "tmerge {i} P = P i"
@@ -116,8 +136,7 @@ lemma tmerge_dual_1:
           ((P i \<triangleright>\<^sub>t P i \<and> P j \<triangleright>\<^sub>t P i) \<or> (P i \<triangleright>\<^sub>t P j \<and> P j \<triangleright>\<^sub>t P j))"
   apply (trr_auto cls: assms)
   apply blast
-
-                      apply blast
+  apply blast
   apply (metis (no_types) append_Nil2)
   apply blast
   apply blast
@@ -136,5 +155,11 @@ lemma tmerge_dual_1:
   apply (metis append_Nil2 hd_Cons_tl tocks_Evt)
   apply (smt append_Nil2 hd_Cons_tl rangeI tock_prefix_eq tocks_Evt tocks_append)
   done
+
+lemma tmerge2_TRR:
+  assumes "P is TRR" "Q is TRR"
+  shows "P \<and>\<^sub>t Q = 
+          ((P \<triangleright>\<^sub>t P \<and> Q \<triangleright>\<^sub>t P) \<or> (P \<triangleright>\<^sub>t Q \<and> Q \<triangleright>\<^sub>t Q))"
+  by (simp add: tmerge_dual_1 assms tmerge2_alt_def)
 
 end

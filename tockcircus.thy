@@ -337,11 +337,30 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
   \<diamondop> (time(peri\<^sub>R(P)) \<and> post\<^sub>R(Q) \<or> time(peri\<^sub>R(Q)) \<and> post\<^sub>R(P)))"
 
 text \<open> Currently broken due to patience \<close>
-
+(*
+lemma ExtChoice_empty_peri:
+  "peri\<^sub>R (ExtChoice {} P) = (\<T>({}, {0..}) ;; \<E>(true, [], {}, true))" (is "?l = ?r")
+proof -
+  have "?l = (idle(\<And> i\<in>{} \<bullet> idle(peri\<^sub>R(P i)))
+      \<or> (\<Or> i\<in>{} \<bullet> active(peri\<^sub>R(P i))
+         \<and> (\<And> j\<in>{} \<bullet> time(peri\<^sub>R(P j)))))"
+    by (rel_simp)
+  also have "\<dots> = U(idle(true) \<or> false)"
+    by (simp add: rpred)
+  also have "\<dots> = (idle(true))"
+    by simp
+  also have "\<dots> = ?r"
+    by(rel_auto)
+  finally show ?thesis .
+qed
+*)
+(*
 lemma ExtChoice_empty:
   "ExtChoice {} P = Stop"
   apply (simp add: ExtChoice_def Stop_def rpred)
-  oops
+  apply(rel_auto)
+  done
+*)
 
 lemma ExtChoice_single: 
   assumes "P i is TC" "peri\<^sub>R(P i) is TIP"
@@ -518,5 +537,22 @@ lemma "Stop \<box> \<langle>\<sigma>\<rangle>\<^sub>T = \<langle>\<sigma>\<rangl
 (*  by (simp add: AssignsT_TC extChoice_unit) *)
 
 text \<open> Pedro Comment: Renaming should be a relation rather than a function. \<close>
+
+section \<open> Timed interrupt \<close>
+
+definition untimed_interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>\<^sub>U" 69) where
+[upred_defs]:
+"P \<triangle>\<^sub>U Q = 
+  \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
+  \<turnstile> (post\<^sub>R P \<and> peri\<^sub>R Q \<or> (post\<^sub>R P ;; post\<^sub>R Q))
+  \<diamondop> (post\<^sub>R P \<and> peri\<^sub>R Q \<or> (post\<^sub>R P ;; post\<^sub>R Q)))"
+
+
+definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>" 69) where
+[upred_defs]:
+"P \<triangle> Q =
+  \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
+  \<turnstile> ((idle(P)))
+  \<diamondop> (post\<^sub>R P \<and> idle(peri\<^sub>R Q)))"
 
 end

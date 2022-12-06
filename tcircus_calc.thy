@@ -139,7 +139,7 @@ lemma [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>) ;; \<U>(s\<^sub>2, t\<^sub>
 lemma [rpred]: "\<T>(X, {}) = false"
   by (rel_auto)
 
-lemma [rpred]: "\<T>(X, {0}) = II\<^sub>t"
+lemma [rpred]: "\<T>(X, {0}) = (II\<^sub>t)"
   by (rel_auto)
 
 lemma [rpred]: "\<F>(true, [], id\<^sub>s) = II\<^sub>t"
