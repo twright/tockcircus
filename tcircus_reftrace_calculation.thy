@@ -1566,6 +1566,41 @@ next
     using tockificationsCaseTock'' by blast
 qed
 
+lemma ofiltertocksSplitFiltertocks:
+  assumes "ofiltertocks sa @ q\<^sub>2 = sb @ [otick]"
+          "sa \<in> tockifications ta"
+          "sb \<in> tockifications tb"
+  obtains q\<^sub>2' and tbr
+  where "q\<^sub>2 = q\<^sub>2'@[otick]"
+        "q\<^sub>2' \<in> tockifications tbr"
+        "tb = filtertocks ta @ tbr"
+        "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+        "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+proof -
+  obtain q\<^sub>2' where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
+    using assms by (meson ofiltertocksAppTick)
+  then have "ofiltertocks sa @ q\<^sub>2' = sb"
+    using assms by auto
+  then have 6: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications tb"
+    using assms by blast
+  have "tockSequence UNIV (ofiltertocks sa)"
+    using assms ofiltertocksTockSequence tockificationsTT3i by blast
+  then obtain tbr where 7: "q\<^sub>2' \<in> tockifications tbr"
+    using 6 tockificationSplit by auto
+  have "ofiltertocks sa \<in> tockifications(filtertocks ta)"
+    using assms filtertocksTockifications by blast
+  then have 8: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications(filtertocks ta @ tbr)"
+    using 7 by (auto simp add: tockificationsAppend)
+  from 6 8 have 9: "tb = filtertocks ta @ tbr"
+    using tockificationsDisjoint by blast
+  have 10: "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+    using "7" assms(2) tockificationsAppend by fastforce
+  have 11: "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+    by (simp add: "5")
+  from 5 7 9 10 11 show ?thesis
+    using that by blast
+qed
+
 (*    \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs *)
 lemma
   assumes "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
@@ -1647,76 +1682,26 @@ next
     by blast
 next
   case (3 sa q\<^sub>2 ta tb sb r p)
-obtain q\<^sub>2' where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
-    using 3 by (meson ofiltertocksAppTick)
-  then have "ofiltertocks sa @ q\<^sub>2' = sb"
-    using 3 by auto
-  then have 6: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications tb"
-    using "3" by blast
-  obtain tbl where "ofiltertocks sa \<in> tockifications tbl"
-    using "3" filtertocksTockifications by blast
-  have "tockSequence UNIV (ofiltertocks sa)"
-    using "3" ofiltertocksTockSequence tockificationsTT3i by blast
-  then obtain tbr where 7: "q\<^sub>2' \<in> tockifications tbr"
-    using 6 tockificationSplit by auto
-  have "ofiltertocks sa \<in> tockifications(filtertocks ta)"
-    using "3" filtertocksTockifications by blast
-  then have 8: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications(filtertocks ta @ tbr)"
-    using 7 by (auto simp add: tockificationsAppend)
-  have "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
-    by (simp add: "5")
- moreover have "((\<exists>v va.
-                   \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
-                    (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                     \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = v, pat\<^sub>v = va\<rparr>)) \<or>
-               \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
-                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>))"
-    using 3 by blast
-  moreover have "\<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
-               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = filtertocks ta @ tbr, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)"
-    using 3 "6" "8" tockificationsDisjoint by blast
-  moreover have "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
-    using 3 "7" tockificationsAppend by fastforce
-  ultimately show ?case
-    by blast
+  obtain q\<^sub>2' and tbr
+  where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
+           "q\<^sub>2' \<in> tockifications tbr"
+           "tb = filtertocks ta @ tbr"
+           "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+           "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+    using "3"(1) "3"(2) "3"(4) ofiltertocksSplitFiltertocks by blast
+  then show ?case
+    using "3"(3) "3"(5) by blast
 next
   case (4 sa q\<^sub>2 ta tb sb)
-  obtain q\<^sub>2' where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
-    using 4 by (meson ofiltertocksAppTick)
-  then have "ofiltertocks sa @ q\<^sub>2' = sb"
-    using 4 by auto
-  then have 6: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications tb"
-    using "4" by blast
-  obtain tbl where "ofiltertocks sa \<in> tockifications tbl"
-    using "4" filtertocksTockifications by blast
-  have "tockSequence UNIV (ofiltertocks sa)"
-    using "4" ofiltertocksTockSequence tockificationsTT3i by blast
-  then obtain tbr where 7: "q\<^sub>2' \<in> tockifications tbr"
-    using 6 tockificationSplit by auto
-  have "ofiltertocks sa \<in> tockifications(filtertocks ta)"
-    using "4" filtertocksTockifications by blast
-  then have 8: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications(filtertocks ta @ tbr)"
-    using 7 by (auto simp add: tockificationsAppend)
-  have "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
-    by (simp add: "5")
-  moreover have "((\<exists>v va.
-                   \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
-                    (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                     \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = v, pat\<^sub>v = va\<rparr>)) \<or>
-               \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
-                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>))"
-    using "4" by blast
-  moreover have "\<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
-               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
-                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = filtertocks ta @ tbr, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)"
-    using "4" "6" "8" tockificationsDisjoint by blast
-  moreover have "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
-    using "4" "7" tockificationsAppend by fastforce
-  ultimately show ?case
-    by blast
+  obtain q\<^sub>2' and tbr
+  where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
+           "q\<^sub>2' \<in> tockifications tbr"
+           "tb = filtertocks ta @ tbr"
+           "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+           "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+    using 4 ofiltertocksSplitFiltertocks by blast
+  then show ?case
+    using 4 by blast
 qed
 
 (*
