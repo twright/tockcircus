@@ -363,6 +363,7 @@ proof -
 qed
 *)
 
+(*
 lemma ExtChoice_empty:
   "ExtChoice {} P = Stop"
   apply (simp add: ExtChoice_def Stop_def rpred)
@@ -378,6 +379,7 @@ proof -
   show ?thesis
     by (rdes_simp cls: assms simps: ExtChoice_def 1 Healthy_if utp_pred_laws.inf_absorb1)
 qed
+*)
 
 (*
 lemma ExtChoice_rdes_def [rdes_def]:
@@ -547,13 +549,14 @@ text \<open> Pedro Comment: Renaming should be a relation rather than a function
 
 section \<open> Timed interrupt \<close>
 
+(*
 definition untimed_interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>\<^sub>U" 69) where
 [upred_defs]:
 "P \<triangle>\<^sub>U Q = 
   \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
   \<turnstile> (post\<^sub>R P \<and> peri\<^sub>R Q \<or> (post\<^sub>R P ;; post\<^sub>R Q))
   \<diamondop> (post\<^sub>R P \<and> peri\<^sub>R Q \<or> (post\<^sub>R P ;; post\<^sub>R Q)))"
-
+*)
 
 (*  \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
   \<turnstile> ( ((idle(peri\<^sub>R P) \<and> idle(peri\<^sub>R Q)) ;; active(peri\<^sub>R P))
@@ -578,23 +581,145 @@ qed
 definition has_trace ("has'(_,_')") where
 "has_trace t P = U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
 
+definition has_trace_stateful ("hass'(_,_')") where
+"has_trace_stateful t P = U(\<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
 
-definition tockfiltered :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("tockfiltered'(_')") where
+definition has_trace_ref ("hasr'(_,_,_')") where
+"has_trace_ref t X P = U(\<exists> $st\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t,X/&tt,$ref\<acute>\<rbrakk>)"
+
+
+definition has_trace_ref_pat ("hasrp'(_,_,_,_')") where
+"has_trace_ref_pat t X p P = U(\<exists> $st\<acute> \<bullet> P\<lbrakk>t,X,p/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>)"
+
+
+definition has_trace_ref_pat_stateful ("hassrp'(_,_,_,_')") where
+"has_trace_ref_pat_stateful t X p P = U(P\<lbrakk>t,X,p/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>)"
+
+definition tockfiltered :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("tockfiltered\<^sub>u'(_')") where
 "tockfiltered P =  U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>filtertocks(&tt)/&tt\<rbrakk>)"
 
-utp_const has_trace tockfiltered
+(* :: "'\<theta> reftrace \<Rightarrow> ('s, 'e) taction" *)
+fun startswithrefusal ("startswithrefusal\<^sub>u'(_')") where
+"startswithrefusal [] = False"|
+"startswithrefusal (Evt e # t) = False"|
+"startswithrefusal (Tock X # t) = True"
+
+
+utp_const has_trace has_trace_ref has_trace_ref_pat  has_trace_stateful has_trace_ref_pat_stateful tockfiltered startswithrefusal 
+         (*  *)
+
+(*
+(peri\<^sub>R P \<or> post\<^sub>R P)
+      \<and> (\<exists> $st \<bullet> (peri\<^sub>R Q \<or> post\<^sub>R Q)\<lbrakk>filtertocks\<^sub>u(&tt)/&tt\<rbrakk>)
+
+U(\<exists> X Y Z p q.
+           hasrp(&tt, \<guillemotleft>rfset X\<guillemotright>, \<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hasrp(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, \<guillemotleft>q\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+         \<and> (\<guillemotleft>Z \<subseteq> X \<union> Y\<guillemotright>)
+         \<and> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>)
+         \<and> (p \<and> q \<Rightarrow> $pat\<acute>)
+      )
+
+(pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
+*)
 
 definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>" 69) where
 [upred_defs]:
 "P \<triangle> Q =
-\<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
-  \<turnstile> true\<^sub>r
-  \<diamondop> ( (post\<^sub>R P \<and> tockfiltered(peri\<^sub>R Q \<or> post\<^sub>R Q) )
+\<^bold>R(true\<^sub>r
+  \<turnstile> (
+      U(\<exists> X Y Z p q.
+           hasrp(&tt, \<guillemotleft>rfset X\<guillemotright>, \<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hassrp(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, \<guillemotleft>q\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+         \<and> (\<guillemotleft>Z \<subseteq> X \<union> Y\<guillemotright>)
+         \<and> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>)
+         \<and> (p \<and> q \<Rightarrow> $pat\<acute>)
+      )  
+      \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+           (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+         \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))
+         \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+         \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
+         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($pat\<acute> \<and> $ref\<acute> = rfnil) 
+         )
+  ) \<diamondop> (
+      (post\<^sub>R P \<and> tockfiltered(peri\<^sub>R Q \<or> post\<^sub>R Q) )
     \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
          (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
        \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))
-       \<and> has(\<guillemotleft>p\<guillemotright>, U(peri\<^sub>R P \<or> post\<^sub>R P))
-       \<and> has(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
+       \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+       \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
+       \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
        )))"
+
+fun intersectRefusalTrace ("intersectRefusalTrace\<^sub>u'(_,_')") where
+"intersectRefusalTrace X [] = []"|
+"intersectRefusalTrace X (Evt e # t) = Evt e # intersectRefusalTrace X t"|
+"intersectRefusalTrace X (Tock Y # t) = Tock (X \<inter> Y) # intersectRefusalTrace X t"
+
+
+fun ointersectRefusalTrace where
+"ointersectRefusalTrace X [] = []"|
+"ointersectRefusalTrace X (oevt e # t) = oevt e # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (otock # t) = otock # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (otick # t) = otick # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (oref Y # t) = oref (X \<inter> Y) # ointersectRefusalTrace X t"
+
+fun containsRefusal ("containsRefusal\<^sub>u'(_')") where
+"containsRefusal [] = False"|
+"containsRefusal (Evt e # t) = containsRefusal t"|
+"containsRefusal (Tock Y # t) = True"
+
+
+fun ocontainsRefusal where
+"ocontainsRefusal [] = False"|
+"ocontainsRefusal (oevt e # t) = ocontainsRefusal t"|
+"ocontainsRefusal (otock # t) = ocontainsRefusal t"|
+"ocontainsRefusal (otick # t) = ocontainsRefusal t"|
+"ocontainsRefusal (oref Y # t) = True"
+
+definition untimedinterrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>\<^sub>U" 68) where
+[upred_defs]:
+"(P \<triangle>\<^sub>U Q) =
+\<^bold>R(true\<^sub>r
+  \<turnstile> (
+      U(\<exists> X Y Z p q.
+           hasrp(&tt, \<guillemotleft>rfset X\<guillemotright>, \<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hassrp(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, \<guillemotleft>q\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+         \<and> (\<guillemotleft>Z \<subseteq> X \<union> Y\<guillemotright>)
+         \<and> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>)
+         \<and> (p \<and> q \<Rightarrow> $pat\<acute>)
+      )  
+      \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+           (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+         \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))
+         \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+         \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
+         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($pat\<acute> \<and> $ref\<acute> = rfnil) 
+         )
+  ) \<diamondop> (
+      U(\<exists> p X.
+            hass(\<guillemotleft>p\<guillemotright>, post\<^sub>R P)
+          \<and> \<guillemotleft>containsRefusal\<^sub>u(p)\<guillemotright>
+          \<and> hasr([], \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+          \<and> &tt = \<guillemotleft>intersectRefusalTrace X p\<guillemotright> )
+    \<or> U(post\<^sub>R P \<and> \<not>\<^sub>r\<guillemotleft>containsRefusal\<^sub>u(&tt)\<guillemotright>)
+    \<or> U(\<exists> p q X Y .
+        hasr(p, \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+      \<or> hassr(p, post\<^sub>R Q))
+    \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+         (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+       \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))
+       \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+       \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
+       \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
+       )))"
+
+
+section \<open> Hiding \<close>
+
+
 
 end

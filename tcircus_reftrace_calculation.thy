@@ -1601,6 +1601,19 @@ proof -
     using that by blast
 qed
 
+fun ostartswithrefusal where
+"ostartswithrefusal [] = False"|
+"ostartswithrefusal (oevt e # t) = False"|
+"ostartswithrefusal (oref X # t) = True"|
+"ostartswithrefusal (otock # t) = False"|
+"ostartswithrefusal (otick # t) = False"
+
+
+lemma ostartswithrefusalTockifications:
+  "s \<in> tockifications t \<Longrightarrow> startswithrefusal t = ostartswithrefusal s"
+  by (cases t rule: startswithrefusal.cases)
+     (auto)
+
 (*    \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs *)
 lemma
   assumes "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
@@ -1610,17 +1623,19 @@ lemma
        \<and> (q\<^sub>1 = filtertocks\<^sub>u(p))
        \<and> has(\<guillemotleft>p\<guillemotright>, U(P\<^sub>2 \<or> P\<^sub>3))
        \<and> has(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, Q\<^sub>3)
+       \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
        ))
  = { p + q\<^sub>2
    | p q\<^sub>1 q\<^sub>2
    . p \<in> tttracesRRFE P\<^sub>2 P\<^sub>3
    \<and> ofiltertocks p = q\<^sub>1
+   \<and> \<not>ostartswithrefusal(q\<^sub>2)
    \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesRRTI Q\<^sub>3 }"
-  apply (subst (17) TRFconcretify)
+  apply (subst (20) TRFconcretify)
   apply (simp add: assms)
-  apply (subst (16) TRFconcretify)
+  apply (subst (19) TRFconcretify)
   apply (simp add: assms)
-  apply (subst (15) TRRconcretify)
+  apply (subst (18) TRRconcretify)
   apply (simp add: assms)
   apply (subst (14) TRFconcretify)
   apply (simp add: assms)
@@ -1630,7 +1645,7 @@ lemma
   apply (simp add: assms)
   apply(rdes_simp cls: tockfiltered_def has_trace_def)
   apply(rel_auto)
-     apply(auto simp add: filtertocksApp tockificationsAppend)
+  apply(auto simp add: filtertocksApp tockificationsAppend)
 proof (goal_cases)
 
   case (1 xa xb v va t' s')
@@ -1646,14 +1661,16 @@ proof (goal_cases)
                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)) \<and>
              t' \<in> tockifications t)"
-    using "1"(2) "1"(3) by blast
+    using "1" by blast
   moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
               \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>) \<and>
               s \<in> tockifications t)"
     apply(simp add: 3)
-    by (smt (verit, del_insts) "1"(1) "1"(3) "1"(4) filtertocksTockifications mem_Collect_eq tockificationsAppend)
+    by (smt (verit, del_insts) "1" filtertocksTockifications mem_Collect_eq tockificationsAppend)
+  moreover have "\<not> ostartswithrefusal(q\<^sub>2)"
+    by (metis "1"(2) "1"(5) "3" append_Nil butlast.simps(2) butlast_snoc ostartswithrefusal.elims(2) ostartswithrefusal.simps(3) ostartswithrefusal.simps(5) ostartswithrefusalTockifications)
   ultimately show ?case
     by blast
 next
@@ -1670,14 +1687,16 @@ next
               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)) \<and>
             t' \<in> tockifications t)"
-    using "2"(2) "2"(3) by blast
+    using "2" by blast
   moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
                  \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
                   (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
                    \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>) \<and>
                  s \<in> tockifications t)"
     apply(simp add: 3)
-    by (smt (verit, del_insts) "2"(1) "2"(3) "2"(4) filtertocksTockifications mem_Collect_eq tockificationsAppend)
+    by (smt (verit, del_insts) "2" filtertocksTockifications mem_Collect_eq tockificationsAppend)
+  moreover have "\<not> ostartswithrefusal(q\<^sub>2)"
+    by (metis "2"(2) "2"(5) "3" append_eq_Cons_conv ostartswithrefusal.elims(2) ostartswithrefusal.simps(3) ostartswithrefusal.simps(5) ostartswithrefusalTockifications)
   ultimately show ?case
     by blast
 next
@@ -1688,9 +1707,11 @@ next
            "tb = filtertocks ta @ tbr"
            "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
            "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
-    using "3"(1) "3"(2) "3"(4) ofiltertocksSplitFiltertocks by blast
-  then show ?case
-    using "3"(3) "3"(5) by blast
+    using "3" ofiltertocksSplitFiltertocks by blast
+  moreover have "\<not> startswithrefusal tbr"
+    using "3"(1) calculation(1) calculation(2) ostartswithrefusalTockifications tockificationsCases by fastforce
+  ultimately show ?case
+    using "3" by blast
 next
   case (4 sa q\<^sub>2 ta tb sb)
   obtain q\<^sub>2' and tbr
@@ -1700,7 +1721,9 @@ next
            "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
            "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
     using 4 ofiltertocksSplitFiltertocks by blast
-  then show ?case
+  moreover have "\<not> startswithrefusal tbr"
+    by (metis "4"(1) append_Cons calculation(1) calculation(2) ostartswithrefusal.elims(2) ostartswithrefusal.simps(3) ostartswithrefusalTockifications)
+  ultimately show ?case
     using 4 by blast
 qed
 
@@ -1734,6 +1757,11 @@ lemma tttracesTIInterrupt:
   apply(simp_all add: ofiltertocksFinalTick tockfiltered_def has_trace_def)
   using filtertocksTockifications ofiltertocksFinalTick apply blast
   using filtertocksTockifications ofiltertocksFinalTick apply blast
-  sledgehammer
   oops
+
+lemma ocontainsRefusalTockifications:
+  "s \<in> tockifications t \<Longrightarrow> containsRefusal t = ocontainsRefusal s"
+  by (induction t arbitrary: s rule: containsRefusal.induct)
+     auto
+
 end
