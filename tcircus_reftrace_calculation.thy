@@ -1430,4 +1430,325 @@ next
     by (simp add: tockSequence0)
 qed
 
+lemma filtertocksTockifications:
+  "(s \<in> tockifications (filtertocks t)) = (\<exists> s'. s = ofiltertocks s' \<and> s' \<in> tockifications t)"
+proof (induction t arbitrary: s rule: filtertocks.induct)
+  case 1
+  then show ?case
+    by (simp add: tockificationsEmpty)
+next
+  case (2 X t)
+  then show ?case
+    apply(simp)
+    by (metis (no_types, lifting) ofiltertocks.simps(1))
+next
+  case (3 e t)
+  then show ?case
+    apply(simp)
+    by (metis ofiltertocks.simps(2))
+qed
+
+lemma tttracesFEInterrupt: "tttracesFE (P \<triangle> Q)
+     = { p + q\<^sub>2
+       | p q\<^sub>1 q\<^sub>2
+       . p \<in> tttracesFE P \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs
+       \<and> ofiltertocks p = q\<^sub>1
+       \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesFE Q }"
+  oops
+
+lemma tttracesFRInterrupt: "tttracesFR (P \<triangle> Q)
+     = { p + [oref Z]
+       | p q X Y Z
+       . p@[oref X] \<in> tttracesFR P
+       \<and> q@[oref Y] \<in> tttracesFR Q
+       \<and> Z \<subseteq> X \<union> Y
+       \<and> ((X - {reftock}) = (Y - {reftock}))
+       \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesFE Q }
+     \<union> { p + q\<^sub>2
+       | p q\<^sub>1 q\<^sub>2
+       . p \<in> tttracesFE P \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs
+       \<and> ofiltertocks p = q\<^sub>1
+       \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesFR Q
+       \<and> rev q\<^sub>1 \<notin> FR }"
+  oops
+
+(* To prove *)
+lemma interruptPost:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "post\<^sub>R (P \<triangle> Q) = (
+      (post\<^sub>R P \<and> tockfiltered(peri\<^sub>R Q \<or> post\<^sub>R Q) )
+    \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+         (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+       \<and> (q\<^sub>1 = filtertocks\<^sub>u(p))
+       \<and> has(\<guillemotleft>p\<guillemotright>, U(peri\<^sub>R P \<or> post\<^sub>R P))
+       \<and> has(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
+       ))"
+  sorry
+(*
+  apply(simp only: interrupt_def)
+  apply(rdes_simp cls: assms)
+  apply(simp add: has_trace_def tockfiltered_def)
+  apply(rel_auto)
+  sledgehammer
+  done
+*)
+
+(*        \<and> rev q\<^sub>1 \<notin> FR  \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs
+ *)
+
+lemma ofiltertocksFinalTick: "ofiltertocks (s @ [otick]) = ofiltertocks s"
+  apply(induct s rule: ofiltertocks.induct)
+  apply(auto)
+  done
+
+lemma
+  assumes "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
+  shows
+  "tttracesRRTI (P\<^sub>3 \<and> has(filtertocks\<^sub>u(&tt), Q\<^sub>2 \<or> Q\<^sub>3) )
+ = { p
+   . p \<in> tttracesRRTI P\<^sub>3
+   \<and> ofiltertocks p \<in> tttracesRRFE Q\<^sub>2 Q\<^sub>3 }"
+  apply (subst (9) TRFconcretify)
+  apply (simp add: assms)
+  apply (subst (8) TRRconcretify)
+  apply (simp add: assms)
+  apply (subst (7) TRFconcretify)
+  apply (simp add: assms)
+  apply (subst (6) TRFconcretify)
+   apply (simp add: assms)
+  apply (subst (4) TRRconcretify)
+  apply (simp add: assms)
+  apply (subst (1) TRFconcretify)
+  apply (simp add: assms)
+  apply(rdes_simp cls: tockfiltered_def has_trace_def)
+  apply(rel_auto)
+  apply(simp_all add: ofiltertocksFinalTick tockfiltered_def has_trace_def)
+  using filtertocksTockifications apply blast
+  using filtertocksTockifications apply blast
+  apply (metis (no_types, hide_lams) filtertocksTockifications tockificationsDisjoint)
+  by (metis (no_types, hide_lams) filtertocksTockifications tockificationsDisjoint)
+
+abbreviation "tickended \<equiv> {t@[otick] | t . True}"
+
+lemma filtertocksApp: "filtertocks(s @ t) = filtertocks s @ filtertocks t"
+  by (induction s arbitrary: t rule: filtertocks.induct)
+     (auto)
+
+lemma tickedsApp: "s@t \<in> tickended \<Longrightarrow> t \<in> tickended \<or> ((t = []) \<and> s \<in> tickended)"
+  apply(induction t arbitrary: s rule: rev_induct)
+  apply(auto)
+  done
+
+lemma ofiltertocksUntickeds: "ofiltertocks s \<notin> tickended"
+  apply(induction s rule: ofiltertocks.induct)
+          apply(auto)
+  by (metis append_butlast_last_id last.simps last_snoc list.distinct(1) oevent.distinct(11))
+
+lemma ofiltertocksAppTick: "ofiltertocks sa @ q = sb @ [otick] \<Longrightarrow> \<exists> q' . q = q'@[otick]"
+  by (metis (mono_tags, lifting) append_butlast_last_id append_self_conv last_appendR last_snoc mem_Collect_eq ofiltertocksUntickeds)
+
+lemma ofiltertocksTTTs: "ofiltertocks t \<in> TTTs"
+  apply(induct t rule: ofiltertocks.induct)
+          apply(auto simp add: TTTsimps)
+  apply (metis Suc_pred' not_less_eq nth_non_equal_first_eq oevent.distinct(11) oevent.distinct(5))
+  apply (metis Zero_neq_Suc diff_Suc_1 gr0_implies_Suc less_Suc_eq_0_disj nth_non_equal_first_eq oevent.distinct(3) range_eqI)
+  by (metis (no_types, lifting) One_nat_def Suc_pred neq0_conv not_less_eq nth_Cons' oevent.distinct(3) range_eqI)
+
+lemma tockificationSplit: "tockSequence UNIV t \<Longrightarrow>(t@s \<in> \<Union>(range tockifications)) \<Longrightarrow> s \<in> \<Union>(range tockifications)"
+proof (induction t arbitrary: s rule: tockSequence.induct)
+  case tockSequence0
+  then show ?case
+    by auto
+next
+  case (tockSequence1 t Y)
+  then show ?case
+    apply(auto)
+    using tockificationsCaseTock'' by blast
+qed
+
+(*    \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs *)
+lemma
+  assumes "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
+  shows
+  "tttracesRRTI (U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+         (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+       \<and> (q\<^sub>1 = filtertocks\<^sub>u(p))
+       \<and> has(\<guillemotleft>p\<guillemotright>, U(P\<^sub>2 \<or> P\<^sub>3))
+       \<and> has(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, Q\<^sub>3)
+       ))
+ = { p + q\<^sub>2
+   | p q\<^sub>1 q\<^sub>2
+   . p \<in> tttracesRRFE P\<^sub>2 P\<^sub>3
+   \<and> ofiltertocks p = q\<^sub>1
+   \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesRRTI Q\<^sub>3 }"
+  apply (subst (17) TRFconcretify)
+  apply (simp add: assms)
+  apply (subst (16) TRFconcretify)
+  apply (simp add: assms)
+  apply (subst (15) TRRconcretify)
+  apply (simp add: assms)
+  apply (subst (14) TRFconcretify)
+  apply (simp add: assms)
+  apply (subst (11) TRFconcretify)
+   apply (simp add: assms)
+  apply (subst (9) TRRconcretify)
+  apply (simp add: assms)
+  apply(rdes_simp cls: tockfiltered_def has_trace_def)
+  apply(rel_auto)
+     apply(auto simp add: filtertocksApp tockificationsAppend)
+proof (goal_cases)
+
+  case (1 xa xb v va t' s')
+  obtain q\<^sub>2 where 3: "q\<^sub>2 = s' @ [otick]"
+    by blast
+  have "t' @ s' @ [otick] = t' @ q\<^sub>2"
+    by (auto simp add: 3)
+  moreover have "(\<exists>t. ((\<exists>ref pat.
+                  \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
+                   (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                    \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref, pat\<^sub>v = pat\<rparr>)) \<or>
+              \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)) \<and>
+             t' \<in> tockifications t)"
+    using "1"(2) "1"(3) by blast
+  moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
+              \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>) \<and>
+              s \<in> tockifications t)"
+    apply(simp add: 3)
+    by (smt (verit, del_insts) "1"(1) "1"(3) "1"(4) filtertocksTockifications mem_Collect_eq tockificationsAppend)
+  ultimately show ?case
+    by blast
+next
+  case (2 xa xb t' s')
+  obtain q\<^sub>2 where 3: "q\<^sub>2 = s' @ [otick]"
+    by blast
+  have "t' @ s' @ [otick] = t' @ q\<^sub>2"
+    by (auto simp add: 3)
+  moreover have "(\<exists>t. ((\<exists>ref pat.
+                 \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
+                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref, pat\<^sub>v = pat\<rparr>)) \<or>
+             \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
+              (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+               \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)) \<and>
+            t' \<in> tockifications t)"
+    using "2"(2) "2"(3) by blast
+  moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
+                 \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
+                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>) \<and>
+                 s \<in> tockifications t)"
+    apply(simp add: 3)
+    by (smt (verit, del_insts) "2"(1) "2"(3) "2"(4) filtertocksTockifications mem_Collect_eq tockificationsAppend)
+  ultimately show ?case
+    by blast
+next
+  case (3 sa q\<^sub>2 ta tb sb r p)
+obtain q\<^sub>2' where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
+    using 3 by (meson ofiltertocksAppTick)
+  then have "ofiltertocks sa @ q\<^sub>2' = sb"
+    using 3 by auto
+  then have 6: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications tb"
+    using "3" by blast
+  obtain tbl where "ofiltertocks sa \<in> tockifications tbl"
+    using "3" filtertocksTockifications by blast
+  have "tockSequence UNIV (ofiltertocks sa)"
+    using "3" ofiltertocksTockSequence tockificationsTT3i by blast
+  then obtain tbr where 7: "q\<^sub>2' \<in> tockifications tbr"
+    using 6 tockificationSplit by auto
+  have "ofiltertocks sa \<in> tockifications(filtertocks ta)"
+    using "3" filtertocksTockifications by blast
+  then have 8: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications(filtertocks ta @ tbr)"
+    using 7 by (auto simp add: tockificationsAppend)
+  have "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+    by (simp add: "5")
+ moreover have "((\<exists>v va.
+                   \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
+                    (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                     \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = v, pat\<^sub>v = va\<rparr>)) \<or>
+               \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
+                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>))"
+    using 3 by blast
+  moreover have "\<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = filtertocks ta @ tbr, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)"
+    using 3 "6" "8" tockificationsDisjoint by blast
+  moreover have "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+    using 3 "7" tockificationsAppend by fastforce
+  ultimately show ?case
+    by blast
+next
+  case (4 sa q\<^sub>2 ta tb sb)
+  obtain q\<^sub>2' where 5: "q\<^sub>2 = q\<^sub>2'@[otick]"
+    using 4 by (meson ofiltertocksAppTick)
+  then have "ofiltertocks sa @ q\<^sub>2' = sb"
+    using 4 by auto
+  then have 6: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications tb"
+    using "4" by blast
+  obtain tbl where "ofiltertocks sa \<in> tockifications tbl"
+    using "4" filtertocksTockifications by blast
+  have "tockSequence UNIV (ofiltertocks sa)"
+    using "4" ofiltertocksTockSequence tockificationsTT3i by blast
+  then obtain tbr where 7: "q\<^sub>2' \<in> tockifications tbr"
+    using 6 tockificationSplit by auto
+  have "ofiltertocks sa \<in> tockifications(filtertocks ta)"
+    using "4" filtertocksTockifications by blast
+  then have 8: "ofiltertocks sa @ q\<^sub>2' \<in> tockifications(filtertocks ta @ tbr)"
+    using 7 by (auto simp add: tockificationsAppend)
+  have "sa @ q\<^sub>2 = (sa@q\<^sub>2') @ [otick]"
+    by (simp add: "5")
+  moreover have "((\<exists>v va.
+                   \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
+                    (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                     \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = v, pat\<^sub>v = va\<rparr>)) \<or>
+               \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
+                (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                 \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = ta, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>))"
+    using "4" by blast
+  moreover have "\<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = filtertocks ta @ tbr, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = True\<rparr>)"
+    using "4" "6" "8" tockificationsDisjoint by blast
+  moreover have "(sa@q\<^sub>2') \<in> tockifications (ta @ tbr)"
+    using "4" "7" tockificationsAppend by fastforce
+  ultimately show ?case
+    by blast
+qed
+
+(*
+  apply(rdes_simp cls: assms tockfiltered_def has_trace_def)
+  apply(rel_auto)
+       apply blast
+      apply(simp_all add: ofiltertocksFinalTick)
+  using filtertocksTockifications apply blast
+  apply blast
+  using filtertocksTockifications sledgehammer
+  oops
+*)
+
+lemma tttracesTIInterrupt:
+  assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
+  shows "tttracesTI (P \<triangle> Q)
+     \<subseteq> { p
+       . p \<in> tttracesTI P
+       \<and> ofiltertocks p \<in> tttracesFE Q }
+     \<union> { p + q\<^sub>2
+       | p q\<^sub>1 q\<^sub>2
+       . p \<in> tttracesFE P
+       \<and> ofiltertocks p = q\<^sub>1
+       \<and> q\<^sub>1 + q\<^sub>2 \<in> tttracesFE Q }"
+  apply(simp add: interruptPost assms)
+  apply(rdes_simp cls: assms)
+  apply(simp add: TCpostconcretify TCpericoncretify assms)
+  apply(simp add: tockfiltered_def has_trace_def)
+  apply(rel_auto)
+  apply(simp_all add: ofiltertocksFinalTick tockfiltered_def has_trace_def)
+  using filtertocksTockifications ofiltertocksFinalTick apply blast
+  using filtertocksTockifications ofiltertocksFinalTick apply blast
+  sledgehammer
+  oops
 end

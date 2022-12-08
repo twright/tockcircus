@@ -298,7 +298,12 @@ definition "idlesuffix = idleprefix \<circ> rev"
 fun timelength :: "'\<theta> reftrace \<Rightarrow> nat" where
 "timelength (u) = length(refusallist(u))"
 
-(*
+\<comment>\<open> Filter all of the tocks in a trace. Used \<close>
+fun filtertocks :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
+"filtertocks [] = []"|
+"filtertocks (Tock X # xs) = Tock X # filtertocks xs"|
+"filtertocks (Evt e # xs) = filtertocks xs"
+
 syntax
   "_events"      :: "logic \<Rightarrow> logic" ("events\<^sub>u'(_')")
   "_tocks"       :: "logic \<Rightarrow> logic" ("tocks\<^sub>u'(_')")
@@ -310,6 +315,7 @@ syntax
   "_ev"          :: "logic \<Rightarrow> logic" ("ev\<^sub>u'(_')")
   "_tock"        :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("tock\<^sub>u'(_,_')")
   "_list_diff"   :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("listdiff\<^sub>u'(_,_')")
+  "_filtertocks" :: "logic \<Rightarrow> logic" ("filtertocks\<^sub>u'(_')")
 translations
   "events\<^sub>u(t)" == "CONST uop CONST events t"
   "tocks\<^sub>u(t)" == "CONST uop CONST tocks t"
@@ -321,6 +327,6 @@ translations
   "ev\<^sub>u(e)" == "CONST uop CONST Evt e"
   "tock\<^sub>u(t,A)" == "CONST bop CONST Tock t A"
   "listdiff\<^sub>u(x,y)" == "CONST bop CONST list_diff x y"
-*)
+  "filtertocks\<^sub>u(t)" == "CONST uop CONST filtertocks t"
 
 end

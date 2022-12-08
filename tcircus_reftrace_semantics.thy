@@ -396,6 +396,18 @@ fun tttracesRRFRI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" w
                   (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat,$pat\<acute>\<rbrakk>`)
                 \<and> s \<in> tockifications t}"
 
+fun tttracesRRFE :: "'\<theta> ttcsp \<Rightarrow> '\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesRRFE P Q = {
+  s | t s .
+  (\<not>`(\<not> P \<and> \<not>Q\<lbrakk>\<guillemotleft>False\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$pat\<acute>,$ref\<acute>\<rbrakk>)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref,$pat\<rbrakk>`)
+\<and> s \<in> tockifications t }"
+
+fun tttracesRRTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesRRTI Q = {
+  s @ [otick] | t s .
+  (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat,$pat\<acute>\<rbrakk>`)
+\<and> s \<in> tockifications t }"
+
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
 \<comment>\<open> How should p actually be used? \<close>
 fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
@@ -696,6 +708,12 @@ lemma TTT2sAppend: "t \<in> TTT2s \<Longrightarrow> s \<in> TTT2s \<Longrightarr
   apply(auto simp add: TTT2s_def)
   apply (smt (z3) Suc_lessI Suc_pred' add.right_neutral cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_Suc_1 diff_right_commute length_greater_0_conv less_Suc_eq less_not_refl list.size(3) not_add_less1 nth_append range_eqI)
   by (smt Suc_diff_Suc diff_Suc_Suc linordered_semidom_class.add_diff_inverse nat_add_left_cancel_less not_less_eq not_less_iff_gr_or_eq nth_append range_eqI)
+
+lemma TTT2sOtick: "t@[otick] \<in> TTTs \<Longrightarrow> t \<in> TTT2s"
+  apply(induct t)
+   apply(auto simp add: TTTsimps)
+  apply (metis Cons_eq_appendI length_Cons less_antisym nth_Cons_0 nth_append oevent.distinct(11) range_eqI trace_class.diff_cancel)
+  by (metis (no_types, lifting) Cons_eq_appendI gr0I length_Cons not_less_eq nth_Cons_0 nth_append oevent.distinct(11) range_eqI zero_less_diff)
 
 (* Rather intense! *)
 lemma tockificationsTTT2s: "\<Union> (range tockifications) \<subseteq> (TTT2s::'\<theta> oreftrace set)"

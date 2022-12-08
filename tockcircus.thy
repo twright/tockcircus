@@ -250,6 +250,14 @@ definition DoT :: "('e, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("do\<^sub>T'(
   \<turnstile> \<T>({a}, {0..}) ;; (\<E>(true, [], {a}, true) \<or> \<U>(true, [Evt a]))
   \<diamondop> \<T>({a}, {0..}) ;; \<F>(true, [Evt a], id\<^sub>s))"
 
+
+definition DoTock :: "('s, 'e) taction" ("dotock") where
+[rdes_def]: "DoTock =
+  \<^bold>R(true\<^sub>r 
+  \<turnstile> \<T>({}, {0..}) ;; (\<E>(true, [], {}, true) \<or> \<U>(true, []))
+  \<diamondop> \<T>({}, {0..}) ;; \<F>(true, [], id\<^sub>s))"
+
+
 lemma DoT_TC: "do\<^sub>T(e) is TC"
   by (rule Healthy_intro, rdes_eq)
 
@@ -354,13 +362,12 @@ proof -
   finally show ?thesis .
 qed
 *)
-(*
+
 lemma ExtChoice_empty:
   "ExtChoice {} P = Stop"
   apply (simp add: ExtChoice_def Stop_def rpred)
   apply(rel_auto)
   done
-*)
 
 lemma ExtChoice_single: 
   assumes "P i is TC" "peri\<^sub>R(P i) is TIP"
@@ -548,11 +555,46 @@ definition untimed_interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction
   \<diamondop> (post\<^sub>R P \<and> peri\<^sub>R Q \<or> (post\<^sub>R P ;; post\<^sub>R Q)))"
 
 
+(*  \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
+  \<turnstile> ( ((idle(peri\<^sub>R P) \<and> idle(peri\<^sub>R Q)) ;; active(peri\<^sub>R P))
+    \<or> ((idle(peri\<^sub>R P) \<and> idle(peri\<^sub>R Q)) ;; active(peri\<^sub>R Q)))
+  \<diamondop> ( ((idle(peri\<^sub>R P) \<and> idle(peri\<^sub>R Q)) ;; active(post\<^sub>R P)))
+    \<or> ((idle(peri\<^sub>R P) \<and> idle(peri\<^sub>R Q)) ;; active(post\<^sub>R Q))) *)
+
+(*
+lemma
+  "(post\<^sub>R P \<and> TC(peri\<^sub>R Q \<lbrakk>idleprefix\<^sub>u(&tt)/&tt\<rbrakk>)) = (post\<^sub>R P \<and> time(peri\<^sub>R Q))"
+  apply(rel_auto)
+proof -
+  have "post\<^sub>R Q is R2"
+    using assms
+    by (simp add: RR_implies_R2 TC_inner_closures(3) TRF_implies_TRR TRR_implies_RR)
+  thus ?thesis
+    apply(rel_auto)
+    sledgehammer
+qed
+*)
+
+definition has_trace ("has'(_,_')") where
+"has_trace t P = U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
+
+
+definition tockfiltered :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("tockfiltered'(_')") where
+"tockfiltered P =  U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>filtertocks(&tt)/&tt\<rbrakk>)"
+
+utp_const has_trace tockfiltered
+
 definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>" 69) where
 [upred_defs]:
 "P \<triangle> Q =
-  \<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
-  \<turnstile> ((idle(P)))
-  \<diamondop> (post\<^sub>R P \<and> idle(peri\<^sub>R Q)))"
+\<^bold>R((pre\<^sub>R(P) \<and> (post\<^sub>R(P) wp\<^sub>r pre\<^sub>R(Q)))
+  \<turnstile> true\<^sub>r
+  \<diamondop> ( (post\<^sub>R P \<and> tockfiltered(peri\<^sub>R Q \<or> post\<^sub>R Q) )
+    \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
+         (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
+       \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))
+       \<and> has(\<guillemotleft>p\<guillemotright>, U(peri\<^sub>R P \<or> post\<^sub>R P))
+       \<and> has(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
+       )))"
 
 end
