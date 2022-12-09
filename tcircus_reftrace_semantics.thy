@@ -6,56 +6,73 @@ begin
 
 subsection \<open> Refusal trace functions \<close>
 
-fun tooutput :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace" where
-"tooutput (Evt e # ts) = oevt e # tooutput ts"|
-"tooutput (Tock X # ts) = otock # tooutput ts"|
-"tooutput []           = []"
 
-fun torefset :: "'\<theta> set \<Rightarrow> '\<theta> refevent set" where
-"torefset X = {refevt e | e. e \<in> X}"
+fun toorefset :: "'\<theta> set \<Rightarrow> '\<theta> orefevent set" where
+"toorefset X = {orefevt e | e. e \<in> X}"
 
+fun tofinaloref :: "'\<theta> refvar \<Rightarrow> '\<theta> orefevent" where
+"tofinaloref (reftock) = oreftock"|
+"tofinaloref (refevt e) = orefevt e"
 
-lemma torefsetSubsetReftick: "torefset X \<subseteq> torefset Y \<union> {reftick} \<Longrightarrow> X \<subseteq> Y"
+definition tofinalorefset :: "'\<theta> refvar set \<Rightarrow> '\<theta> orefevent set set" where
+"tofinalorefset X = {{tofinaloref e | e. e \<in> X}, {tofinaloref e | e. e \<in> X}\<union>{oreftick}}"
+
+lemma toorefsetSubsetReftick: "toorefset X \<subseteq> toorefset Y \<union> {oreftick} \<Longrightarrow> X \<subseteq> Y"
 proof 
   fix x
-  assume 1: "torefset X \<subseteq> torefset Y \<union> {reftick}"
+  assume 1: "toorefset X \<subseteq> toorefset Y \<union> {oreftick}"
   assume 2: "x \<in> X"
-  then have "refevt x \<in> torefset X"
+  then have "orefevt x \<in> toorefset X"
     by simp
-  then have "refevt x \<in> torefset Y \<union> {reftick}"
+  then have "orefevt x \<in> toorefset Y \<union> {oreftick}"
     using "1" by blast
   thus "x \<in> Y"
     by simp
 qed
 
-lemma torefsetSubset: "torefset X \<subseteq> torefset Y \<Longrightarrow> X \<subseteq> Y"
-  by (meson semilattice_sup_class.le_supI1 torefsetSubsetReftick)
+lemma tofinalorefInjective: "tofinaloref x = tofinaloref y \<Longrightarrow> x = y"
+  by (cases x; cases y; auto)
 
-lemma torefsetInjective: "torefset X = torefset Y \<Longrightarrow> X = Y"
+lemma tofinalorefsetSubReftick: "X' \<in> tofinalorefset X \<Longrightarrow> Y' \<in> tofinalorefset Y \<Longrightarrow>  X' \<subseteq> Y' \<union> {oreftick} \<Longrightarrow> X \<subseteq> Y"
 proof -
-  assume 1: "torefset X = torefset Y"
+  assume 1: "X' \<in> tofinalorefset X" "Y' \<in> tofinalorefset Y" "X' \<subseteq> Y' \<union> {oreftick}"
   {
-    fix e
-    have "(e \<in> X) = (refevt e \<in> torefset X)"
-      by simp
-    also have "\<dots> = (refevt e \<in> torefset Y)"
-      using "1" by blast
-    also have "\<dots> = (e \<in> Y)"
-      by simp
-    finally have "(e \<in> X) = (e \<in> Y)"
-      by auto
+    fix x
+    assume 2: "x \<in> X"
+    have "tofinaloref x \<in> X'"
+      using 1(1) 2 by (auto simp add: tofinalorefset_def)
+    then have "tofinaloref x \<in> Y'\<union>{oreftick}"
+      using 1(2) 1(3) by auto
+    then have "tofinaloref x \<in> Y'"
+      using 1(2) apply(auto)
+      using tofinaloref.elims by blast
+    then have "x \<in> Y"
+      using 1(2) apply(simp add: tofinalorefset_def)
+      using orefevent.simps(3) orefevent.simps(6) tofinaloref.elims tofinalorefInjective by auto
   }
   thus ?thesis
-    by (simp add: Set.set_eqI)
+    by auto
 qed
 
-fun fromrefevent :: "'\<theta> refevent \<Rightarrow> '\<theta> set" where
-"fromrefevent (refevt e) = {e}"|
-"fromrefevent reftick = {}"|
-"fromrefevent reftock = {}"
+lemma toorefsetSubset: "toorefset X \<subseteq> toorefset Y \<Longrightarrow> X \<subseteq> Y"
+  by (meson semilattice_sup_class.le_supI1 toorefsetSubsetReftick)
 
-fun fromrefset :: "'\<theta> refevent set \<Rightarrow> '\<theta> set" where
-"fromrefset X = \<Union> {fromrefevent x | x. x\<in>X}"
+lemma tofinalorefsetSubset: "tofinalorefset X \<subseteq> tofinalorefset Y \<Longrightarrow> X \<subseteq> Y"
+  by (metis (no_types, lifting) eq_iff insert_subset tofinalorefset_def tofinalorefsetSubReftick)
+
+lemma tofinalorefsetInjective: "tofinalorefset X = tofinalorefset Y \<Longrightarrow> X = Y"
+  by (metis order_refl subset_antisym tofinalorefsetSubset)
+
+lemma torefsetInjective: "toorefset X = toorefset Y \<Longrightarrow> X = Y"
+  by (metis order_refl subset_antisym toorefsetSubset)
+
+fun fromorefevent :: "'\<theta> orefevent \<Rightarrow> '\<theta> set" where
+"fromorefevent (orefevt e) = {e}"|
+"fromorefevent oreftick = {}"|
+"fromorefevent oreftock = {}"
+
+fun fromorefset :: "'\<theta> orefevent set \<Rightarrow> '\<theta> set" where
+"fromorefset X = \<Union> {fromorefevent x | x. x\<in>X}"
 
 (* fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
@@ -65,40 +82,40 @@ fun fromrefset :: "'\<theta> refevent set \<Rightarrow> '\<theta> set" where
  * Arg 1: patience (if false then refuse tock)
  * Arg 2: unterminatability (if true then refuse tick)
  *)
-fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> refevent set" where
-"finalrefset True False X = torefset X"|
-"finalrefset True True X = torefset X \<union> {reftick}"|
-"finalrefset False False X = torefset X \<union> {reftock}"|
-"finalrefset False True X = torefset X \<union> {reftock, reftick}"
+(*
+fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> orefevent set" where
+"finalrefset False X = toorefset X"|
+"finalrefset True X = toorefset X \<union> {oreftick}"
+*)
 
 fun tockifications :: "'\<theta> reftrace \<Rightarrow> '\<theta> oreftrace set" where
 "tockifications (Evt e # ts) =
   { oevt e # t | t. t \<in> tockifications ts }"|
 "tockifications (Tock X # ts) =
-    { oref (torefset X) # otock # t | t. t \<in> tockifications ts}
-  \<union> { oref (torefset X \<union> {reftick}) # otock # t | t. t \<in> tockifications ts }"|
+    { oref (toorefset X) # otock # t | t. t \<in> tockifications ts}
+  \<union> { oref (toorefset X \<union> {oreftick}) # otock # t | t. t \<in> tockifications ts }"|
 "tockifications [] = {[]}"
 
-lemma "tockifications ([Tock {}]) = {[oref {}, otock], [oref {reftick}, otock]}"
+lemma "tockifications ([Tock {}]) = {[oref {}, otock], [oref {oreftick}, otock]}"
   by (auto)
 
-lemma "tockifications ([Tock {}, Evt 1]) = {[oref {}, otock, oevt 1], [oref {reftick}, otock, oevt 1]}"
+lemma "tockifications ([Tock {}, Evt 1]) = {[oref {}, otock, oevt 1], [oref {oreftick}, otock, oevt 1]}"
   by (auto)
 
-lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications []} = {[oref {}, otock], [oref {reftick}, otock]}"
+lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications []} = {[oref {}, otock], [oref {oreftick}, otock]}"
   by (auto)
 
 
-lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications [Evt 1]} = {[oref {}, otock, oevt 1], [oref {reftick}, otock, oevt 1]}"
+lemma "{t' @ s' | t' s' . t' \<in> tockifications [Tock {}] \<and> s' \<in> tockifications [Evt 1]} = {[oref {}, otock, oevt 1], [oref {oreftick}, otock, oevt 1]}"
   by (auto)
 
 lemma tockificationsCons: "tockifications (a # t) = {w @ t' | w t'. w \<in> tockifications [a] \<and> t' \<in> tockifications t}"
 proof (cases a)
   case (Tock X)
-  have "tockifications [Tock X] = {[oref (torefset X), otock], [oref (torefset X \<union> {reftick}), otock]}"
+  have "tockifications [Tock X] = {[oref (toorefset X), otock], [oref (toorefset X \<union> {oreftick}), otock]}"
     by (auto)
-  moreover have "tockifications ([Tock X] @ t) = {[oref (torefset X), otock] @ s | s . s \<in> tockifications t}
-                                               \<union> {[oref (torefset X \<union> {reftick}), otock] @ s | s . s \<in> tockifications t}"
+  moreover have "tockifications ([Tock X] @ t) = {[oref (toorefset X), otock] @ s | s . s \<in> tockifications t}
+                                               \<union> {[oref (toorefset X \<union> {oreftick}), otock] @ s | s . s \<in> tockifications t}"
     by auto
   ultimately show ?thesis
      by (smt (z3) Collect_cong Collect_disj_eq Tock append.simps(1) append.simps(2) append_eq_append_conv insertCI insertE singletonD singletonI)
@@ -156,28 +173,35 @@ proof -
   thus ?thesis by auto
 qed
 
-lemma torefsetRange: "reftick \<notin> X \<Longrightarrow> reftock \<notin> X \<Longrightarrow> \<exists> X'. X = torefset X'"
+lemma toorefsetRange: "oreftick \<notin> X \<Longrightarrow> oreftock \<notin> X \<Longrightarrow> \<exists> X'. X = toorefset X'"
 proof -
-  assume 1: "reftick \<notin> X"
-  assume 2: "reftock \<notin> X"
-  have 3: "\<And>x. x \<in> X \<Longrightarrow> \<exists> e. x=refevt e"
-  by (metis "1" "2" fromrefevent.cases)
-  obtain X' where 4: "X' = {e | e . refevt e \<in> X}"
+  assume 1: "oreftick \<notin> X"
+  assume 2: "oreftock \<notin> X"
+  have 3: "\<And>x. x \<in> X \<Longrightarrow> \<exists> e. x=orefevt e"
+  by (metis "1" "2" fromorefevent.cases)
+  obtain X' where 4: "X' = {e | e . orefevt e \<in> X}"
     by blast
-  have "\<And>x. x \<in> X \<Longrightarrow> x \<in> torefset X'"
+  have "\<And>x. x \<in> X \<Longrightarrow> x \<in> toorefset X'"
     using "3" "4" by auto
-  moreover have "\<And>x. x \<in> torefset X' \<Longrightarrow> x \<in> X"
+  moreover have "\<And>x. x \<in> toorefset X' \<Longrightarrow> x \<in> X"
     using "4" by auto
   ultimately show ?thesis
     by auto
 qed
 
-lemma torefsetReftick: "reftick \<notin> torefset X"
+lemma torefsetReftick: "oreftick \<notin> toorefset X"
   by simp
 
-lemma torefsetReftock: "reftock \<notin> torefset X"
+lemma torefsetReftock: "oreftock \<notin> toorefset X"
   by simp
 
+lemma tofinalorefsetTock: "X' \<in> tofinalorefset X \<Longrightarrow> ((oreftock \<in> X') = (reftock \<in> X))"
+  by (smt (verit, ccfv_threshold) UnE Un_upper1 empty_iff in_mono insert_iff mem_Collect_eq orefevent.distinct(5) tofinaloref.simps(1) tofinalorefInjective tofinalorefset_def)
+
+lemma tofinalorefsetEvt: "X' \<in> tofinalorefset X \<Longrightarrow> ((orefevt e \<in> X') = (refevt e \<in> X))"
+  by (smt (z3) UnE Un_upper1 in_mono insert_iff mem_Collect_eq orefevent.simps(3) singletonD tofinaloref.simps(2) tofinalorefInjective tofinalorefset_def)
+
+(*
 lemma finalrefsetTick: "reftick \<in> finalrefset p refterm X = refterm"
   by (smt (z3) UnE UnI2 finalrefset.elims insertCI refevent.distinct(5) singletonD torefsetReftick)
 
@@ -201,7 +225,7 @@ proof -
   ultimately show "?thesis"
     by meson
 qed
-
+*)
 
 lemma tockificationsEmpty: "({[]} = tockifications t) = (t = [])"
 proof -
@@ -249,7 +273,7 @@ next
 qed
 
 lemma tockificationsCaseTock:
-  assumes "oref (torefset X) # otock # s \<in> tockifications t"
+  assumes "oref (toorefset X) # otock # s \<in> tockifications t"
   shows "\<exists> t'. (t = Tock X # t' \<and> s \<in> tockifications t')"
 proof (cases t rule: tockifications.cases)
   case (1 e ts)
@@ -267,7 +291,7 @@ qed
 
 
 lemma tockificationsCaseTockReftick:
-  assumes "oref (torefset X \<union> {reftick}) # otock # s \<in> tockifications t"
+  assumes "oref (toorefset X \<union> {oreftick}) # otock # s \<in> tockifications t"
   shows "\<exists> t'. (t = Tock X # t' \<and> s \<in> tockifications t')"
 proof (cases t rule: tockifications.cases)
   case (1 e ts)
@@ -285,7 +309,7 @@ qed
 
 lemma tockificationsCaseTock':
   assumes "oref X # otock # s \<in> tockifications t"
-  shows "\<exists> t' Y. (((X = torefset Y) \<or> (X = torefset Y \<union> {reftick})) \<and> (t = Tock Y # t') \<and> s \<in> tockifications t')"
+  shows "\<exists> t' Y. (((X = toorefset Y) \<or> (X = toorefset Y \<union> {oreftick})) \<and> (t = Tock Y # t') \<and> s \<in> tockifications t')"
 proof (cases t rule: tockifications.cases)
   case (1 e ts)
   then show ?thesis
@@ -302,7 +326,7 @@ qed
 
 lemma tockificationsCaseTock'':
   assumes "oref X # s \<in> tockifications t"
-  shows "\<exists> t' s' Y. (((X = torefset Y) \<or> (X = torefset Y \<union> {reftick})) \<and> (t = Tock Y # t') \<and> (s = otock # s') \<and> s' \<in> tockifications t')"
+  shows "\<exists> t' s' Y. (((X = toorefset Y) \<or> (X = toorefset Y \<union> {oreftick})) \<and> (t = Tock Y # t') \<and> (s = otock # s') \<and> s' \<in> tockifications t')"
 proof (cases t rule: tockifications.cases)
   case (1 e ts)
   then show ?thesis
@@ -331,7 +355,7 @@ next
   {
     have "\<exists> t''. t = a # t'' \<and> s'' \<in> tockifications t''" proof (cases a)
       case (Tock X)
-      consider "s' = [oref (torefset X), otock]" | "s' = [oref (torefset X \<union> {reftick}), otock]"
+      consider "s' = [oref (toorefset X), otock]" | "s' = [oref (toorefset X \<union> {oreftick}), otock]"
         using 1 4 Tock by auto
       then show ?thesis
         apply(cases)
@@ -363,10 +387,12 @@ next
     using tockificationsDisjoint by blast
 qed
 
+(*
 subsection \<open> Traces \<close>
 
 fun traces :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "traces P = { tooutput t | t . \<not>`\<not>P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,true,false,true/$tr,$tr\<acute>,$ok,$wait,$ok\<acute>\<rbrakk>` }"
+*)
 (* `(pre\<^sub>R(P) \<and> post\<^sub>R(P))\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>` *)
 
 abbreviation "ET \<equiv> {[]}"
@@ -391,21 +417,22 @@ fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Righta
 subsection \<open> Refusal Traces \<close>
 
 
-fun tttracesRRFRI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesRRFRI (Q) = { s@[oref (finalrefset False refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
-                  (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat,$pat\<acute>\<rbrakk>`)
-                \<and> s \<in> tockifications t}"
+fun tttracesRRFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesRRFR (Q) = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+                      (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref\<rbrakk>`)
+                    \<and> s \<in> tockifications t
+                    \<and> X' \<in> tofinalorefset X }"
 
 fun tttracesRRFE :: "'\<theta> ttcsp \<Rightarrow> '\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesRRFE P Q = {
   s | t s .
-  (\<not>`(\<not> P \<and> \<not>Q\<lbrakk>\<guillemotleft>False\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$pat\<acute>,$ref\<acute>\<rbrakk>)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref,$pat\<rbrakk>`)
+  (\<not>`(\<not> P \<and> \<not>Q\<lbrakk>\<guillemotleft>rfnil\<guillemotright>/$ref\<acute>\<rbrakk>)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ref\<rbrakk>`)
 \<and> s \<in> tockifications t }"
 
 fun tttracesRRTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesRRTI Q = {
   s @ [otick] | t s .
-  (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat,$pat\<acute>\<rbrakk>`)
+  (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref\<rbrakk>`)
 \<and> s \<in> tockifications t }"
 
 \<comment>\<open> Need to introduce some final refusals: what is the rule here? \<close>
@@ -414,52 +441,11 @@ fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
 "tttracesFE P = { s | t s.
                   \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                 \<and> s \<in> tockifications t }"
-fun tttracesFRI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFRI P = { s@[oref (finalrefset False refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
-                  (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`)
-                \<and> s \<in> tockifications t}"
-fun tttracesFRP :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFRP P = { s@[oref (finalrefset True refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (refterm::bool) (s::'\<theta> oreftrace).
+fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
+"tttracesFR P = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X' ::'\<theta> orefevent set) (s::'\<theta> oreftrace).
                   (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
-                \<and> s \<in> tockifications t}"
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = ((tttracesFRI P) \<union> (tttracesFRP P))"
-                (* \<and> (patient P t X \<longrightarrow> acctock) *)
-(*
-"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  (if acctock
-                   then
-                      \<not>`\<not>(peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`
-                   else
-                      \<not>`\<not>((  (\<not> peri\<^sub>R P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)
-                           \<and> (peri\<^sub>R P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk>)
-                           )\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`)
-                \<and> s \<in> tockifications t}" *)
-(*
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  (\<forall> (p::bool).
-                  (p \<longrightarrow> acctock) \<and>
-                   \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`) 
-                \<and> s \<in> tockifications t}"
-*)
-(*
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`
-                \<and> s \<in> tockifications t}"
-*)
-(*
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`
-                \<and> s \<in> tockifications t}" *)
-(*
-fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref (finalrefset p refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (p::bool) (q::bool) (refterm::bool) (s::'\<theta> oreftrace).
-                  \<not>`(\<not>peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`
-                \<and> (q \<longrightarrow> p)
-                \<and> s \<in> tockifications t}" *)
+                \<and> s \<in> tockifications t
+                \<and> X' \<in> tofinalorefset X}"
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { s @ [otick] | t s .
                   \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
@@ -505,19 +491,19 @@ definition TT1 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
 
 definition TT2 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
 [TTsimps]: "TT2 P = (\<forall> \<rho> \<sigma> X Y. \<rho> @ [oref X] @ \<sigma> \<in> P
-                   \<and> (Y \<inter> ({refevt e| e. \<rho> @ [oevt e] \<in> P}
-                         \<union> (if \<rho> @ [otick] \<in> P then {reftick} else {})
-                         \<union> (if \<rho> @ [oref X, otock] \<in> P then {reftock} else {})) = {})
+                   \<and> (Y \<inter> ({orefevt e| e. \<rho> @ [oevt e] \<in> P}
+                         \<union> (if \<rho> @ [otick] \<in> P then {oreftick} else {})
+                         \<union> (if \<rho> @ [oref X, otock] \<in> P then {oreftock} else {})) = {})
                  \<longrightarrow> \<rho> @ [oref (X \<union> Y)] \<in> P)"
 
 definition TT3i :: "'\<theta> oreftrace \<Rightarrow> bool"  where
-[TTsimps]: "TT3i t = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X, otock] @ \<sigma> = t \<longrightarrow> reftock \<notin> X)"
+[TTsimps]: "TT3i t = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X, otock] @ \<sigma> = t \<longrightarrow> oreftock \<notin> X)"
 
 definition TT3 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
 [TTsimps]: "TT3 P = (\<forall> t. t \<in> P \<longrightarrow> TT3i t)"
 
 definition TT4 :: "('\<theta> oreftrace) set \<Rightarrow> bool"  where
-[TTsimps]: "TT4 P = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X] @ \<sigma> \<in> P \<longrightarrow> \<rho> @ [oref (X \<union> {reftick})] @ \<sigma> \<in> P)"
+[TTsimps]: "TT4 P = (\<forall> \<rho> \<sigma> X. \<rho> @ [oref X] @ \<sigma> \<in> P \<longrightarrow> \<rho> @ [oref (X \<union> {oreftick})] @ \<sigma> \<in> P)"
 
 
 subsubsection \<open> Designated Subsets \<close>
@@ -534,8 +520,6 @@ lemma emptyTTTs: "ET \<subseteq> TTTs"
   by (simp add: TTTsimps)
 
 definition [TTTsimps]: "FR \<equiv> {t@[oref X] | t X  . True} \<inter> TTTs"
-definition [TTTsimps]: "FRI \<equiv> {t@[oref X] | t X  . reftock \<in> X} \<inter> TTTs"
-definition [TTTsimps]: "FRP \<equiv> {t@[oref X] | t X  . reftock \<notin> X} \<inter> TTTs"
 definition [TTTsimps]: "TI \<equiv> {t@[otick] | t . True} \<inter> TTTs"
 definition [TTTsimps]: "FE \<equiv> TTTs - (FR \<union> TI)"
 
@@ -574,12 +558,6 @@ proof -
 qed
 
 lemma coveringRegions: "(TTTs::'\<theta> oreftrace set) = FE \<union> FR \<union> TI" (is "TTTs = ?regions")
-  by (auto simp add: TTTsimps)
-
-lemma disjointFR: "FRI \<inter> FRP = {}"
-  by (auto simp add: TTTsimps)
-
-lemma coveringFR: "FRI \<union> FRP = FR"
   by (auto simp add: TTTsimps)
 
 lemma TTT1TickedOrUnticked: "TTT1 = tickeds \<union> untickeds"
@@ -683,12 +661,6 @@ proof
               tockificationsUnticked)
 qed
 
-lemma tttracesFRITTT1: "tttracesFRI P \<subseteq> (TTT1::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT1)
-
-lemma tttracesFRPTTT1: "tttracesFRP P \<subseteq> (TTT1::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT1)
-
 lemma tttracesTITTT1: "tttracesTI P \<subseteq> (TTT1::'\<theta> oreftrace set)"
   by (simp add: TTT1_def)
      (smt (verit, ccfv_threshold) Collect_mono TTT1TickedOrUnticked TTT1_def
@@ -709,11 +681,13 @@ lemma TTT2sAppend: "t \<in> TTT2s \<Longrightarrow> s \<in> TTT2s \<Longrightarr
   apply (smt (z3) Suc_lessI Suc_pred' add.right_neutral cancel_ab_semigroup_add_class.add_diff_cancel_left' diff_Suc_1 diff_right_commute length_greater_0_conv less_Suc_eq less_not_refl list.size(3) not_add_less1 nth_append range_eqI)
   by (smt Suc_diff_Suc diff_Suc_Suc linordered_semidom_class.add_diff_inverse nat_add_left_cancel_less not_less_eq not_less_iff_gr_or_eq nth_append range_eqI)
 
+(*
 lemma TTT2sOtick: "t@[otick] \<in> TTTs \<Longrightarrow> t \<in> TTT2s"
   apply(induct t)
-   apply(auto simp add: TTTsimps)
+  apply(auto simp add: TTTsimps)
   apply (metis Cons_eq_appendI length_Cons less_antisym nth_Cons_0 nth_append oevent.distinct(11) range_eqI trace_class.diff_cancel)
   by (metis (no_types, lifting) Cons_eq_appendI gr0I length_Cons not_less_eq nth_Cons_0 nth_append oevent.distinct(11) range_eqI zero_less_diff)
+*)
 
 (* Rather intense! *)
 lemma tockificationsTTT2s: "\<Union> (range tockifications) \<subseteq> (TTT2s::'\<theta> oreftrace set)"
@@ -733,7 +707,7 @@ proof -
           by (smt (verit) mem_Collect_eq tockificationsCons)
         then consider
           "\<exists> e. sh = [oevt e]"
-        | "\<exists> X. (sh = [oref X, otock]) \<and> reftock \<notin> X"
+        | "\<exists> X. (sh = [oref X, otock]) \<and> oreftock \<notin> X"
           by(cases a; auto)
         then have "sh \<in> TTT2s" proof(cases)
           case 1
@@ -773,12 +747,6 @@ proof
   ultimately show "x \<in> TTT2"
     using TTT2Append by blast
 qed
-
-lemma tttracesFRITTT2: "tttracesFRI P \<subseteq> (TTT2::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT2)
-
-lemma tttracesFRPTTT2: "tttracesFRP P \<subseteq> (TTT2::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT2)
   
 lemma tttracesTITTT2: "tttracesTI P \<subseteq> (TTT2::'\<theta> oreftrace set)"
 proof
@@ -846,7 +814,7 @@ proof -
           by (smt (verit) mem_Collect_eq tockificationsCons)
         then consider
           "\<exists> e. sh = [oevt e]"
-        | "\<exists> X. (sh = [oref X, otock]) \<and> reftock \<notin> X"
+        | "\<exists> X. (sh = [oref X, otock]) \<and> oreftock \<notin> X"
           by (cases x; auto)
         then have "sh \<in> TTT3" proof (cases)
           case 1
@@ -887,12 +855,6 @@ proof
   ultimately show "x \<in> TTT3"
     using TTT3Append by blast
 qed
-
-lemma tttracesFRITTT3: "tttracesFRI P \<subseteq> (TTT3::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT3)
-
-lemma tttracesFRPTTT3: "tttracesFRP P \<subseteq> (TTT3::'\<theta> oreftrace set)"
-  by (metis Un_subset_iff tttracesFR.simps tttracesFRTTT3)
 
 lemma tttracesTITTT3: "tttracesTI P \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof
@@ -972,11 +934,11 @@ proof (simp add: TTsimps; rule; rule; rule; rule; induction t arbitrary: s \<rho
     by auto
 next
   case (Cons x t)
-  then show "reftock \<notin> X" proof (cases x)
+  then show "oreftock \<notin> X" proof (cases x)
     case (Tock Y)
-    then obtain w Y' where 1: "\<rho> @ [oref X, otock] @ \<sigma> = oref Y' # otock # w" and 2: "(Y' = torefset Y) \<or> (Y' = torefset Y \<union> {reftick})"  and 3: "w \<in> tockifications t"
+    then obtain w Y' where 1: "\<rho> @ [oref X, otock] @ \<sigma> = oref Y' # otock # w" and 2: "(Y' = toorefset Y) \<or> (Y' = toorefset Y \<union> {oreftick})"  and 3: "w \<in> tockifications t"
       using Cons by auto
-    moreover have "Y' \<subseteq> torefset Y \<union> {reftick}"
+    moreover have "Y' \<subseteq> toorefset Y \<union> {oreftick}"
       using "2" by blast
     ultimately show ?thesis
     proof (cases "\<rho>")
@@ -1069,7 +1031,7 @@ proof (induction \<rho> arbitrary: s rule: length_induct)
       then obtain \<rho>' where 6: "\<rho> = oref Y # \<rho>'" and 5: "length \<rho>' < length \<rho>"
         by (metis 4 Zero_not_Suc hd_append length_0_conv length_Suc_conv lessI list.sel(1))
       then obtain t' s' Y' where 7: 
-          "(Y = torefset Y') \<or> (Y = torefset Y' \<union> {reftick})" and 8: "s = Tock Y' # t'" and 9: "\<rho>' @ oref X # \<sigma> = otock # s'" and 10: "s' \<in> tockifications t'"
+          "(Y = toorefset Y') \<or> (Y = toorefset Y' \<union> {oreftick})" and 8: "s = Tock Y' # t'" and 9: "\<rho>' @ oref X # \<sigma> = otock # s'" and 10: "s' \<in> tockifications t'"
         by (metis append_Cons b tockificationsCaseTock'')
       obtain \<rho>'' where 11: "\<rho>' = otock # \<rho>''"
         by (metis "9" hd_Cons_tl hd_append list.sel(1) oevent.distinct(3))
@@ -1097,14 +1059,14 @@ proof (clarsimp simp add: TTsimps)
                        and 5: "oref X # \<sigma> \<in> tockifications s''"
     by (meson tockificationsRefSplit)
   then obtain s''' \<sigma>' Y
-      where 6: "(X = torefset Y) \<or> (X = torefset Y \<union> {reftick})"
+      where 6: "(X = toorefset Y) \<or> (X = toorefset Y \<union> {oreftick})"
         and 7: "s'' = Tock Y # s'''"
         and 8: "\<sigma> = otock # \<sigma>'"
         and 9: "\<sigma>' \<in> tockifications s'''"
     by (meson tockificationsCaseTock'')
-  then have "oref (insert reftick X) # otock # \<sigma>' \<in> tockifications s''"
+  then have "oref (insert oreftick X) # otock # \<sigma>' \<in> tockifications s''"
     by (simp add: 4; meson insert_absorb2)
-  then show "\<rho> @ oref (insert reftick X) # \<sigma> \<in> tockifications s"
+  then show "\<rho> @ oref (insert oreftick X) # \<sigma> \<in> tockifications s"
     using "3" "4" "8" tockificationsAppend by fastforce
 qed
 
@@ -1139,15 +1101,9 @@ lemma tockificationsNoTI: "ta @ [otick] \<notin> \<Union> (range tockifications)
 
 lemma tttracesDisjointRegions:
   shows "tttracesFR P \<inter> FE = {}"
-    and "tttracesFRP P \<inter> FE = {}"
-    and "tttracesFRI P \<inter> FE = {}"
     and "tttracesTI P \<inter> FE = {}"
     and "tttracesFE P \<inter> FR = {}"
-    and "tttracesFE P \<inter> FRP = {}"
-    and "tttracesFE P \<inter> FRI = {}"
     and "tttracesTI P \<inter> FR = {}"
-    and "tttracesTI P \<inter> FRP = {}"
-    and "tttracesTI P \<inter> FRI = {}"
     and "tttracesFE P \<inter> TI = {}"
     and "tttracesFR P \<inter> TI = {}"
   apply(auto simp add: TTTsimps)
@@ -1156,31 +1112,13 @@ lemma tttracesDisjointRegions:
 
 lemma tttracesRegionSubsets:
   shows "tttracesFE P \<subseteq> FE"
-    and "tttracesFRI P \<subseteq> FRI"
-    and "tttracesFRP P \<subseteq> FRP"
     and "tttracesFR P \<subseteq> FR"
     and "tttracesTI P \<subseteq> TI"
 proof -
   have "tttracesFE P = tttracesFE P \<inter> TTTs"
     using tockificationsTTTs by fastforce
   thus "tttracesFE P \<subseteq> FE"
-    by (metis Int_Un_eq(3) Un_Int_eq(2) coveringRegions distinctRegions(3) distrib_lattice_class.inf_sup_distrib1 semilattice_inf_class.inf.orderI tttracesDisjointRegions(11) tttracesDisjointRegions(5))
-next
-  have "tttracesFRI P = tttracesFRI P \<inter> TTTs"
-    by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRITTT1 tttracesFRITTT2 tttracesFRITTT3)
-  also have "\<dots> \<subseteq> FRI"
-    apply (auto simp add: FRI_def)
-    by (metis finalrefsetTock)
-  finally show "tttracesFRI P \<subseteq> FRI"
-    by blast
-next
-  have "tttracesFRP P = tttracesFRP P \<inter> TTTs"
-    by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRPTTT1 tttracesFRPTTT2 tttracesFRPTTT3)
-  also have "\<dots> \<subseteq> FRP"
-    apply (auto simp add: FRP_def)
-    by (metis finalrefsetTock)
-  finally show "tttracesFRP P \<subseteq> FRP"
-    by blast
+    by (metis bounded_lattice_bot_class.inf_bot_right coveringRegions distrib_lattice_class.inf_sup_distrib1 lattice_class.inf_sup_aci(1) lattice_class.sup_inf_absorb semilattice_inf_class.inf.absorb_iff2 tttracesDisjointRegions(3) tttracesDisjointRegions(5))
 next
   have "tttracesFR P = tttracesFR P \<inter> TTTs"
     by (metis lattice_class.inf_sup_aci(2) semilattice_inf_class.inf.absorb1 tttracesFRTTT1 tttracesFRTTT2 tttracesFRTTT3)
@@ -1197,37 +1135,8 @@ next
     by blast
 qed
 
-lemma tttracesFRSubregions:
-  shows "tttracesFR P \<inter> FRI = tttracesFRI P"
-    and "tttracesFR P \<inter> FRP = tttracesFRP P"
-proof -
-  have 1: "tttracesFRP P \<inter> FRI = {}"
-    by (metis disjointFR disjoint_iff_not_equal in_mono tttracesRegionSubsets(3))
-  have "tttracesFR P \<inter> FRI = (tttracesFRI P \<union> tttracesFRP P) \<inter> FRI"
-    by simp
-  also have "\<dots> = ((tttracesFRI P \<inter> FRI) \<union> (tttracesFRP P \<inter> FRI))"
-    by blast
-  also have "\<dots> = tttracesFRI P"
-    apply(simp only: 1)
-    by (metis boolean_algebra_cancel.sup0 semilattice_inf_class.inf.absorb1 tttracesRegionSubsets(2))
-  finally show "tttracesFR P \<inter> FRI = tttracesFRI P" .
-next
-  have 2: "tttracesFRI P \<inter> FRP = {}"
-    by (metis disjointFR disjoint_iff_not_equal in_mono tttracesRegionSubsets(2))
-  have "tttracesFR P \<inter> FRP = (tttracesFRI P \<union> tttracesFRP P) \<inter> FRP"
-    by simp
-  also have "\<dots> = ((tttracesFRI P \<inter> FRP) \<union> (tttracesFRP P \<inter> FRP))"
-    by blast
-  also have "\<dots> = tttracesFRP P"
-    apply(simp only: 2)
-    by (metis bounded_semilattice_sup_bot_class.sup_bot_left semilattice_inf_class.inf.absorb1 tttracesRegionSubsets(3))
-  finally show "tttracesFR P \<inter> FRP = tttracesFRP P" .  
-qed
-
 lemma tttracesSubregions:
   shows "tttraces P \<inter> FE = tttracesFE P"
-    and "tttraces P \<inter> FRI = tttracesFRI P"
-    and "tttraces P \<inter> FRP = tttracesFRP P"
     and "tttraces P \<inter> FR = tttracesFR P"
     and "tttraces P \<inter> TI = tttracesTI P"
 proof -
@@ -1244,36 +1153,6 @@ proof -
   finally show "tttraces P \<inter> FE = tttracesFE P"
     by blast
 next
-  have "tttraces P \<inter> FRP = TTTs \<inter> tttraces P \<inter> FRP"
-    using TTTStructure by blast
-  also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FRP)
-                        \<union> (tttracesFR P \<inter> FRP)
-                        \<union> (tttracesTI P \<inter> FRP))"
-    by (simp add: Int_Un_distrib2 semilattice_inf_class.inf.assoc)
-  also have "\<dots> = TTTs \<inter> tttracesFRP P \<inter> FRP"
-    apply (auto simp only: disjointRegions distinctRegions coveringFR tttracesDisjointRegions)
-    apply (metis IntI tttracesFRSubregions(2))
-    by (metis IntD1 tttracesFRSubregions(2))
-  also have "\<dots> = tttracesFRP P"
-    by (metis (no_types, lifting) FRP_def semilattice_inf_class.inf.assoc semilattice_inf_class.inf.right_idem semilattice_inf_class.inf_commute tttracesFRSubregions(2))
-  finally show "tttraces P \<inter> FRP = tttracesFRP P"
-    by blast
-next
-  have "tttraces P \<inter> FRI = TTTs \<inter> tttraces P \<inter> FRI"
-    using TTTStructure by blast
-  also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FRI)
-                        \<union> (tttracesFR P \<inter> FRI)
-                        \<union> (tttracesTI P \<inter> FRI))"
-    by (simp add: Int_Un_distrib2 semilattice_inf_class.inf.assoc)
-  also have "\<dots> = TTTs \<inter> tttracesFRI P \<inter> FRI"
-    apply (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
-    apply (metis IntI tttracesFRSubregions(1))
-    by (metis IntD1 tttracesFRSubregions(1))
-  also have "\<dots> = tttracesFRI P"
-    by (metis (no_types, lifting) FRI_def semilattice_inf_class.inf.assoc semilattice_inf_class.inf.right_idem semilattice_inf_class.inf_commute tttracesFRSubregions(1))
-  finally show "tttraces P \<inter> FRI = tttracesFRI P"
-    by blast
-next
   have "tttraces P \<inter> FR = TTTs \<inter> tttraces P \<inter> FR"
     using TTTStructure by blast
   also have "\<dots> = TTTs \<inter> ((tttracesFE P \<inter> FR)
@@ -1283,7 +1162,7 @@ next
   also have "\<dots> = TTTs \<inter> tttracesFR P \<inter> FR"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesFR P"
-    by (metis (no_types, lifting) FR_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(4))
+    by (metis (no_types, lifting) FR_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(2))
   finally show "tttraces P \<inter> FR = tttracesFR P"
     by blast
 next
@@ -1296,7 +1175,7 @@ next
   also have "\<dots> = TTTs \<inter> tttracesTI P \<inter> TI"
     by (auto simp only: disjointRegions distinctRegions tttracesDisjointRegions)
   also have "\<dots> = tttracesTI P"
-    by (metis (no_types, lifting) TI_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(5))
+    by (metis (no_types, lifting) TI_def Int_absorb1 Int_absorb2 Int_subset_iff tttracesRegionSubsets(3))
   finally show "tttraces P \<inter> TI = tttracesTI P"
     by blast
 qed
@@ -1322,22 +1201,6 @@ proof -
     by blast
 qed
 
-
-lemma tttracesEqFR:
-  assumes "B \<subseteq> (TTTs::'\<theta> oreftrace set)"
-      and "tttracesFE P = B \<inter> FE"
-      and "tttracesFRI P = B \<inter> FRI"
-      and "tttracesFRP P = B \<inter> FRP"
-      and "tttracesTI P = B \<inter> TI"
-    shows "tttraces P = B"
-proof (rule tttracesEq)
-  show "B \<subseteq> (TTTs::'\<theta> oreftrace set)" "tttracesFE P = B \<inter> FE" "tttracesTI P = B \<inter> TI"
-    using assms by auto
-next
-  show "tttracesFR P = B \<inter> FR"
-    by (metis Int_Un_distrib assms(3) assms(4) coveringFR tttracesFR.simps)
-qed
-
 lemma tttracesEqRem:
   assumes "tttracesFE P = (B - FR - TI::'\<theta> oreftrace set)"
       and "tttracesFR P = B \<inter> FR"
@@ -1350,20 +1213,6 @@ proof -
     using assms(1) assms(2) assms(3) calculation by auto
   finally show "tttraces P = B"
     by blast
-qed
-
-lemma tttracesEqFRRem:
-  assumes "tttracesFE P = (B - FR - TI::'\<theta> oreftrace set)"
-      and "tttracesFRI P = B \<inter> FRI"
-      and "tttracesFRP P = B \<inter> FRP"
-      and "tttracesTI P = B \<inter> TI"
-    shows "tttraces P = B"
-proof (rule tttracesEqRem)
-  show "tttracesFE P = (B - FR - TI)" "tttracesTI P = B \<inter> TI"
-    using assms by auto
-next
-  show "tttracesFR P = B \<inter> FR"
-    by (metis Int_Un_distrib assms(2) assms(3) coveringFR tttracesFR.simps)
 qed
 
 lemma tttracesCalc:

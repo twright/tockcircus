@@ -16,12 +16,12 @@ end
 lemma power_replicate: "[x]^n = replicate n x"
   by (induct n; simp)
 
-datatype '\<theta> refevent = refevt '\<theta> | reftick | reftock
+datatype '\<theta> orefevent = orefevt '\<theta> | oreftick | oreftock
 
 datatype '\<theta> tev = Tock "'\<theta> set" \<comment> \<open> Passage of time, which we term and ``idle'' event \<close>
                 | Evt '\<theta>                    \<comment> \<open> Other, ``active'' events \<close>
 
-datatype '\<theta> oevent = oref "('\<theta>  refevent) set" | oevt '\<theta> | otock | otick
+datatype '\<theta> oevent = oref "('\<theta>  orefevent) set" | oevt '\<theta> | otock | otick
 
 type_synonym '\<theta> reftrace = "('\<theta> tev) list"
 

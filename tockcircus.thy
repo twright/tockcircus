@@ -208,20 +208,19 @@ text \<open> A timed deadlock does not terminate, but permits any period of time
   in a quiescent state where another $tock$ can occur. \<close>
 
 definition Stop :: "('s,'e) taction" where
-[rdes_def]: "Stop = \<^bold>R(true\<^sub>r \<turnstile> \<T>({}, {0..}) ;; \<E>(true, [], {}, true) \<diamondop> false)"
+[rdes_def]: "Stop = \<^bold>R(true\<^sub>r \<turnstile> \<T>({}, {0..}) ;; \<E>(true, [], {reftock}) \<diamondop> false)"
 
 lemma "true\<^sub>r is TRC"
   apply (simp add: closure)
   done
 
-lemma "\<T>({}, {0..}) ;; \<E>(true, [], {}, true) is TRR"
+lemma "\<T>({}, {0..}) ;; \<E>(true, [], {reftock}) is TRR"
   apply(rule Healthy_intro)
   apply(trr_auto)
   done
 
-lemma "(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<sqsubseteq> \<U>(true, [])"
-  apply(rel_simp)
-  oops
+lemma "(\<T>({}, {0..}) ;; \<E>(true, [], {reftock})) \<sqsubseteq> \<U>(true, [])"
+  by (rel_simp)
 
 lemma "false is TRF"
   apply (simp add: closure)
@@ -235,7 +234,7 @@ lemma Stop_TC [closure]: "Stop is TC"
 text \<open> An untimed deadlock is stable, but does not accept any events. \<close>
 
 definition Stop\<^sub>U :: "('s,'e) taction" where
-[rdes_def]: "Stop\<^sub>U = \<^bold>R(true\<^sub>r \<turnstile> \<E>(true, [], {}, false) \<diamondop> false)"
+[rdes_def]: "Stop\<^sub>U = \<^bold>R(true\<^sub>r \<turnstile> \<E>(true, [], {}) \<diamondop> false)"
 
 lemma Stop\<^sub>U_TC [closure]: "Stop\<^sub>U is TC"
   by (rule Healthy_intro, rdes_eq)
@@ -247,14 +246,14 @@ text \<open> Thomas: this correspondence has now been proven \<close>
 definition DoT :: "('e, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("do\<^sub>T'(_')") where
 [rdes_def]: "DoT a =
   \<^bold>R(true\<^sub>r 
-  \<turnstile> \<T>({a}, {0..}) ;; (\<E>(true, [], {a}, true) \<or> \<U>(true, [Evt a]))
+  \<turnstile> \<T>({a}, {0..}) ;; (\<E>(true, [], {refevt a,reftock}) \<or> \<U>(true, [Evt a]))
   \<diamondop> \<T>({a}, {0..}) ;; \<F>(true, [Evt a], id\<^sub>s))"
 
 
 definition DoTock :: "('s, 'e) taction" ("dotock") where
 [rdes_def]: "DoTock =
   \<^bold>R(true\<^sub>r 
-  \<turnstile> \<T>({}, {0..}) ;; (\<E>(true, [], {}, true) \<or> \<U>(true, []))
+  \<turnstile> \<T>({}, {0..}) ;; (\<E>(true, [], {reftock}) \<or> \<U>(true, []))
   \<diamondop> \<T>({}, {0..}) ;; \<F>(true, [], id\<^sub>s))"
 
 
@@ -264,7 +263,7 @@ lemma DoT_TC: "do\<^sub>T(e) is TC"
 definition Wait :: "(nat, 's) uexpr \<Rightarrow> ('s,'e) taction" where
 [rdes_def]: "Wait n = 
   \<^bold>R(true\<^sub>r 
-    \<turnstile> ((\<T>({}, {0..<n}) ;; \<E>(true, [], {}, true)) 
+    \<turnstile> ((\<T>({}, {0..<n}) ;; \<E>(true, [], {reftock})) 
        \<or> (\<T>({}, {n}) ;; \<U>(true, [])))
     \<diamondop> \<T>({}, {n}))"
 
@@ -302,16 +301,16 @@ lemma Wait_Stop: "Wait m ;; Stop = Stop"
 lemma "\<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T ;; do\<^sub>T(a) ;; \<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T = 
         \<^bold>R (\<^U>(R1 true) \<turnstile>
          (\<U>(true, []) \<or>
-          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {a}, true) \<or>
+          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {refevt a,reftock}) \<or>
           \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
          \<F>(true, [], \<^U>([x \<mapsto>\<^sub>s &x + 1])) ;; \<T>({a}, {0..}) ;; \<F>(true, [Evt a], \<^U>([x \<mapsto>\<^sub>s &x + 1])))"
   by (rdes_simp, simp add: rpred seqr_assoc usubst)
 
 lemma "Wait(m) ;; do\<^sub>T(a) ;; \<langle>[x \<mapsto>\<^sub>s &x + 1]\<rangle>\<^sub>T = 
       \<^bold>R (true\<^sub>r \<turnstile>
-        (\<T>({}, {0..<m}) ;; \<E>(true, [], {}, true) \<or>
+        (\<T>({}, {0..<m}) ;; \<E>(true, [], {reftock}) \<or>
          \<T>({}, {m}) ;; \<U>(true, []) \<or> 
-         \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {a}, true) \<or> 
+         \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<E>(true, [], {refevt a,reftock}) \<or> 
          \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<U>(true, [Evt a])) \<diamondop>
          \<T>({}, {m}) ;; \<T>({a}, {0..}) ;; \<F>(true, [Evt a], [x \<mapsto>\<^sub>s &x + 1]))"
   apply (rdes_simp)
@@ -459,7 +458,7 @@ proof -
     by (simp add: extChoice_def rpred closure assms Healthy_if rdes, metis (no_types, lifting) rdes_tri_eq_intro)
 qed
 
-lemma [rpred]: "active(\<T>(X, A) ;; \<E>(s, [], E, p)) = false"
+lemma [rpred]: "active(\<T>(X, A) ;; \<E>(s, [], E)) = false"
   by (rel_auto)
 
 lemma "Skip \<box> Stop = Skip"
@@ -482,16 +481,18 @@ lemma "Wait(n + 1) \<box> Div = Div"
   by (rdes_eq)
 
 (* Currently broken *)
+(*
 lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
-  apply (rdes_eq)
-  oops
-
+  by (rdes_eq)
+*)
+(*
 lemma "Stop \<box> do\<^sub>T(a) = do\<^sub>T(a)"
   apply (rdes_eq_split)
     apply (simp_all add: rpred closure)
   apply (trr_auto)
   using tocks_idleprefix_fp tocks_iff_idleprefix_fp apply blast
   done
+*)
 
 lemma "Wait m \<box> Skip = Skip"
   by (rdes_eq)
@@ -505,7 +506,7 @@ lemma TRC_conj [closure]: "\<lbrakk> P is TRC; Q is TRC \<rbrakk> \<Longrightarr
   by (simp add: TRC_implies_RC TRC_wp_intro TRR_wp_unit conj_RC_closed wp_rea_conj)
 
 lemma TRF_conj [closure]: "\<lbrakk> P is TRF; Q is TRF \<rbrakk> \<Longrightarrow> (P \<and> Q) is TRF"
-  by (simp add: TRF_implies_TRR TRF_intro TRF_unrests(1) TRF_unrests(2) TRR_conj unrest_conj)
+  by (simp add: TRF_implies_TRR TRF_intro TRF_unrests(1) TRR_conj unrest_conj)
 
 lemma uns_refine: "P \<sqsubseteq> \<U>(true, []) \<Longrightarrow> idle(P) \<sqsubseteq> \<U>(true, [])"
   by (rel_auto)
@@ -533,16 +534,17 @@ proof -
     done
 qed
 
+(*
 lemma extChoice_unit:
   assumes "P is TC"
-  shows "Stop \<box> P = P"
+  shows "Stop\<^sub>U \<box> P = P"
   apply (rdes_eq_split cls: assms)
-  apply (simp_all)
+    apply(rel_auto)
   apply(rel_auto)
-  oops
-  
+*)  
+
 lemma "Stop \<box> \<langle>\<sigma>\<rangle>\<^sub>T = \<langle>\<sigma>\<rangle>\<^sub>T"
-  oops
+  by (rdes_eq)
 (*  by (simp add: AssignsT_TC extChoice_unit) *)
 
 text \<open> Pedro Comment: Renaming should be a relation rather than a function. \<close>
@@ -579,24 +581,19 @@ qed
 *)
 
 definition has_trace ("has'(_,_')") where
-"has_trace t P = U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
+"has_trace t P = U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
 
 definition has_trace_stateful ("hass'(_,_')") where
-"has_trace_stateful t P = U(\<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
+"has_trace_stateful t P = U(\<exists> $ref\<acute> \<bullet> P\<lbrakk>t/&tt\<rbrakk>)"
 
 definition has_trace_ref ("hasr'(_,_,_')") where
-"has_trace_ref t X P = U(\<exists> $st\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>t,X/&tt,$ref\<acute>\<rbrakk>)"
+"has_trace_ref t X P = U(\<exists> $st\<acute> \<bullet> P\<lbrakk>t,X/&tt,$ref\<acute>\<rbrakk>)"
 
-
-definition has_trace_ref_pat ("hasrp'(_,_,_,_')") where
-"has_trace_ref_pat t X p P = U(\<exists> $st\<acute> \<bullet> P\<lbrakk>t,X,p/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>)"
-
-
-definition has_trace_ref_pat_stateful ("hassrp'(_,_,_,_')") where
-"has_trace_ref_pat_stateful t X p P = U(P\<lbrakk>t,X,p/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>)"
+definition has_trace_ref_stateful ("hassr'(_,_,_')") where
+"has_trace_ref_stateful t X P = U(P\<lbrakk>t,X/&tt,$ref\<acute>\<rbrakk>)"
 
 definition tockfiltered :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("tockfiltered\<^sub>u'(_')") where
-"tockfiltered P =  U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>filtertocks(&tt)/&tt\<rbrakk>)"
+"tockfiltered P =  U(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> P\<lbrakk>filtertocks(&tt)/&tt\<rbrakk>)"
 
 (* :: "'\<theta> reftrace \<Rightarrow> ('s, 'e) taction" *)
 fun startswithrefusal ("startswithrefusal\<^sub>u'(_')") where
@@ -605,7 +602,7 @@ fun startswithrefusal ("startswithrefusal\<^sub>u'(_')") where
 "startswithrefusal (Tock X # t) = True"
 
 
-utp_const has_trace has_trace_ref has_trace_ref_pat  has_trace_stateful has_trace_ref_pat_stateful tockfiltered startswithrefusal 
+utp_const has_trace has_trace_ref has_trace_stateful has_trace_ref_stateful tockfiltered startswithrefusal 
          (*  *)
 
 (*
@@ -628,12 +625,11 @@ definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
 "P \<triangle> Q =
 \<^bold>R(true\<^sub>r
   \<turnstile> (
-      U(\<exists> X Y Z p q.
-           hasrp(&tt, \<guillemotleft>rfset X\<guillemotright>, \<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
-         \<and> hassrp(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, \<guillemotleft>q\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+      U(\<exists> X Y Z.
+           hasr(&tt, \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hassr(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
          \<and> (\<guillemotleft>Z \<subseteq> X \<union> Y\<guillemotright>)
          \<and> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>)
-         \<and> (p \<and> q \<Rightarrow> $pat\<acute>)
       )  
       \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
            (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
@@ -641,7 +637,7 @@ definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
          \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
          \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
          \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
-         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($pat\<acute> \<and> $ref\<acute> = rfnil) 
+         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($ref\<acute> = rfnil) 
          )
   ) \<diamondop> (
       (post\<^sub>R P \<and> tockfiltered(peri\<^sub>R Q \<or> post\<^sub>R Q) )
@@ -679,17 +675,27 @@ fun ocontainsRefusal where
 "ocontainsRefusal (otick # t) = ocontainsRefusal t"|
 "ocontainsRefusal (oref Y # t) = True"
 
+fun refvarrefusedevts :: "'\<theta> refvar \<Rightarrow> '\<theta> set" where
+"refvarrefusedevts (reftock) = {}"|
+"refvarrefusedevts (refevt e) = {e}"
+
+fun refusedevts :: "'\<theta> refvar set \<Rightarrow> '\<theta> set" where
+"refusedevts S = \<Union>{refvarrefusedevts s | s. s \<in> S}"
+
+fun torefvars :: "'\<theta> set \<Rightarrow> '\<theta> refvar set" where
+"torefvars S = {refevt e | e. e \<in> S}"
+
+declare [[show_types]]
+
 definition untimedinterrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>\<^sub>U" 68) where
 [upred_defs]:
 "(P \<triangle>\<^sub>U Q) =
 \<^bold>R(true\<^sub>r
   \<turnstile> (
-      U(\<exists> X Y Z p q.
-           hasrp(&tt, \<guillemotleft>rfset X\<guillemotright>, \<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
-         \<and> hassrp(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, \<guillemotleft>q\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
+      U(\<exists> X Y Z.
+           hasr(&tt, \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
+         \<and> hassr(filtertocks\<^sub>u(&tt), \<guillemotleft>rfset Y\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
          \<and> (\<guillemotleft>Z \<subseteq> X \<union> Y\<guillemotright>)
-         \<and> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>)
-         \<and> (p \<and> q \<Rightarrow> $pat\<acute>)
       )  
       \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
            (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
@@ -697,18 +703,18 @@ definition untimedinterrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction 
          \<and> has(\<guillemotleft>p\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
          \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
          \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
-         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($pat\<acute> \<and> $ref\<acute> = rfnil) 
+         \<and> \<guillemotleft>q\<^sub>2\<guillemotright> = [] \<Rightarrow> ($ref\<acute> = rfnil) 
          )
   ) \<diamondop> (
       U(\<exists> p X.
             hass(\<guillemotleft>p\<guillemotright>, post\<^sub>R P)
           \<and> \<guillemotleft>containsRefusal\<^sub>u(p)\<guillemotright>
           \<and> hasr([], \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R Q \<or> post\<^sub>R Q)
-          \<and> &tt = \<guillemotleft>intersectRefusalTrace X p\<guillemotright> )
-    \<or> U(post\<^sub>R P \<and> \<not>\<^sub>r\<guillemotleft>containsRefusal\<^sub>u(&tt)\<guillemotright>)
+          \<and> (&tt = \<guillemotleft>intersectRefusalTrace (refusedevts X) p\<guillemotright> ))
+    \<or> U(post\<^sub>R P \<and> \<not>\<^sub>rcontainsRefusal\<^sub>u(&tt))
     \<or> U(\<exists> p q X Y .
         hasr(p, \<guillemotleft>rfset X\<guillemotright>, peri\<^sub>R P \<or> post\<^sub>R P)
-      \<or> hassr(p, post\<^sub>R Q))
+      \<or> hassr(q, \<guillemotleft>rfset Y\<guillemotright>, post\<^sub>R Q))
     \<or> U(\<exists> p q\<^sub>1 q\<^sub>2 . 
          (&tt = \<guillemotleft>p @ q\<^sub>2\<guillemotright>)
        \<and> (q\<^sub>1 = filtertocks\<^sub>u(&tt))

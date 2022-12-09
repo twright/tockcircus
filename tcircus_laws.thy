@@ -5,39 +5,38 @@ begin
 
 lemma TRC_unrests:
   assumes "P is TRC"
-  shows "$pat \<sharp> TRC(P)" "$pat\<acute> \<sharp> TRC(P)"
-        "$ref \<sharp> TRC(P)" "$ref\<acute> \<sharp> TRC(P)"
+  shows "$ref \<sharp> TRC(P)" "$ref\<acute> \<sharp> TRC(P)"
         "$ok \<sharp> TRC(P)" "$ok\<acute> \<sharp> TRC(P)"
         "$wait \<sharp> TRC(P)" "$wait\<acute> \<sharp> TRC(P)"
   by (rel_auto+)
 
 lemma TRC_unrests':
   assumes "P is TRC"
-  shows "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P"
+  shows "$ref \<sharp> P" "$ref\<acute> \<sharp> P"
         "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
   by (metis Healthy_if TRC_unrests assms)+
 
 lemma TRRUnrestConcretify:
-  assumes "$pat \<sharp> P" "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>)"
+  assumes "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref\<rbrakk>)"
   using assms by pred_auto
 
 lemma TRFUnrestConcretify:
-  assumes "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>)"
+  assumes "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>\<rbrakk>)"
   using assms by pred_auto
 
 lemma TRCconcretify:
   assumes "P is TRC"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>)"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>\<rbrakk>)"
   by (rule TRFUnrestConcretify)
      (simp_all add: TRC_unrests' assms)
 
 lemma TRRconcretify:
   assumes "P is TRR"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>)"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref\<rbrakk>)"
 proof -
-  have "$pat \<sharp> P" "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  have "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
     by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
   thus ?thesis
     by (rule TRRUnrestConcretify)
@@ -46,15 +45,15 @@ qed
 
 lemma TRFconcretify:
   assumes "P is TRF"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>)"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>\<rbrakk>)"
 proof -
-  have "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  have "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
     by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
   thus ?thesis
     by (rule TRFUnrestConcretify)
 qed
 
-lemma TCpostconcretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> post\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$pat\<acute>,$ref,$ref\<acute>\<rbrakk>"
+lemma TCpostconcretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> post\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>\<rbrakk>"
 proof -
   assume 1: "P is TC"
   from 1 have "P is R1"
@@ -70,7 +69,7 @@ proof -
 qed
 
 
-lemma TCpericoncretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> peri\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$pat,$ref\<rbrakk>"
+lemma TCpericoncretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> peri\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref\<rbrakk>"
 proof -
   assume 1: "P is TC"
   from 1 have "P is R1"
@@ -87,14 +86,14 @@ qed
 
 lemma TRRSeqExpand:
   fixes P::"('b, 'a) tt_vars hrel" and Q::"('b, 'a) tt_vars hrel"
-  assumes "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-      and "$pat \<sharp> Q" "$ref \<sharp> Q" "$ok \<sharp> Q" "$ok\<acute> \<sharp> Q" "$wait \<sharp> Q" "$wait\<acute> \<sharp> Q"
+  assumes "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+      and "$ref \<sharp> Q" "$ok \<sharp> Q" "$ok\<acute> \<sharp> Q" "$wait \<sharp> Q" "$wait\<acute> \<sharp> Q"
   shows "(P ;; Q) = (\<^bold>\<exists> tr\<^sub>0 \<bullet> \<^bold>\<exists> st\<^sub>0 \<bullet>
                      P\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr\<acute>,$st\<acute>\<rbrakk>
                    \<and> Q\<lbrakk>\<guillemotleft>tr\<^sub>0\<guillemotright>,\<guillemotleft>st\<^sub>0\<guillemotright>/$tr,$st\<rbrakk>)"
   apply(subst (24 3) TRRUnrestConcretify)
   apply(simp_all only: assms)
-  apply(subst (30 1) TRFUnrestConcretify)
+  apply(subst (28 1) TRFUnrestConcretify)
   apply(simp_all only: assms)
   apply(simp only: seqr_unfold)
   (* apply(simp add: unrest usubst) *)
@@ -104,22 +103,22 @@ lemma TRRSeqExpand:
 lemma TRRSubstUnrests:
   fixes "tt\<^sub>1"
   assumes "P is TRR"
-  shows "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+  shows "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
 proof -
-  have "$pat \<sharp> P" "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  have "$ref \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
     by (auto simp add: unrest TRR_implies_RR assms)
-  thus "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+  thus "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
     by (auto simp add: unrest)
 qed
 
 lemma TRFSubstUnrests:
   fixes "tt\<^sub>1"
   assumes "P is TRF"
-  shows "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$pat\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+  shows "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
 proof -
-  have "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+  have "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
     by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
-  thus "$pat \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$pat\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
+  thus "$ref \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ref\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$ok\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>" "$wait\<acute> \<sharp> P\<lbrakk>0/$tr\<rbrakk>\<lbrakk>\<guillemotleft>tt\<^sub>1\<guillemotright>/$tr\<acute>\<rbrakk>"
     by (auto simp add: unrest)
 qed
 

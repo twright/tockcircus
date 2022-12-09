@@ -22,14 +22,14 @@ text \<open> We introduce a small algebra for peri- and postconditions to captur
   is the set of events being accepted at this point. FIXME: Should stable observations
   also update the state? \<close>
 
-definition tc_stable :: "'s upred \<Rightarrow> ('e reftrace, 's) uexpr \<Rightarrow> ('e set, 's) uexpr \<Rightarrow> 's upred \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _, _')") where
-[upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> (\<lceil>p\<rceil>\<^sub>S\<^sub>< \<Rightarrow> $pat\<acute>))"
+definition tc_stable :: "'s upred \<Rightarrow> ('e reftrace, 's) uexpr \<Rightarrow> ('e refvar set, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _')") where
+[upred_defs]: "\<E>(s,t,E) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t  \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. e \<notin>\<^sub>\<R> $ref\<acute>))"
 
 text \<open> We also need unstable intermediate observations, which the following relation provides. It
   has no set associated, since no refusal set is observed. \<close>
 
 definition tc_unstable :: "'s upred \<Rightarrow> ('e tev list, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<U>'(_, _')") where
-[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet>)"
 
 text \<open> A final observation is similar to a stable observation, except it can update the state 
   variables and does not characterise a refusal set. \<close>
@@ -49,10 +49,10 @@ utp_lift_notation tc_unstable
 utp_lift_notation tc_final (2)
 utp_lift_notation tc_time
 
-lemma [closure]: "\<E>(s, t, E, p) is TRR"
+lemma [closure]: "\<E>(s, t, E) is TRR"
   by (rel_auto)
 
-lemma [closure]: "\<E>(s, t, E, p) is TDC"
+lemma [closure]: "\<E>(s, t, E) is TDC"
   by (rel_auto, (meson refusal_mp)+)
 
 lemma [closure]: "\<U>(s, t) is TRR"
@@ -67,7 +67,7 @@ lemma [closure]: "\<T>(X, A) is TRR"
 lemma [closure]: "\<T>(X, A) is TIP"
   by (rel_auto)
 
-lemma [unrest]: "$st\<acute> \<sharp> \<E>(s, t, E, p)"
+lemma [unrest]: "$st\<acute> \<sharp> \<E>(s, t, E)"
   by (rel_auto)
 
 lemma [unrest]: "$st\<acute> \<sharp> \<U>(s, t)"
@@ -75,20 +75,14 @@ lemma [unrest]: "$st\<acute> \<sharp> \<U>(s, t)"
 
 text \<open> Unstable observations are subsumed by stable ones \<close>
 
-lemma patient_instability_subsumed: "\<E>(s, t, E, true) \<sqsubseteq> \<U>(s, t)"
-  by (rel_auto)
-
-lemma insistant_instability_subsumed: "\<E>(s, t, E, false) \<sqsubseteq> \<U>(s, t)"
-  by (rel_auto)
-
-lemma instability_subsumed: "\<E>(s, t, E, p) \<sqsubseteq> \<U>(s, t)"
+lemma instability_subsumed: "\<E>(s, t, E) \<sqsubseteq> \<U>(s, t)"
   by (rel_auto)
 
 (* Original version was p1 \<and> p2 *)
-lemma "(\<E>(s\<^sub>1, t, E\<^sub>1, p\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
+lemma "(\<E>(s\<^sub>1, t, E\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2)"
   by (rel_auto)
 
-lemma stability_modulo_ref: "(\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<E>(s, t, E, p)) = (\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<U>(s, t))"
+lemma stability_modulo_ref: "(\<exists> $ref\<acute> \<bullet> \<E>(s, t, E)) = (\<exists> $ref\<acute> \<bullet> \<U>(s, t))"
   by (rel_auto)
 
 lemma tc_final_compose [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>\<^sub>1) ;; \<F>(s\<^sub>2, t\<^sub>2, \<sigma>\<^sub>2) = \<F>(s\<^sub>1 \<and> \<sigma>\<^sub>1 \<dagger> s\<^sub>2, t\<^sub>1 @ \<sigma>\<^sub>1 \<dagger> t\<^sub>2, \<sigma>\<^sub>2 \<circ>\<^sub>s \<sigma>\<^sub>1)"
@@ -100,11 +94,9 @@ lemma tc_final_compose [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>\<^sub>1) ;;
 utp_const UINFIMUM (1) USUPREMUM (1)
 
 lemma time_stable_compose:
-  "\<T>(X, A) ;; \<E>(s, t, E, p) = (\<Sqinter> n \<bullet> \<E>(n \<in> A \<and> s, bop (^) [Tock (-X)] n @ t, E, p))"
+  "\<T>(X, A) ;; \<E>(s, t, E) = (\<Sqinter> n \<bullet> \<E>(n \<in> A \<and> s, bop (^) [Tock (-X)] n @ t, E))"
   apply (trr_auto)
-  apply (metis lit.rep_eq tock_ord_append tocks_order_power)
-  apply (metis lit.rep_eq tock_ord_append tocks_order_power)
-  apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
+   apply (metis lit.rep_eq tock_ord_append tocks_order_power)
   apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
   done
 
@@ -122,11 +114,9 @@ lemma time_final_compose:
   apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
   done
 
-lemma [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>) ;; \<E>(s\<^sub>2, t\<^sub>2, E, p) = \<E>(s\<^sub>1 \<and> \<sigma> \<dagger> s\<^sub>2, t\<^sub>1 @ \<sigma> \<dagger> t\<^sub>2, \<sigma> \<dagger> E, \<sigma> \<dagger> p)"
+lemma [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>) ;; \<E>(s\<^sub>2, t\<^sub>2, E) = \<E>(s\<^sub>1 \<and> \<sigma> \<dagger> s\<^sub>2, t\<^sub>1 @ \<sigma> \<dagger> t\<^sub>2, \<sigma> \<dagger> E)"
   apply (trr_auto)
   apply (metis tock_ord_append)
-  using tock_ord_append apply blast
-  apply (metis append_take_drop_id tock_ord_decompose(1) tock_ord_decompose(2))
   apply (metis append_take_drop_id tock_ord_decompose(1) tock_ord_decompose(2))
   done
 
@@ -192,22 +182,22 @@ proof (trr_auto)
 qed
 
 (* Changes from true to false *)
-lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, false)"
+lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {})"
   by rel_auto
 
 lemma [rpred]: "idle(\<T>(X, A)) = \<T>(X, A)" 
   by (rel_auto, simp add: tocks_subset)
 
-lemma time_tocks_stable [rpred]: "idle(\<T>(X, A) ;; \<E>(s, [], E, p)) = \<T>(X, A) ;; \<E>(s, [], E, p)"
+lemma time_tocks_stable [rpred]: "idle(\<T>(X, A) ;; \<E>(s, [], E)) = \<T>(X, A) ;; \<E>(s, [], E)"
   by (rel_auto; simp add: tocks_subset)
 
 lemma [rpred]: "idle(\<T>(X, A) ;; \<U>(s, [])) = \<T>(X, A) ;; \<U>(s, [])"
   by (rel_auto, simp add: tocks_subset)
 
-lemma [rpred]: "idle(\<E>(s, [], E, p)) = \<E>(s, [], E, p)"
+lemma [rpred]: "idle(\<E>(s, [], E)) = \<E>(s, [], E)"
   by (rel_auto)
 
-lemma [rpred]: "idle(\<E>(s, Evt t # ts, E, p)) = false"
+lemma [rpred]: "idle(\<E>(s, Evt t # ts, E)) = false"
   by (rel_simp)
 
 lemma [rpred]: "idle(\<U>(s, Evt t # ts)) = false"
@@ -216,11 +206,11 @@ lemma [rpred]: "idle(\<U>(s, Evt t # ts)) = false"
 lemma [rpred]: "(\<T>(X\<^sub>1, A\<^sub>1) \<and> \<T>(X\<^sub>2, A\<^sub>2)) = \<T>(X\<^sub>1 \<union> X\<^sub>2, A\<^sub>1 \<inter> A\<^sub>2)"
   by (rel_auto)
 
-lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true)) 
-       = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
+lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}) \<and> \<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {})) 
+       = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {})"
   by (rel_auto)
 
-lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
+lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2)"
   by (rel_auto)
 
 lemma nat_set_simps [simp]:
@@ -256,14 +246,14 @@ lemma [rpred]: "active(\<T>(X, {0..})) = false"
 lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
 
-lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
+lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}) \<and> idle(P)) = idle(P)"
   by (rel_auto)
 
 lemma unstable_TRF:
   assumes "P is TRF"
-  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet>)"
 proof -
-  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet>)"
     by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
@@ -277,7 +267,7 @@ lemma time_peri_in_post:
   shows "time(P) \<sqsubseteq> Q"
 proof -
   have "Q ;; \<U>(true, []) ;; II\<^sub>t \<sqsubseteq> Q"
-    by (trr_auto cls: assms, blast)
+    by (trr_auto cls: assms)
   also have "P ;; II\<^sub>t \<sqsubseteq> ..."
     by (simp add: RA1 assms(4) urel_dioid.mult_isor)
   also have "time(P) ;; II\<^sub>t \<sqsubseteq> ..."
@@ -289,12 +279,12 @@ qed
 
 lemma TRR_conj_time [rpred]:
   assumes "P is TRR"
-  shows "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> P) = P"
+  shows "(time(\<T>({}, {0..}) ;; \<E>(true, [], {})) \<and> P) = P"
 proof -
-  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> TRR(P)) = TRR(P)"
+  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {})) \<and> TRR(P)) = TRR(P)"
     by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
 
-end
+end         
