@@ -26,6 +26,9 @@ datatype '\<theta> oevent = oref "('\<theta>  orefevent) set" | oevt '\<theta> |
 type_synonym '\<theta> reftrace = "('\<theta> tev) list"
 
 type_synonym '\<theta> oreftrace = "('\<theta> oevent) list"
+
+datatype '\<theta> refvar = reftock | refevt '\<theta> 
+
   
 subsection \<open> Healthiness conditions \<close>
 
@@ -304,6 +307,54 @@ fun filtertocks :: "'\<theta> reftrace \<Rightarrow> '\<theta> reftrace" where
 "filtertocks (Tock X # xs) = Tock X # filtertocks xs"|
 "filtertocks (Evt e # xs) = filtertocks xs"
 
+
+fun intersectRefusalTrace ("intersectRefusalTrace\<^sub>u'(_,_')") where
+"intersectRefusalTrace X [] = []"|
+"intersectRefusalTrace X (Evt e # t) = Evt e # intersectRefusalTrace X t"|
+"intersectRefusalTrace X (Tock Y # t) = Tock (X \<inter> Y) # intersectRefusalTrace X t"
+
+
+fun ointersectRefusalTrace where
+"ointersectRefusalTrace X [] = []"|
+"ointersectRefusalTrace X (oevt e # t) = oevt e # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (otock # t) = otock # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (otick # t) = otick # ointersectRefusalTrace X t"|
+"ointersectRefusalTrace X (oref Y # t) = oref (X \<inter> Y) # ointersectRefusalTrace X t"
+
+fun containsRefusal ("containsRefusal\<^sub>u'(_')") where
+"containsRefusal [] = False"|
+"containsRefusal (Evt e # t) = containsRefusal t"|
+"containsRefusal (Tock Y # t) = True"
+
+
+fun ocontainsRefusal where
+"ocontainsRefusal [] = False"|
+"ocontainsRefusal (oevt e # t) = ocontainsRefusal t"|
+"ocontainsRefusal (otock # t) = ocontainsRefusal t"|
+"ocontainsRefusal (otick # t) = ocontainsRefusal t"|
+"ocontainsRefusal (oref Y # t) = True"
+
+fun refvarrefusedevts :: "'\<theta> refvar \<Rightarrow> '\<theta> set" where
+"refvarrefusedevts (reftock) = {}"|
+"refvarrefusedevts (refevt e) = {e}"
+
+definition refusedevts :: "'\<theta> refvar set \<Rightarrow> '\<theta> set" where
+"refusedevts S = \<Union>{refvarrefusedevts s | s. s \<in> S}"
+
+definition torefvars :: "'\<theta> set \<Rightarrow> '\<theta> refvar set" where
+"torefvars S = {refevt e | e. e \<in> S}"
+
+lemma torefvars_inj:
+  "torefvars X = torefvars Y \<Longrightarrow> X = Y"
+  by (auto simp add: torefvars_def)
+
+lemma refusedevts_torefvars: "refusedevts (torefvars E) = E"
+  apply (auto simp add: torefvars_def refusedevts_def)
+  by (metis refvarrefusedevts.simps(2) singletonI)
+
+definition patient where
+"patient (X) = (reftock \<notin> X)"
+
 syntax
   "_events"      :: "logic \<Rightarrow> logic" ("events\<^sub>u'(_')")
   "_tocks"       :: "logic \<Rightarrow> logic" ("tocks\<^sub>u'(_')")
@@ -316,6 +367,10 @@ syntax
   "_tock"        :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("tock\<^sub>u'(_,_')")
   "_list_diff"   :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("listdiff\<^sub>u'(_,_')")
   "_filtertocks" :: "logic \<Rightarrow> logic" ("filtertocks\<^sub>u'(_')")
+  "_refusedevts" :: "logic \<Rightarrow> logic" ("refusedevts\<^sub>u'(_')")
+  "_patient" :: "logic \<Rightarrow> logic" ("patient\<^sub>u'(_')")
+
+
 translations
   "events\<^sub>u(t)" == "CONST uop CONST events t"
   "tocks\<^sub>u(t)" == "CONST uop CONST tocks t"
@@ -328,5 +383,8 @@ translations
   "tock\<^sub>u(t,A)" == "CONST bop CONST Tock t A"
   "listdiff\<^sub>u(x,y)" == "CONST bop CONST list_diff x y"
   "filtertocks\<^sub>u(t)" == "CONST uop CONST filtertocks t"
+  "refusedevts\<^sub>u(r)" == "CONST uop CONST refusedevts r"
+  "patient\<^sub>u(r)" == "CONST uop CONST patient r"
+
 
 end

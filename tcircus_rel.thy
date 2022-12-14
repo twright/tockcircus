@@ -11,7 +11,6 @@ text \<open> We don't need a tick event, because this is handled by the $wait$ f
   the healthiness condition that a tock can't occur in a refusal before a tock event using
   the type system. \<close>
 
-datatype '\<theta> refvar = reftock | refevt '\<theta> 
 
 alphabet ('s, 'e) tt_vars = "('e reftrace, 's) rsp_vars" +
   ref :: "('e refvar) refusal" 

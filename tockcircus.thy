@@ -322,7 +322,7 @@ definition ExtChoice :: "'i set \<Rightarrow> ('i \<Rightarrow> ('s, 'e) taction
 "ExtChoice I P =
   \<^bold>R(R1(\<And> i\<in>I \<bullet> pre\<^sub>R(P i)) \<comment> \<open> Require all preconditions \<close>
 
-   \<turnstile> (idle(\<And> i\<in>I \<bullet> idle(peri\<^sub>R(P i))) \<comment> \<open> Allow all idle behaviours \<close>
+   \<turnstile> (idle(\<And> i\<in>I \<bullet> idle(peri\<^sub>R(P i))) ;; Wait 0 \<comment> \<open> Allow all idle behaviours \<close>
       \<or> (\<Or> i\<in>I \<bullet> active(peri\<^sub>R(P i)) \<comment> \<open> Allow one active action to resolve the choice ...\<close>
          \<and> (\<And> j\<in>I \<bullet> time(peri\<^sub>R(P j))))) \<comment> \<open> ... whilst the others remain idle \<close>
 
@@ -338,15 +338,16 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
 [upred_defs]:
 "P \<box> Q =
   \<^bold>R((pre\<^sub>R(P) \<and> pre\<^sub>R(Q))
-  \<turnstile> (idle(peri\<^sub>R(P)) \<and> idle(peri\<^sub>R(Q)) 
+  \<turnstile> (idle(peri\<^sub>R(P)) \<and> idle(peri\<^sub>R(Q)) ;; \<E>(true, [], {reftock})
     \<or> time(peri\<^sub>R(P)) \<and> active(peri\<^sub>R(Q))
     \<or> time(peri\<^sub>R(Q)) \<and> active(peri\<^sub>R(P)))
   \<diamondop> (time(peri\<^sub>R(P)) \<and> post\<^sub>R(Q) \<or> time(peri\<^sub>R(Q)) \<and> post\<^sub>R(P)))"
 
 text \<open> Currently broken due to patience \<close>
+
 (*
 lemma ExtChoice_empty_peri:
-  "peri\<^sub>R (ExtChoice {} P) = (\<T>({}, {0..}) ;; \<E>(true, [], {}, true))" (is "?l = ?r")
+  "peri\<^sub>R (ExtChoice {} P) = (\<T>({}, {0..}) ;; \<E>(true, [], {reftock}))" (is "?l = ?r")
 proof -
   have "?l = (idle(\<And> i\<in>{} \<bullet> idle(peri\<^sub>R(P i)))
       \<or> (\<Or> i\<in>{} \<bullet> active(peri\<^sub>R(P i))
@@ -362,16 +363,17 @@ proof -
 qed
 *)
 
-(*
 lemma ExtChoice_empty:
   "ExtChoice {} P = Stop"
-  apply (simp add: ExtChoice_def Stop_def rpred)
+  apply (simp add: ExtChoice_def Stop_def Wait_def rpred)
   apply(rel_auto)
-  done
+  oops
 
 lemma ExtChoice_single: 
   assumes "P i is TC" "peri\<^sub>R(P i) is TIP"
   shows "ExtChoice {i} P = P i"
+  oops
+(*
 proof -
   have 1: "time(peri\<^sub>R (P i)) \<sqsubseteq> post\<^sub>R (P i)"
     by (simp add: time_peri_in_post assms closure)
@@ -429,8 +431,11 @@ lemma ExtChoice_dual:
   apply (simp add: ExtChoice_def closure assms extChoice_def rpred usup_and uinf_or conj_disj_distr)
   apply (rule rdes_tri_eq_intro)
     apply (simp_all add: assms Healthy_if closure)
-  apply (smt TC_inner_closures(2) TIP_time_active assms(1) assms(2) assms(3) assms(4) conj_comm utp_pred_laws.inf_left_commute utp_pred_laws.sup_commute)
   oops
+(*
+  apply (smt TC_inner_closures(2) TIP_time_active assms(1) assms(2) assms(3) assms(4) conj_comm utp_pred_laws.inf_left_commute utp_pred_laws.sup_commute)
+  by (smt (z3) TC_inner_closures(2) TC_inner_closures(3) TC_inner_closures(5) assms(1) assms(2) assms(3) assms(4) conj_comm time_peri_in_post utp_pred_laws.inf.absorb1 utp_pred_laws.inf.left_commute utp_pred_laws.sup.commute)
+*)
 
 text \<open> Proving idempotence of binary external choice is complicated by the need to show that
   @{term "(time(peri\<^sub>R(P)) \<and> post\<^sub>R(P)) = post\<^sub>R(P)"} \<close>
@@ -439,6 +444,7 @@ lemma e: "ExtChoice {\<^bold>R(P\<^sub>1 \<turnstile> P\<^sub>2 \<diamondop> P\<
        ExtChoice {True, False} (\<lambda> p. \<^bold>R((if p then P\<^sub>1 else Q\<^sub>1) \<turnstile> (if p then P\<^sub>2 else Q\<^sub>2) \<diamondop> (if p then P\<^sub>3 else Q\<^sub>3)))"
   by (simp add: ExtChoice_def)
 
+(*
 lemma extChoice_rdes_def [rdes_def]:
   assumes "P\<^sub>1 is TRC" "P\<^sub>2 is TRR" "P\<^sub>3 is TRR" "Q\<^sub>1 is TRC" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRR"
   shows
@@ -457,6 +463,7 @@ proof -
   from 1 2 show ?thesis
     by (simp add: extChoice_def rpred closure assms Healthy_if rdes, metis (no_types, lifting) rdes_tri_eq_intro)
 qed
+*)
 
 lemma [rpred]: "active(\<T>(X, A) ;; \<E>(s, [], E)) = false"
   by (rel_auto)
@@ -483,7 +490,8 @@ lemma "Wait(n + 1) \<box> Div = Div"
 (* Currently broken *)
 (*
 lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
-  by (rdes_eq)
+  apply (rdes_eq)
+  apply(auto)
 *)
 (*
 lemma "Stop \<box> do\<^sub>T(a) = do\<^sub>T(a)"
@@ -534,14 +542,12 @@ proof -
     done
 qed
 
-(*
 lemma extChoice_unit:
   assumes "P is TC"
-  shows "Stop\<^sub>U \<box> P = P"
-  apply (rdes_eq_split cls: assms)
-    apply(rel_auto)
-  apply(rel_auto)
-*)  
+  shows "Stop \<box> P = P"
+  apply (rdes_eq cls: assms)
+  apply (metis Prefix_Order.prefixE append_minus append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE tocks_iff_idleprefix_fp)
+  oops
 
 lemma "Stop \<box> \<langle>\<sigma>\<rangle>\<^sub>T = \<langle>\<sigma>\<rangle>\<^sub>T"
   by (rdes_eq)
@@ -648,44 +654,6 @@ definition interrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
        \<and> hass(\<guillemotleft>q\<^sub>1 @ q\<^sub>2\<guillemotright>, post\<^sub>R Q)
        \<and> \<not>\<^sub>r \<guillemotleft>startswithrefusal\<^sub>u(q\<^sub>2)\<guillemotright>
        )))"
-
-fun intersectRefusalTrace ("intersectRefusalTrace\<^sub>u'(_,_')") where
-"intersectRefusalTrace X [] = []"|
-"intersectRefusalTrace X (Evt e # t) = Evt e # intersectRefusalTrace X t"|
-"intersectRefusalTrace X (Tock Y # t) = Tock (X \<inter> Y) # intersectRefusalTrace X t"
-
-
-fun ointersectRefusalTrace where
-"ointersectRefusalTrace X [] = []"|
-"ointersectRefusalTrace X (oevt e # t) = oevt e # ointersectRefusalTrace X t"|
-"ointersectRefusalTrace X (otock # t) = otock # ointersectRefusalTrace X t"|
-"ointersectRefusalTrace X (otick # t) = otick # ointersectRefusalTrace X t"|
-"ointersectRefusalTrace X (oref Y # t) = oref (X \<inter> Y) # ointersectRefusalTrace X t"
-
-fun containsRefusal ("containsRefusal\<^sub>u'(_')") where
-"containsRefusal [] = False"|
-"containsRefusal (Evt e # t) = containsRefusal t"|
-"containsRefusal (Tock Y # t) = True"
-
-
-fun ocontainsRefusal where
-"ocontainsRefusal [] = False"|
-"ocontainsRefusal (oevt e # t) = ocontainsRefusal t"|
-"ocontainsRefusal (otock # t) = ocontainsRefusal t"|
-"ocontainsRefusal (otick # t) = ocontainsRefusal t"|
-"ocontainsRefusal (oref Y # t) = True"
-
-fun refvarrefusedevts :: "'\<theta> refvar \<Rightarrow> '\<theta> set" where
-"refvarrefusedevts (reftock) = {}"|
-"refvarrefusedevts (refevt e) = {e}"
-
-fun refusedevts :: "'\<theta> refvar set \<Rightarrow> '\<theta> set" where
-"refusedevts S = \<Union>{refvarrefusedevts s | s. s \<in> S}"
-
-fun torefvars :: "'\<theta> set \<Rightarrow> '\<theta> refvar set" where
-"torefvars S = {refevt e | e. e \<in> S}"
-
-declare [[show_types]]
 
 definition untimedinterrupt :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<triangle>\<^sub>U" 68) where
 [upred_defs]:
