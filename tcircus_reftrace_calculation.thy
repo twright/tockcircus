@@ -46,32 +46,8 @@ qed
 
 subsection \<open> Untimed Stop \<close>
 
-
-lemma "peri\<^sub>R Stop\<^sub>U = \<E>(true, [], {})"
+lemma "peri\<^sub>R Stop\<^sub>U = \<E>(true, [], {}, false)"
   by (rdes_eq)
-
-fun fromorefrefevent :: "'\<theta> orefevent \<Rightarrow> '\<theta> refvar set" where
-"fromorefrefevent (orefevt e) = {refevt e}"|
-"fromorefrefevent oreftick = {}"|
-"fromorefrefevent oreftock = {reftock}"
-
-fun fromorefrefset :: "'\<theta> orefevent set \<Rightarrow> '\<theta> refvar set" where
-"fromorefrefset X = \<Union> {fromorefrefevent x | x. x\<in>X}"
-
-
-lemma tofinalorefsetRange: "\<exists> X . X' \<in> tofinalorefset X"
-proof -
-  have "X' \<in> tofinalorefset (fromorefrefset X')"
-    apply(auto simp add: tofinalorefset_def)
-         apply (metis fromorefrefevent.elims singletonI tofinaloref.simps)
-    apply (metis fromorefevent.elims fromorefrefevent.simps(1) fromorefrefevent.simps(3) insertI1 tofinaloref.simps(1) tofinaloref.simps(2))
-       apply (metis fromorefrefevent.elims singletonI tofinaloref.simps(1) tofinaloref.simps(2))
-      apply (smt (verit, ccfv_threshold) fromorefrefevent.elims singletonD tofinaloref.simps(1) tofinaloref.simps(2))
-    apply (smt (verit, ccfv_threshold) empty_iff fromorefrefevent.elims singletonD tofinaloref.simps(1) tofinaloref.simps(2))
-    by (smt (verit, best) empty_iff fromorefrefevent.elims singletonD tofinaloref.simps(1) tofinaloref.simps(2))
-  thus ?thesis
-    by blast
-qed
 
 lemma "tttraces (Stop\<^sub>U::'\<theta> ttcsp) = {[]} \<union> {[oref X] | X . True}" (is "?l = ET \<union> ?r2")
 proof (rule tttracesEqRem)
@@ -85,8 +61,8 @@ proof (rule tttracesEqRem)
 next
   have "tttracesFR (Stop\<^sub>U::'\<theta> ttcsp) = 
     { s@[oref X']
-    | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-     t = [] \<and> s \<in> tockifications t  \<and> X' \<in> tofinalorefset X}"
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (p::bool) (s::'\<theta> oreftrace).
+     t = [] \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset p X}"
     apply(rdes_simp)
     apply(rel_auto)
     done
@@ -120,9 +96,25 @@ lemma "\<forall> X. [oref X] \<in> tttraces Stop"
   (* apply(rel_auto) *)
   oops
 
-inductive tockSequence :: "('\<theta> event) set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" for X where
+inductive tockSequence :: "'\<theta> set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" for X where
 tockSequence0: "tockSequence X []"|
 tockSequence1: "\<lbrakk>tockSequence X t; Y \<subseteq> toorefset X \<union> {oreftick}\<rbrakk> \<Longrightarrow> tockSequence X (oref Y # otock # t)"
+
+lemma tockSeqSubset:
+  assumes "X \<subseteq> Y"
+  shows "tockSequence X t \<Longrightarrow> tockSequence Y t"
+proof (induction t rule: tockSequence.induct)
+  case tockSequence0
+  then show ?case
+    by (simp add: tockSequence.tockSequence0)
+next
+  case (tockSequence1 t Z)
+  have "Z \<subseteq> toorefset Y \<union> {oreftick}"
+    using assms tockSequence1(2)
+    by (force)
+  then show ?case
+    by (simp add: tockSequence.tockSequence1 tockSequence1.IH)
+qed
 
 lemma tockSeqTockificationTocks: "s \<in> tockifications t \<Longrightarrow> (tockSequence X s) = (t \<in> tocks X)"
 proof (induct t arbitrary: s)
@@ -200,8 +192,12 @@ lemma tttracesFEStop: "tttracesFE Stop = {t. tockSequence UNIV t}"
 lemma tttracesTIStop: "tttracesTI Stop = {}"
   by (rdes_simp)
 
-definition finalRefTockSequence :: "'\<theta> refvar set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
-  "finalRefTockSequence X t = (\<exists> ta Y Y'. (t = ta @ [oref Y']) \<and> Y' \<in> tofinalorefset Y \<and> Y \<subseteq> X \<and> tockSequence (refusedevts X) ta)"
+definition finalRefTockSequence :: "bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> oreftrace \<Rightarrow> bool" where
+  "finalRefTockSequence p X t = (
+   \<exists> ta X' Y'. (t = ta @ [oref Y'])
+             \<and> X' \<in> tofinalorefset p X
+             \<and> Y' \<subseteq> X'
+             \<and> tockSequence X ta)"
 
 (*
 lemma finalrefsetForm: "(\<exists>p refterm. u = s @ [oref (finalrefset p refterm X)])
@@ -241,41 +237,55 @@ proof -
 qed
 *)
 
+(*
 lemma refusedevtsSurjective: "refusedevts (-{reftock}) = UNIV"
   by (auto)
 
 lemma refvarrefusedevtsSurjective: "\<exists> s. ({e} = refvarrefusedevts s) \<and> (s \<noteq> reftock)"
   by (metis refvar.distinct(1) refvarrefusedevts.simps(2))
+*)
 
-lemma tttracesFRStop: "tttracesFR Stop = {t::'\<theta> oreftrace. finalRefTockSequence (-{reftock}) t}" (is "?l = ?r")
+lemma tttracesFRStop:
+  "tttracesFR Stop = {t::'\<theta> oreftrace. finalRefTockSequence True UNIV t}"
+  (is "?l = ?r")
 proof -
-  have "?l = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+  have "?l = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
                   t \<in> tocks UNIV
-                \<and> reftock \<notin> X
                 \<and> s \<in> tockifications t
-                \<and> X' \<in> tofinalorefset X}"
+                \<and> X' \<in> tofinalorefset True X}"
     apply(rdes_simp)
     apply(rel_auto)
+    apply blast+
     done
-  also have "... = { s@[oref X'] | (X::'\<theta> set) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-                    tockSequence UNIV s \<and> reftock \<notin> X \<and> X' \<in> tofinalorefset X}"
+  also have "\<dots> = { s@[oref X'] | (X::'\<theta> set) (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+                     tockSequence UNIV s \<and> X' \<in> tofinalorefset True X}"
     using tockSequenceTockifications tockSeqTockificationTocks apply (auto)
     apply blast
     apply blast
     by meson
-  also have "... = { s@[oref X'] | (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-                    tockSequence (refusedevts (-{reftock})) s \<and> X \<subseteq> (-{reftock}) \<and> X' \<in> tofinalorefset X}"
-    by (metis (no_types, lifting) refusedevtsSurjective subset_Compl_singleton)
-  also have "... = { s | (X::'\<theta> refvar set) (s::'\<theta> oreftrace).
-                    finalRefTockSequence (-{reftock}) s }"
-    by (metis (no_types, lifting) finalRefTockSequence_def)
+  also have "\<dots> = { s@[oref X'] | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+                     tockSequence UNIV s \<and> X' \<in> tofinalorefset True X}"
+    by (metis (no_types, lifting) subset_Compl_singleton)
+  (*
+  also have "\<dots> = { s@[oref X'] | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+                     tockSequence UNIV s \<and> X \<subseteq> UNIV \<and> X' \<in> tofinalorefset True X}"
+    by auto
+  *)
+  also have "\<dots> = { s@[oref X'] | (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+                     tockSequence UNIV s \<and> (X' \<subseteq> \<Union>(tofinalorefset True UNIV))}"
+    apply(auto simp add: tofinalorefset_def)
+    by (smt (verit, ccfv_threshold) insert_iff mem_Collect_eq mk_disjoint_insert orefevent.distinct(3) orefevent.distinct(5) subset_iff toorefset.simps toorefsetRange)
+  also have "\<dots> = { s | (s::'\<theta> oreftrace).
+                     finalRefTockSequence True UNIV s }"
+    by (auto simp add: finalRefTockSequence_def tofinalorefsetSubsetEquiv)
   also have "... = ?r"
     by (auto)
   finally show ?thesis .
 qed
 
-lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockSequence (-{reftock}) t}"
+lemma tttracesStop: "tttraces Stop = {t. tockSequence UNIV t \<or> finalRefTockSequence True UNIV t}"
   using tttracesFEStop tttracesFRStop tttracesTIStop tttracesCalc by blast
+
 
 subsection \<open> Internal Choice \<close>
 
@@ -343,6 +353,7 @@ next
     by (metis distrib_lattice_class.inf_sup_distrib2 tttracesSubregions(3))
 qed
 
+
 subsection \<open> Refinement \<close>
 
 lemma tttracesFERefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesFE Q \<subseteq> tttracesFE P"
@@ -360,6 +371,7 @@ lemma tttracesTIRefine: "P \<sqsubseteq> Q \<Longrightarrow> tttracesTI Q \<subs
   apply(rdes_simp)
   apply(rel_simp)
   by meson
+
 
 subsection \<open> Wait \<close>
 
@@ -408,43 +420,58 @@ lemma tttracesTIWait: "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = {t
 lemma "otimelength (s@[oref X']) = otimelength s"
 *)
 
-lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t | t. finalRefTockSequence (-{reftock}) t \<and> (otimelength t < n)}"
+lemma tttracesFRWait: "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {t | t. finalRefTockSequence True UNIV t \<and> (otimelength t < n)}"
 proof - 
   have "tttracesFR (Wait \<guillemotleft>n\<guillemotright>) = {
       s@[oref X']
-    | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      t \<in> tocks UNIV \<and> length t < n \<and> s \<in> tockifications t \<and> reftock \<notin> X \<and> X' \<in> tofinalorefset X}"
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      t \<in> tocks UNIV \<and> length t < n \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset True X}"
     apply(rdes_simp)
     apply(rel_auto)
+    apply(blast+)
     done
   also have "\<dots> = {
       s@[oref X']
-    | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      t \<in> tocks UNIV \<and> otimelength s < n \<and> s \<in> tockifications t \<and> reftock \<notin> X \<and> X' \<in> tofinalorefset X}"
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      t \<in> tocks UNIV \<and> otimelength s < n \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset True X}"
     by (metis (no_types, lifting) tocksTimeLength)
   also have "\<dots> = {
       s@[oref X']
-    | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      tockSequence UNIV s \<and> otimelength s < n \<and> s \<in> tockifications t \<and> reftock \<notin> X \<and> X' \<in> tofinalorefset X}"
+    | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength s < n \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset True X}"
     using tockSeqTockificationTocks by blast
   also have "\<dots> = {
       s@[oref X']
-    | (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      tockSequence UNIV s \<and> otimelength s < n \<and> reftock \<notin> X \<and> X' \<in> tofinalorefset X}"
+    | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength s < n \<and> X' \<in> tofinalorefset True X}"
     using tockSequenceTockifications  
     by fastforce
   also have "\<dots> = {
       s@[oref X']
-    | (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      tockSequence (refusedevts (-{reftock})) s \<and> otimelength s < n \<and> X \<subseteq> -{reftock} \<and> X' \<in> tofinalorefset X}"
-    by (metis (no_types, hide_lams) refusedevtsSurjective subset_Compl_singleton)
+    | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength s < n \<and> X' \<in> tofinalorefset True X}"
+    by (metis (no_types, hide_lams) subset_Compl_singleton)
   also have "\<dots> = {
       s@[oref X']
-    | (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-      tockSequence (refusedevts (-{reftock})) s \<and> otimelength (s@[oref X']) < n \<and> X \<subseteq> -{reftock} \<and> X' \<in> tofinalorefset X}"
+    | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength (s@[oref X']) < n \<and> X' \<in> tofinalorefset True X}"
     by (simp only: otimelengthFinalRef)
-  also have "\<dots> = {t | t. finalRefTockSequence (-{reftock}) t \<and> (otimelength t < n)}"
-    by (auto simp only: finalRefTockSequence_def)
+  also have "\<dots> = {
+      s@[oref X']
+    | (X::'\<theta> set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength (s@[oref X']) < n \<and> X \<subseteq> UNIV \<and> X' \<in> tofinalorefset True X}"
+    by (auto)
+  also have "\<dots> = {
+      s@[oref X']
+    | (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
+      tockSequence UNIV s \<and> otimelength (s@[oref X']) < n \<and> X' \<subseteq> \<Union>(tofinalorefset True UNIV)}"
+    apply (auto)
+    apply (metis mem_simps(9) subset_UNIV subset_iff tofinalorefsetUnion)
+    apply (auto simp add: tofinalorefset_def)
+    apply (force)
+    done
+  also have "\<dots> = {t | t. finalRefTockSequence True UNIV t \<and> (otimelength t < n)}"
+    by (auto simp add: finalRefTockSequence_def tofinalorefsetSubsetEquiv)
   finally show ?thesis .  
 qed
 
@@ -479,9 +506,11 @@ proof -
     using TTTsAppend by blast
 qed
 
-lemma tttracesWait: "tttraces (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}
-                                         \<union> {t| t X. finalRefTockSequence (-{reftock}) t \<and> (otimelength t < n)}
-                                         \<union> {t@[otick]| t. tockSequence UNIV t \<and> (otimelength t = n)}" (is "?l = ?FE \<union> ?FR \<union> ?TI")
+lemma tttracesWait:
+  "tttraces (Wait \<guillemotleft>n\<guillemotright>) = {t| t X. tockSequence UNIV t \<and> (otimelength t \<le> n)}
+                       \<union> {t| t X. finalRefTockSequence True UNIV t \<and> (otimelength t < n)}
+                       \<union> {t@[otick]| t. tockSequence UNIV t \<and> (otimelength t = n)}"
+  (is "?l = ?FE \<union> ?FR \<union> ?TI")
 proof (rule tttracesCalc)
   show "tttracesFE (Wait \<guillemotleft>n\<guillemotright>) = ?FE"
     using tttracesFEWait by blast
@@ -492,6 +521,7 @@ next
   show "tttracesTI (Wait \<guillemotleft>n\<guillemotright>) = ?TI"
     using tttracesTIWait by blast
 qed
+
 
 subsection \<open> Do \<close>
 
@@ -516,10 +546,10 @@ proof -
     using tock_ord_refl by auto
 qed
 
+(*
 lemma refusedevtsDiff: "refusedevts (X-Y) = refusedevts X - refusedevts Y"
   apply(auto)
   by (metis empty_iff refvarrefusedevts.elims singletonD)
-
 
 lemma refusedevtsComp: "refusedevts (-X) = -refusedevts X"
 proof -
@@ -534,14 +564,15 @@ proof -
   finally show ?thesis
       by auto
 qed
+*)
 
-lemma tttracesDo: "tttraces (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp)
-                 = ( {t . tockSequence (-{e}) t}
-                   \<union> { t@[oevt e]
-                     | t. tockSequence (-{e}) t })
-                 \<union> {t | t . finalRefTockSequence (-{refevt e, reftock}) t }
-                 \<union> { t@[oevt e, otick]
-                   | t. tockSequence (-{e}) t }" (is "?l = ?FE \<union> ?FR \<union> ?TI")
+lemma tttracesDo:
+  "tttraces (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp)
+ = { t . tockSequence (-{e}) t} 
+ \<union> { t@[oevt e] | t. tockSequence (-{e}) t }
+ \<union> {t | t . finalRefTockSequence True (-{e}) t }
+ \<union> { t@[oevt e, otick] | t. tockSequence (-{e}) t }"
+  (is "?l = ?FE \<union> ?FR \<union> ?TI")
 proof (rule tttracesCalc)
   show "tttracesFE (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FE"
     apply(rdes_simp)
@@ -552,38 +583,50 @@ proof (rule tttracesCalc)
     apply (metis UN_iff rmember.simps(1) tockSeqTockificationTocks tockSequenceTockifications)
     by (meson tocksTockificationsFinalTock)
 next
+  (*
   have "refusedevts ({refevt e, reftock}) = {e}"
     by auto
   then have 1: "refusedevts (-{refevt e, reftock}) = -{e}"
     by (metis refusedevtsComp)
+  *)
   have "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = {s @ [oref X']
     | t X X' s.
-      t \<in> tocks (- {e}) \<and> refevt e \<notin> X \<and> reftock \<notin> X
-    \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset X}"
+      t \<in> tocks (- {e}) \<and> e \<notin> X
+    \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset True X}"
     apply(rdes_simp)
     apply(rel_auto)
+    apply(blast+)
     done
   also have "\<dots> = {s @ [oref X']
     | t X X' s.
-      tockSequence (- {e}) s \<and> refevt e \<notin> X \<and> reftock \<notin> X
-    \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset X}"
+      tockSequence (- {e}) s \<and> e \<notin> X
+    \<and> s \<in> tockifications t \<and> X' \<in> tofinalorefset True X}"
     by (meson tockSeqTockificationTocks)
   also have "\<dots> = {s @ [oref X']
     | X X' s.
-      tockSequence (- {e}) s \<and> refevt e \<notin> X \<and> reftock \<notin> X
-    \<and> X' \<in> tofinalorefset X}"
+      tockSequence (- {e}) s \<and> e \<notin> X
+    \<and> X' \<in> tofinalorefset True X}"
     using tockSequenceTockifications by fastforce
   also have "\<dots> = {s @ [oref X']
     | X X' s.
-      tockSequence (- {e}) s \<and> X \<subseteq> -{refevt e, reftock}
-    \<and> X' \<in> tofinalorefset X}"
+      tockSequence (- {e}) s \<and> X \<subseteq> -{e}
+    \<and> X' \<in> tofinalorefset True X}"
     by (auto)
   also have "\<dots> = {s @ [oref X']
-    | X X' s.
-      finalRefTockSequence (- {refevt e, reftock}) (s @ [oref X']) \<and> X \<subseteq> -{refevt e, reftock}
-    \<and> X' \<in> tofinalorefset X}"
-    by (metis (no_types, lifting) "1" finalRefTockSequence_def)
-  also have "\<dots> = {s | s. finalRefTockSequence (-{refevt e, reftock}) s}"
+    | X' s.
+      tockSequence (- {e}) s
+    \<and> X' \<subseteq> \<Union>(tofinalorefset True (-{e}))}"
+    apply(auto)
+    using tofinalorefsetSubsetEquiv2 apply fastforce
+    apply (meson subset_Compl_singleton tofinalorefsetSubsetEquiv2)
+    done
+  also have "\<dots> = {s @ [oref X']
+    | X' s.
+      finalRefTockSequence True (-{e}) (s @ [oref X'])}"
+    apply(auto simp add: finalRefTockSequence_def)
+    apply (meson tofinalorefsetSubsetEquiv)
+    done
+  also have "\<dots> = ?FR"
     by (metis (no_types, hide_lams) finalRefTockSequence_def)
   finally show "tttracesFR (DoT \<guillemotleft>e\<guillemotright> :: '\<phi> ttcsp) = ?FR" .
 next
@@ -606,12 +649,13 @@ lemma "tttracesTI (Q) = {t@s| t s. t@[otick] \<in> tttracesTI Q \<and> s \<in> t
   apply(simp)
   apply(rdes_simp)
   apply(rel_auto)
+  apply(blast+)
   done
 
 lemma TCtttracesTI:
   assumes "P is TC"
   shows "tttracesTI P = { s @ [otick] | t s .
-     `post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>\<rbrakk>`
+     `post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$tr,$tr\<acute>,$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>`
                \<and> s \<in> tockifications t}"
   apply (simp add: TCpostconcretify assms)
   apply(rel_auto)
@@ -637,6 +681,7 @@ proof -
     done
 qed
 
+
 subsubsection \<open> FE Results \<close>
 
 lemma tttracesFETCSeqSub:
@@ -655,9 +700,8 @@ proof -
     apply(simp add: assms TRFTRRSeqExpandTr 2 TRF_implies_TRR)
     apply(rdes_simp)
     apply(rel_auto)
-     apply(auto simp add: tockificationsAppend)
-    apply blast
-     apply blast
+    apply(auto simp add: tockificationsAppend)
+    apply blast+
     done
 qed
 
@@ -758,7 +802,9 @@ qed
 
 lemma tttracesFESubTCSeq:
   assumes "(P::'\<theta> ttcsp) is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
-  shows "(tttracesFE P \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q}) \<subseteq> tttracesFE (P ;; Q)" (is "(?l1 \<union> ?l2) \<subseteq> ?r")
+  shows "(tttracesFE P \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFE Q})
+       \<subseteq> tttracesFE (P ;; Q)"
+        (is "(?l1 \<union> ?l2) \<subseteq> ?r")
 proof -
   have 1: "(P ;; Q) is TC"
     by (simp add: assms TC_closed_seqr)
@@ -805,6 +851,7 @@ lemma tttracesFETCSeq:
   using assms tttracesFESubTCSeq apply blast
   done
 
+
 subsubsection \<open> FR Results \<close>
 
 lemma tttracesFRTCSeqSub:
@@ -846,43 +893,46 @@ proof -
     assume "(x \<in> ?l)" 
     then obtain t s where 10: "x = t@s" "t@[otick] \<in> tttracesTI P" "s \<in> tttracesFR Q"
       by blast
-    then obtain u v X' X w where "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
+    then obtain u v X' X p w where "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
                 "t \<in> tockifications u"
                 "s = v@[oref X']"
-                "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`"
+                "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
                 "v \<in> tockifications w"
-                "X' \<in> tofinalorefset X"
+                "X' \<in> tofinalorefset p X"
       by (auto simp add: subst_not)
     then have "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
               "s = v@[oref X']"
-              "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`"
+              "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
               "t@v \<in> tockifications (u@w)"
-              "X' \<in> tofinalorefset X"
+              "X' \<in> tofinalorefset p X"
       by (smt (z3) mem_Collect_eq tockificationsAppend)+
     then have "s = v@[oref X']"
-              "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`"
+              "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>)`"
               "t@v \<in> tockifications (u@w)"
-              "X' \<in> tofinalorefset X"
+              "X' \<in> tofinalorefset p X"
     proof -
       assume 7: "\<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`"
-      assume 8: "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`"
-      from 7 8 show "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)`"
+      assume 8: "\<not>`(\<not>peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`"
+      from 7 8 show "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk>
+                       \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>)`"
         apply(rdes_calc)
         apply(simp add: assms TCpostconcretify TCpericoncretify)
         apply(rel_auto)
         done
     qed
     then have "s = v@[oref X']"
-              "\<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>))`"
+              "\<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>))`"
               "t@v \<in> tockifications (u@w)"
-              "X' \<in> tofinalorefset X"
+              "X' \<in> tofinalorefset p X"
     proof -
-      have "(post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk> \<sqsubseteq> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)"
+      have "(post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>
+          \<sqsubseteq> (post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> peri\<^sub>R Q\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>)"
         apply(simp add: TRFTRRSeqExpandTr 1 2)
         apply(simp add: assms TCpostconcretify TCpericoncretify)
         apply(rel_auto)
         done
-      then show "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>)` \<Longrightarrow> \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>))`"
+      then show "\<not>`\<not>(post\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>u\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> (peri\<^sub>R Q)\<lbrakk>[]\<^sub>u,\<guillemotleft>w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>)`
+             \<Longrightarrow> \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>))`"
         by (smt (z3) taut_conj_elim utp_pred_laws.compl_sup utp_pred_laws.le_iff_sup)
     next
       assume "t @ v \<in> tockifications (u @ w)"
@@ -893,10 +943,11 @@ proof -
       thus "s = v @ [oref X']"
         by auto
     qed
-    then have "\<exists> u v X X' w. \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>))`
-                  \<and> x = v@[oref X']
-                  \<and> v \<in> tockifications (u@w)
-                  \<and> X' \<in> tofinalorefset X"
+    then have "\<exists> u v X X' w.
+               \<not>`\<not>(((post\<^sub>R P ;; peri\<^sub>R Q) \<lbrakk>[]\<^sub>u,\<guillemotleft>u@w\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>))`
+             \<and> x = v@[oref X']
+             \<and> v \<in> tockifications (u@w)
+             \<and> X' \<in> tofinalorefset p X"
       by (smt (z3) "10"(1) append.assoc)
     then have "x \<in> tttracesFR (P ;; Q)"
       apply(simp add: assms 1 3 periRSeqTC postRSeqTC)
@@ -909,7 +960,9 @@ qed
 
 lemma tttracesFRSupTCSeq:
   assumes "(P::'\<theta> ttcsp) is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
-  shows "(tttracesFR P \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFR Q}) \<subseteq> tttracesFR (P ;; Q)" (is "(?l1 \<union> ?l2) \<subseteq> ?r")
+  shows "(tttracesFR P \<union> {t@s| t s. t@[otick] \<in> tttracesTI P \<and> s \<in> tttracesFR Q})
+       \<subseteq> tttracesFR (P ;; Q)"
+        (is "(?l1 \<union> ?l2) \<subseteq> ?r")
 proof -
   have 1: "(P ;; Q) is TC"
     by (simp add: assms TC_closed_seqr)
@@ -917,9 +970,13 @@ proof -
     by (simp_all add: closure assms)
   have 3: "pre\<^sub>R (P ;; Q) = true\<^sub>r"
     by (simp add: NRD_is_RD TC_implies_NRD assms preR_NRD_seq wpR_R1_right wp_rea_true)
-  have "?l1 = {s@[oref X'] | s X X' t . s \<in> tockifications t \<and> X' \<in> tofinalorefset X \<and> (\<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`) }" (is "?l1 = ?l1a")
+  have "?l1 = { s@[oref X'] | s X X' p t .
+                s \<in> tockifications t \<and> X' \<in> tofinalorefset p X
+              \<and> (\<not>`\<not>peri\<^sub>R P\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`) }"
+       (is "?l1 = ?l1a")
     apply(simp add: TCpostconcretify TCpericoncretify assms)
     apply (rel_auto)
+    apply(blast+)
     done
   moreover have "?l1a \<subseteq> ?r"
     apply(simp add:  assms 3)
@@ -950,12 +1007,14 @@ proof -
     by blast
 qed
 
+
 subsubsection \<open> Overall Result \<close>
 
 lemma tttracesTCSeq:
   assumes "P is TC" "Q is TC" "pre\<^sub>R P = true\<^sub>r" "pre\<^sub>R Q = true\<^sub>r"
   shows "tttraces (P;;Q) = tttraces P \<inter> untickeds
-                         \<union> {t@s| t s. t@[otick] \<in> tttraces P \<and> s \<in> tttraces Q}" (is "?l = ?r1 \<union> ?r2")
+                         \<union> {t@s| t s. t@[otick] \<in> tttraces P \<and> s \<in> tttraces Q}"
+        (is "?l = ?r1 \<union> ?r2")
 proof -
   have "?r1 = tttraces P \<inter> TTTs \<inter> untickeds"
     using TTTStructure by blast
@@ -1260,7 +1319,7 @@ lemma ofiltertocksAppTick: "ofiltertocks sa @ q = sb @ [otick] \<Longrightarrow>
 
 lemma ofiltertocksTTTs: "ofiltertocks t \<in> TTTs"
   apply(induct t rule: ofiltertocks.induct)
-          apply(auto simp add: TTTsimps)
+  apply(auto simp add: TTTsimps)
   apply (metis Suc_pred' not_less_eq nth_non_equal_first_eq oevent.distinct(11) oevent.distinct(5))
   apply (metis Zero_neq_Suc diff_Suc_1 gr0_implies_Suc less_Suc_eq_0_disj nth_non_equal_first_eq oevent.distinct(3) range_eqI)
   by (metis (no_types, lifting) One_nat_def Suc_pred neq0_conv not_less_eq nth_Cons' oevent.distinct(3) range_eqI)
@@ -1325,7 +1384,6 @@ lemma ostartswithrefusalTockifications:
   by (cases t rule: startswithrefusal.cases)
      (auto)
 
-(*    \<and> q\<^sub>1 \<in> TTTs \<and> q\<^sub>2 \<in> TTTs *)
 lemma
   assumes "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
   shows
@@ -1358,25 +1416,24 @@ lemma
   apply(rel_auto)
   apply(auto simp add: filtertocksApp tockificationsAppend)
 proof (goal_cases)
-
-  case (1 xa xb v t' s')
+  case (1 xa xb v p t' s')
   obtain q\<^sub>2 where 3: "q\<^sub>2 = s' @ [otick]"
     by blast
   have "t' @ s' @ [otick] = t' @ q\<^sub>2"
     by (auto simp add: 3)
-  moreover have "(\<exists>t. ((\<exists>ref.
+  moreover have "(\<exists>t. ((\<exists>ref pat.
                   \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
-                   (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-                    \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref\<rparr>)) \<or>
+                   (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+                    \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref, pat\<^sub>v = pat\<rparr>)) \<or>
               \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
-               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>)) \<and>
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>)) \<and>
              t' \<in> tockifications t)"
     using "1" by blast
   moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
               \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
-               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>) \<and>
+               (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+                \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>) \<and>
               s \<in> tockifications t)"
     apply(simp add: 3)
     by (smt (verit, del_insts) "1" filtertocksTockifications mem_Collect_eq tockificationsAppend)
@@ -1390,19 +1447,19 @@ next
     by blast
   have "t' @ s' @ [otick] = t' @ q\<^sub>2"
     by (auto simp add: 3)
-  moreover have "(\<exists>t. ((\<exists>ref.
+  moreover have "(\<exists>t. ((\<exists>ref pat.
                  \<lbrakk>P\<^sub>2\<rbrakk>\<^sub>e
-                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref\<rparr>)) \<or>
+                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = ref, pat\<^sub>v = pat\<rparr>)) \<or>
              \<lbrakk>P\<^sub>3\<rbrakk>\<^sub>e
-              (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-               \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>)) \<and>
+              (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+               \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>)) \<and>
             t' \<in> tockifications t)"
     using "2" by blast
   moreover have "(\<exists>t s. ofiltertocks t' @ q\<^sub>2 = s @ [otick] \<and>
                  \<lbrakk>Q\<^sub>3\<rbrakk>\<^sub>e
-                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>,
-                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>\<rparr>) \<and>
+                  (\<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = [], st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>,
+                   \<lparr>ok\<^sub>v = True, wait\<^sub>v = True, tr\<^sub>v = t, st\<^sub>v = (), ref\<^sub>v = \<^bold>\<bullet>, pat\<^sub>v = False\<rparr>) \<and>
                  s \<in> tockifications t)"
     apply(simp add: 3)
     by (smt (verit, del_insts) "2" filtertocksTockifications mem_Collect_eq tockificationsAppend)

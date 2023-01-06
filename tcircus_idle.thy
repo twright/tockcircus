@@ -8,7 +8,7 @@ definition filter_idle :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("id
 [upred_defs]: "filter_idle P = U(R1(P \<and> &tt \<in> tocks UNIV))"
 
 definition filter_time :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("time'(_')") where
-[upred_defs]: "filter_time P = U(R1(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> P\<lbrakk>idleprefix(&tt)/&tt\<rbrakk>))"
+[upred_defs]: "filter_time P = U(R1(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>idleprefix(&tt)/&tt\<rbrakk>))"
 
 definition filter_active :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("active'(_')") where 
 [upred_defs]: "filter_active(P) = U(R1(\<exists> t e t'. P \<and> \<guillemotleft>t\<guillemotright> \<in> tocks UNIV \<and> &tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>))"

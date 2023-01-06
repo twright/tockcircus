@@ -70,15 +70,10 @@ definition MPatConj :: "(('s, 'e) tt_vars) merge" where [upred_defs]:
             \<and> ($tr\<acute> = $0:tr)
             \<and> ($tr\<acute> = $1:tr)
             \<and> ($st\<acute> = $0:st)
-            \<and> ($st\<acute> = $1:st)
-            \<and> (\<forall> X Y Z. ((($0:ref = \<guillemotleft>rfset X\<guillemotright>)
-                     \<and> ($1:ref = \<guillemotleft>rfset Y\<guillemotright>)
-                    \<and> (refusedevts\<^sub>u(Z) = refusedevts\<^sub>u(X)) 
-                    \<and> (refusedevts\<^sub>u(Z) = refusedevts\<^sub>u(Y))
-                    \<and> (patient(Z) \<Rightarrow> (patient\<^sub>u(X) \<or> patient\<^sub>u(Y)) )
-                    \<Rightarrow> ($ref\<acute> = \<guillemotleft>rfset Z\<guillemotright>))))
-          \<and> (   (($0:ref = \<guillemotleft>rfnil\<guillemotright>) \<or> ($1:ref = \<guillemotleft>rfnil\<guillemotright>))
-               \<Rightarrow> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>))
+            \<and> ($st\<acute> = $1:st
+            \<and> ($ref\<acute> = $0:ref)
+            \<and> ($ref\<acute> = $1:ref)
+            \<and> ($pat\<acute> = ($0:pat \<and> $1:pat)))
             )"
 
 (*
@@ -90,9 +85,8 @@ lemma MPatConj_sim: "MPatConj is SymMerge"
   done
 
 lemma MPatConj_assoc:"AssocMerge MPatConj"
-  apply (rel_simp)
-  apply(safe)
-  oops
+  apply (rel_auto)
+  done
 
 definition tconj (infixr "\<squnion>\<^sub>t" 75) where
   [upred_defs]: 
@@ -100,31 +94,57 @@ definition tconj (infixr "\<squnion>\<^sub>t" 75) where
 
 utp_const tconj
 
-
 lemma tconj_rfnil1:
   "U(($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>) \<squnion>\<^sub>t ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>))
  = U(($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>) \<or> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>))"
-  by (rel_simp)
-
-lemma tconj_rfnil:
-  "U((P \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)) \<squnion>\<^sub>t (Q \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)))
- = U((P \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)) \<and> (Q \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)))"
   by (rel_auto)
 
+lemma tconj_rfnil:
+  "U((P \<and> $pat\<acute> \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)) \<squnion>\<^sub>t (Q \<and> $pat\<acute> \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)))
+ = U((P \<and> $pat\<acute> \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)) \<and> (Q \<and> $pat\<acute> \<and> ($ref\<acute> = \<guillemotleft>rfnil\<guillemotright>)))"
+  apply (rel_auto)
+  by blast
+
+lemma tconj_patient:
+  "U((P \<and> $pat\<acute>) \<squnion>\<^sub>t (Q \<and> $pat\<acute>))
+ = U((P \<and> $pat\<acute>) \<and> (Q \<and> $pat\<acute>))"
+  apply (rel_auto)
+  by blast
+
+
 lemma tconj_rfnil2:
-  "U(($ref\<acute> = \<guillemotleft>rfset (torefvars E)\<guillemotright>) \<squnion>\<^sub>t ($ref\<acute> = \<guillemotleft>rfset (torefvars F)\<guillemotright>))
- = U($ref\<acute> = \<guillemotleft>rfset (torefvars E)\<guillemotright> \<and> \<guillemotleft>E = F\<guillemotright>)"
-  apply(rel_auto)
-          apply(simp_all add: patient_torefvars refusedevts_torefvars)
-  apply(auto simp add:  torefvars_def refusedevts_def patient_def)
-  oops
+  "U(($ref\<acute> = \<guillemotleft>rfset E\<guillemotright>) \<squnion>\<^sub>t ($ref\<acute> = \<guillemotleft>rfset F\<guillemotright>))
+ = U($ref\<acute> = \<guillemotleft>rfset E\<guillemotright> \<and> \<guillemotleft>E = F\<guillemotright>)"
+  by (rel_auto)
 
 lemma tconj_rfset:
-  "(\<E>(s\<^sub>1,t,torefvars E\<^sub>1) \<squnion>\<^sub>t \<E>(s\<^sub>2, t, torefvars E\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, torefvars (E\<^sub>1 \<union> E\<^sub>2))"
+  "(\<E>(s\<^sub>1,t,E\<^sub>1,p\<^sub>1) \<squnion>\<^sub>t \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
   apply (rel_auto)
-  sledgehammer
-                 apply (metis refusedevts_eq)
-  using refusedevts_eq apply blast
-  sledgehammer
+  apply (smt (z3) UnCI)
+  apply (smt (z3) Un_iff)
+  apply (smt (z3) Un_iff)
+  done
+
+lemma tconj_assoc:
+  "((P \<squnion>\<^sub>t Q) \<squnion>\<^sub>t R) = (P \<squnion>\<^sub>t (Q \<squnion>\<^sub>t R))"
+  by (simp add: tconj_def MPatConj_assoc par_by_merge_assoc MPatConj_sim)
+
+lemma tconj_comm:
+  "(P \<squnion>\<^sub>t Q) = (Q \<squnion>\<^sub>t P)"
+  by (simp add: tconj_def par_by_merge_commute MPatConj_sim)
+
+(*
+abbreviation "neg_pat \<equiv> U(($ok\<acute> = $ok)
+            \<and> ($wait\<acute> = $wait)
+            \<and> ($tr\<acute> = $tr)
+            \<and> ($st\<acute> = $st)
+            \<and> ($ref\<acute> = $ref)
+            \<and> (($pat \<Rightarrow> $pat\<acute>)))"
+
+lemma tconj_conj_pat:
+  "(P \<squnion>\<^sub>t Q) = ((P ;; neg_pat) \<and> (Q ;; neg_pat)) ;; neg_pat"
+  apply(rel_auto)
+  nitpick
+*)
 
 end

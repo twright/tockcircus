@@ -14,8 +14,20 @@ fun tofinaloref :: "'\<theta> refvar \<Rightarrow> '\<theta> orefevent" where
 "tofinaloref (reftock) = oreftock"|
 "tofinaloref (refevt e) = orefevt e"
 
+definition tofinalorefset :: "bool \<Rightarrow> '\<theta> set \<Rightarrow> '\<theta> orefevent set set" where
+"tofinalorefset b X = (
+  if b
+  then {{orefevt e | e. e \<in> X},
+        {orefevt e | e. e \<in> X}\<union>{oreftick}}
+  else {{orefevt e | e. e \<in> X},
+        {orefevt e | e. e \<in> X}\<union>{oreftick},
+        {orefevt e | e. e \<in> X}\<union>{oreftock},
+        {orefevt e | e. e \<in> X}\<union>{oreftick,oreftock}})"
+
+(*
 definition tofinalorefset :: "'\<theta> refvar set \<Rightarrow> '\<theta> orefevent set set" where
 "tofinalorefset X = {{tofinaloref e | e. e \<in> X}, {tofinaloref e | e. e \<in> X}\<union>{oreftick}}"
+*)
 
 lemma toorefsetSubsetReftick: "toorefset X \<subseteq> toorefset Y \<union> {oreftick} \<Longrightarrow> X \<subseteq> Y"
 proof 
@@ -30,9 +42,10 @@ proof
     by simp
 qed
 
-lemma tofinalorefInjective: "tofinaloref x = tofinaloref y \<Longrightarrow> x = y"
-  by (cases x; cases y; auto)
+lemma orefevtInjective: "orefevt x = orefevt y \<Longrightarrow> x = y"
+  by simp
 
+(*
 lemma tofinalorefsetSubReftick: "X' \<in> tofinalorefset X \<Longrightarrow> Y' \<in> tofinalorefset Y \<Longrightarrow>  X' \<subseteq> Y' \<union> {oreftick} \<Longrightarrow> X \<subseteq> Y"
 proof -
   assume 1: "X' \<in> tofinalorefset X" "Y' \<in> tofinalorefset Y" "X' \<subseteq> Y' \<union> {oreftick}"
@@ -53,18 +66,36 @@ proof -
   thus ?thesis
     by auto
 qed
+*)
 
 lemma toorefsetSubset: "toorefset X \<subseteq> toorefset Y \<Longrightarrow> X \<subseteq> Y"
   by (meson semilattice_sup_class.le_supI1 toorefsetSubsetReftick)
 
-lemma tofinalorefsetSubset: "tofinalorefset X \<subseteq> tofinalorefset Y \<Longrightarrow> X \<subseteq> Y"
-  by (metis (no_types, lifting) eq_iff insert_subset tofinalorefset_def tofinalorefsetSubReftick)
+lemma tofinalorefsetSubset: "(tofinalorefset b X \<subseteq> tofinalorefset b Y) \<Longrightarrow> (X = Y)"
+proof -
+  assume "tofinalorefset b X \<subseteq> tofinalorefset b Y"
+  thus "X = Y"
+    apply (cases b)
+    apply (auto simp add: tofinalorefset_def)
+    done
+qed
 
-lemma tofinalorefsetInjective: "tofinalorefset X = tofinalorefset Y \<Longrightarrow> X = Y"
-  by (metis order_refl subset_antisym tofinalorefsetSubset)
+lemma tofinalorefsetUnion: "(\<Union>(tofinalorefset b X) \<subseteq> \<Union>(tofinalorefset c Y)) = ((X \<subseteq> Y) \<and> (c \<longrightarrow> b))"
+  apply (auto simp add: tofinalorefset_def)
+  done
 
-lemma torefsetInjective: "toorefset X = toorefset Y \<Longrightarrow> X = Y"
-  by (metis order_refl subset_antisym toorefsetSubset)
+lemma tofinalorefsetSubsetEquiv: "(\<exists> X' . X' \<in> tofinalorefset p X \<and> Y' \<subseteq> X') = (Y' \<subseteq> \<Union>(tofinalorefset p X))"
+  apply(simp_all add: tofinalorefset_def)
+  apply blast+
+  done
+
+fun fromorefrefevent :: "'\<theta> orefevent \<Rightarrow> '\<theta> refvar set" where
+"fromorefrefevent (orefevt e) = {refevt e}"|
+"fromorefrefevent oreftick = {}"|
+"fromorefrefevent oreftock = {reftock}"
+
+fun fromorefrefset :: "'\<theta> orefevent set \<Rightarrow> '\<theta> refvar set" where
+"fromorefrefset X = \<Union> { fromorefrefevent x | x. x\<in>X }"
 
 fun fromorefevent :: "'\<theta> orefevent \<Rightarrow> '\<theta> set" where
 "fromorefevent (orefevt e) = {e}"|
@@ -73,6 +104,96 @@ fun fromorefevent :: "'\<theta> orefevent \<Rightarrow> '\<theta> set" where
 
 fun fromorefset :: "'\<theta> orefevent set \<Rightarrow> '\<theta> set" where
 "fromorefset X = \<Union> {fromorefevent x | x. x\<in>X}"
+
+lemma tofinalorefsetRange: "\<exists> X p . X' \<in> tofinalorefset p X"
+proof -
+  have "X' \<in> tofinalorefset (oreftock \<notin> X') (fromorefset X')"
+    apply (auto simp add: tofinalorefset_def)
+    apply (metis empty_iff fromorefevent.elims singletonD fromorefevent.simps(1) fromorefrefevent.cases insertI1)+
+    done    
+  thus ?thesis
+    by blast
+qed
+
+
+lemma tofinalorefsetSubsetImp: "tofinalorefset b X \<subseteq> tofinalorefset c Y \<Longrightarrow> (c \<longrightarrow> b)"
+  apply(cases b)
+  apply(cases c)
+  apply(auto simp add: tofinalorefset_def)
+  done
+
+lemma tofinalorefsetImpSubset: "tofinalorefset b X \<subseteq> tofinalorefset c X = (c \<longrightarrow> b)"
+  apply(cases b)
+  apply(cases c)
+  apply(auto simp add: tofinalorefset_def)
+  done
+
+lemma tofinalorefsetSubsetForm: "tofinalorefset b X \<subseteq> tofinalorefset b Y \<Longrightarrow> X \<subseteq> Y"
+  apply(cases b)
+  apply(auto simp add: tofinalorefset_def)
+  done
+
+lemma tofinalorefsetInjective: "tofinalorefset b X = tofinalorefset c Y \<Longrightarrow> X = Y"
+  by (smt (z3) dual_order.eq_iff tofinalorefsetSubset tofinalorefsetSubsetImp)
+
+lemma torefsetInjective: "toorefset X = toorefset Y \<Longrightarrow> X = Y"
+  by (metis order_refl subset_antisym toorefsetSubset)
+
+lemma tofinalorefsetSubsetMember: "X' \<in> tofinalorefset b X \<Longrightarrow> Y' \<in> tofinalorefset c Y \<Longrightarrow> X' \<subseteq> Y' \<Longrightarrow> X \<subseteq> Y"
+  apply(cases b; cases c)
+  apply(simp add: tofinalorefset_def; safe; blast)+
+  done
+
+(*
+lemma tofinalorefsetSubsetMemberImp: "X' \<in> tofinalorefset b X \<Longrightarrow> Y' \<in> tofinalorefset c Y \<Longrightarrow>  X' \<subseteq> Y' \<Longrightarrow> (b \<longrightarrow> c)"
+  nitpick
+  apply(cases b; cases c)
+  apply(auto simp add: tofinalorefset_def)
+  done
+*)
+
+lemma tofinalorefsetSubsetEquiv2:
+  "(\<exists> X . X' \<in> tofinalorefset p X \<and> X \<subseteq> Y)
+ = (X' \<subseteq> \<Union>(tofinalorefset p Y))"
+  (is "?l = ?r")
+proof (rule)
+  assume ?l
+  then obtain X where "X' \<in> tofinalorefset p X" "X \<subseteq> Y"
+    by auto
+  hence "X' \<subseteq> \<Union>(tofinalorefset p Y)"
+    by (metis Sup_le_iff tofinalorefsetUnion)
+  thus ?r
+    by simp
+next 
+  assume ?r
+  then obtain Y' where 2: "Y' \<in> (tofinalorefset p Y)" "X' \<subseteq> Y'"
+    by (meson tofinalorefsetSubsetEquiv)
+  then obtain X where 3: "X = fromorefset X'"
+    by simp
+  hence 4: "X' \<in> tofinalorefset (oreftock \<notin> X') X"
+    apply (auto simp add: tofinalorefset_def)
+    apply (metis empty_iff fromorefevent.elims singletonD fromorefevent.simps(1) fromorefrefevent.cases insertI1)+
+    done
+  hence 5: "X \<subseteq> Y"
+    using 2
+    by (meson tofinalorefsetSubsetMember)
+  {
+    assume "oreftock \<in> X'"
+    then have "oreftock \<in> Y'"
+      using "2"(2) by blast
+    then have "\<not> p"
+      using 2(1) apply(simp add: tofinalorefset_def)
+      apply(cases p)
+      apply(auto)
+      done
+  }
+  hence "p \<longrightarrow> (oreftock \<notin> X')"
+    by blast
+  hence "X' \<in> tofinalorefset p X"
+    by (metis 4 in_mono tofinalorefsetImpSubset)
+  thus ?l
+    using 5 by blast
+qed
 
 (* fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesFR P = { s@[oref (finalrefset acctock refterm X)] | (t::'\<theta> reftrace) (X::'\<theta> set) (acctock::bool) (refterm::bool) (s::'\<theta> oreftrace).
@@ -195,11 +316,15 @@ lemma torefsetReftick: "oreftick \<notin> toorefset X"
 lemma torefsetReftock: "oreftock \<notin> toorefset X"
   by simp
 
+(*
 lemma tofinalorefsetTock: "X' \<in> tofinalorefset X \<Longrightarrow> ((oreftock \<in> X') = (reftock \<in> X))"
   by (smt (verit, ccfv_threshold) UnE Un_upper1 empty_iff in_mono insert_iff mem_Collect_eq orefevent.distinct(5) tofinaloref.simps(1) tofinalorefInjective tofinalorefset_def)
+*)
 
-lemma tofinalorefsetEvt: "X' \<in> tofinalorefset X \<Longrightarrow> ((orefevt e \<in> X') = (refevt e \<in> X))"
-  by (smt (z3) UnE Un_upper1 in_mono insert_iff mem_Collect_eq orefevent.simps(3) singletonD tofinaloref.simps(2) tofinalorefInjective tofinalorefset_def)
+lemma tofinalorefsetEvt: "X' \<in> tofinalorefset b X \<Longrightarrow> ((orefevt e \<in> X') = (e \<in> X))"
+  apply(cases b)
+  apply(auto simp add: tofinalorefset_def)
+  done
 
 (*
 lemma finalrefsetTick: "reftick \<in> finalrefset p refterm X = refterm"
@@ -416,12 +541,11 @@ fun finalrefset :: "bool \<Rightarrow> bool \<Rightarrow> '\<theta> set \<Righta
 
 subsection \<open> Refusal Traces \<close>
 
-
 fun tttracesRRFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesRRFR (Q) = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X'::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-                      (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref\<rbrakk>`)
+"tttracesRRFR (Q) = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> set) (X'::'\<theta> orefevent set) (p::bool) (s::'\<theta> oreftrace).
+                      (\<not>`\<not>Q\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$ref,$pat\<acute>\<rbrakk>`)
                     \<and> s \<in> tockifications t
-                    \<and> X' \<in> tofinalorefset X }"
+                    \<and> X' \<in> tofinalorefset p X }"
 
 fun tttracesRRFE :: "'\<theta> ttcsp \<Rightarrow> '\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesRRFE P Q = {
@@ -442,10 +566,10 @@ fun tttracesFE :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" wher
                   \<not>`(\<not>peri\<^sub>R P \<and> \<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
                 \<and> s \<in> tockifications t }"
 fun tttracesFR :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
-"tttracesFR P = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> refvar set) (X' ::'\<theta> orefevent set) (s::'\<theta> oreftrace).
-                  (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>\<rbrakk>`)
+"tttracesFR P = { s@[oref X'] | (t::'\<theta> reftrace) (X::'\<theta> set) (X' ::'\<theta> orefevent set) (p::bool) (s::'\<theta> oreftrace).
+                  (\<not>`\<not>(peri\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>,\<guillemotleft>rfset X\<guillemotright>,\<guillemotleft>p\<guillemotright>/$tr,$tr\<acute>,$ref\<acute>,$pat\<acute>\<rbrakk>`)
                 \<and> s \<in> tockifications t
-                \<and> X' \<in> tofinalorefset X}"
+                \<and> X' \<in> tofinalorefset p X}"
 fun tttracesTI :: "'\<theta> ttcsp \<Rightarrow> ('\<theta> oreftrace) set" where
 "tttracesTI P = { s @ [otick] | t s .
                   \<not>`(\<not>post\<^sub>R P)\<lbrakk>[]\<^sub>u,\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk>`
@@ -459,6 +583,7 @@ lemma tttracesSubset:
       and "tttracesTI P \<subseteq> B"
     shows "tttraces P \<subseteq> B"
   using assms insert_subsetI by auto
+
 
 subsubsection \<open> Structural Conditions \<close>
 
@@ -525,6 +650,7 @@ definition [TTTsimps]: "FE \<equiv> TTTs - (FR \<union> TI)"
 
 declare in_set_conv_nth[TTTsimps]
 declare nth_append[TTTsimps]
+
 
 subsubsection \<open> General Relationships \<close>
 
@@ -796,7 +922,6 @@ proof -
   thus "t @ s \<in> TTT3" by (simp add: TTT3_def)
 qed
 
-
 lemma tockificationsTTT3: "\<Union> (range tockifications) \<subseteq> (TTT3::'\<theta> oreftrace set)"
 proof -
   {
@@ -885,6 +1010,7 @@ lemma tockificationsTTTs: "\<Union> (range tockifications) \<subseteq> TTT1 \<in
 lemma TTTsAppend: "t \<in> TTTss \<Longrightarrow> s \<in> TTTs \<Longrightarrow> t@s \<in> TTTs"
   by (simp add: TTT1sAppend TTT2Append TTT3Append)
 
+
 section \<open> Healthiness conditions \<close>
 
 subsection \<open> TT0 \<close>
@@ -913,6 +1039,7 @@ proof -
     using TT0_def by blast
 qed
 
+
 subsection \<open> TT1 \<close>
 
 text \<open> Not proven since we do not in general expect a UTP reactive theory to have prefix closure.
@@ -920,10 +1047,12 @@ It is known that this is not required for the algebraic theory. Whilst this coul
 additional healthiness conditions as in other UTP theories, this is an orthogonal concern to the
 rest of the UTP theory. \<close>
 
+
 subsection \<open> TT2 \<close>
 
 text \<open> Should be doable -- need to think about shape of induction argument and required supporting
 lemmata \<close>
+
 
 subsection \<open> TT3 \<close>
 
@@ -1069,6 +1198,7 @@ proof (clarsimp simp add: TTsimps)
   then show "\<rho> @ oref (insert oreftick X) # \<sigma> \<in> tockifications s"
     using "3" "4" "8" tockificationsAppend by fastforce
 qed
+
 
 subsubsection \<open> Reasoning about tttrace sets \<close>
 

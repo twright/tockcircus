@@ -13,7 +13,8 @@ text \<open> We don't need a tick event, because this is handled by the $wait$ f
 
 
 alphabet ('s, 'e) tt_vars = "('e reftrace, 's) rsp_vars" +
-  ref :: "('e refvar) refusal" 
+  ref :: "('e) refusal" 
+  pat :: "bool"
 
 type_synonym ('\<sigma>,'\<phi>) ttcircus = "('\<sigma>, '\<phi>) tt_vars"
 type_synonym ('\<sigma>,'\<phi>) taction  = "('\<sigma>, '\<phi>) ttcircus hrel"
@@ -37,8 +38,8 @@ text \<open> The interpretation of $wait$ changes to there being both stable (qu
 (* FIXME: Nasty hack below *)
 
 lemma tc_splits:
-  "(\<forall>r. P r) = (\<forall>ok wait tr st ref more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, \<dots> = more\<rparr>)"
-  "(\<exists>r. P r) = (\<exists> ok wait tr st ref more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, \<dots> = more\<rparr>)"
+  "(\<forall>r. P r) = (\<forall>ok wait tr st ref pat more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, pat\<^sub>v = pat, \<dots> = more\<rparr>)"
+  "(\<exists>r. P r) = (\<exists> ok wait tr st ref pat more. P \<lparr>ok\<^sub>v = ok, wait\<^sub>v = wait, tr\<^sub>v = tr, st\<^sub>v = st, ref\<^sub>v = ref, pat\<^sub>v = pat, \<dots> = more\<rparr>)"
   by (metis rsp_vars.surjective tt_vars.ext_surjective)+
 
 declare tt_vars.splits [alpha_splits del]
@@ -97,16 +98,19 @@ lemma TRR_Continuous [closure]: "Continuous TRR"
 lemma TRF_Continuous [closure]: "Continuous TRF"
   by (rel_blast)
 
-lemma TRR_alt_def: "TRR(P :: ('s,'e) taction) = (\<exists> $ref \<bullet> RR(P))"
+lemma TRR_alt_def: "TRR(P :: ('s,'e) taction) = (\<exists> $ref \<bullet> (\<exists> $pat \<bullet> RR(P)))"
   by rel_auto
 
 lemma TRR_intro:
-  assumes "$ref \<sharp> P" "P is RR"
+  assumes "$ref \<sharp> P" "$pat \<sharp> P" "P is RR"
   shows "P is TRR"
   by (simp add: TRR_alt_def Healthy_def, simp add: Healthy_if assms ex_unrest)
 
 lemma TRR_unrest_ref [unrest]: "P is TRR \<Longrightarrow> $ref \<sharp> P"
   by (metis (no_types, lifting) Healthy_if TRR_alt_def exists_twice in_var_uvar ref_vwb_lens unrest_as_exists vwb_lens_mwb)
+
+lemma TRR_unrest_pat [unrest]: "P is TRR \<Longrightarrow> $pat \<sharp> P"
+  by (metis (no_types, lifting) Healthy_if TRR_alt_def ex_commute exists_twice in_var_indep in_var_uvar pat_vwb_lens tt_vars.indeps(1) unrest_as_exists vwb_lens.axioms(2))
 
 lemma TRR_implies_RR [closure]: 
   assumes "P is TRR"
@@ -166,10 +170,10 @@ lemma TRF_implies_TRR [closure]: "P is TRF \<Longrightarrow> P is TRR"
   by (metis Healthy_def TRF_def TRR3_def TRR_closed_seq TRR_idem TRR_tc_skip)
 
 lemma TRR_right_unit: 
-  assumes "P is TRR" "$ref\<acute> \<sharp> P"
+  assumes "P is TRR" "$ref\<acute> \<sharp> P" "$pat\<acute> \<sharp> P"
   shows "P ;; II\<^sub>t = P"
 proof -
-  have "TRR(\<exists> $ref\<acute> \<bullet> P) ;; II\<^sub>t = TRR(\<exists> $ref\<acute> \<bullet> P)"
+  have "TRR(\<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P) ;; II\<^sub>t = TRR(\<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P)"
     by (rel_auto)
   thus ?thesis
     by (simp add: Healthy_if assms ex_unrest)
@@ -180,17 +184,17 @@ lemma TRF_right_unit [rpred]:
   by (metis Healthy_if TRF_def TRF_implies_TRR TRR3_def)
 
 lemma TRF_intro:
-  assumes "P is TRR" "$ref\<acute> \<sharp> P"
+  assumes "P is TRR" "$ref\<acute> \<sharp> P" "$pat\<acute> \<sharp> P"
   shows "P is TRF"
   by (metis Healthy_def TRF_def TRR3_def assms TRR_right_unit)
 
 lemma TRF_unrests [unrest]:
   assumes "P is TRF"
-  shows "$ref\<acute> \<sharp> P"
+  shows "$ref\<acute> \<sharp> P"  "$pat\<acute> \<sharp> P"
 proof -
-  have "$ref\<acute> \<sharp> TRF(P)"
+  have "$ref\<acute> \<sharp> TRF(P)" "$pat\<acute> \<sharp> TRF(P)"
     by (rel_auto)+
-  thus "$ref\<acute> \<sharp> P"
+  thus "$ref\<acute> \<sharp> P"  "$pat\<acute> \<sharp> P"
     by (simp_all add: Healthy_if assms)
 qed
 
@@ -208,19 +212,18 @@ no_utp_lift RR TRR TRF
 lemma TRR_transfer_refine:
   fixes P Q :: "('s, 'e) taction"
   assumes "P is TRR" "Q is TRR" 
-    "(\<And> t s s' r. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>] \<dagger> P) 
-                   \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>] \<dagger> Q))"
+    "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> P) 
+                   \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> Q))"
   shows "P \<sqsubseteq> Q"
 proof -
-  have "(\<And> t s s' r. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>] \<dagger> TRR P) 
-                     \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>] \<dagger> TRR Q))"
+  have "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR P) 
+                     \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR Q))"
     by (metis Healthy_if assms(1) assms(2) assms(3))
   hence "TRR P \<sqsubseteq> TRR Q"
     by (rel_auto)
   thus ?thesis
     by (metis Healthy_if assms(1) assms(2))
 qed
-
 
 lemma TRR_transfer_eq:
   fixes P Q :: "('s, 'e) taction"
@@ -274,6 +277,17 @@ lemma TRR_ex_ref' [closure]:
   shows "(\<exists> $ref\<acute> \<bullet> P) is TRR"
 proof -
   have "(\<exists> $ref\<acute> \<bullet> TRR(P)) is TRR"
+    by (rel_auto)
+  thus ?thesis
+    by (simp add: Healthy_if assms)
+qed
+
+
+lemma TRR_ex_pat' [closure]:
+  assumes "P is TRR"
+  shows "(\<exists> $pat\<acute> \<bullet> P) is TRR"
+proof -
+  have "(\<exists> $pat\<acute> \<bullet> TRR(P)) is TRR"
     by (rel_auto)
   thus ?thesis
     by (simp add: Healthy_if assms)

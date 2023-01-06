@@ -355,6 +355,10 @@ lemma refusedevts_torefvars: "refusedevts (torefvars E) = E"
 definition patient where
 "patient (X) = (reftock \<notin> X)"
 
+lemma patient_torefvars: "patient (torefvars E)"
+  by (auto simp add: torefvars_def patient_def)
+
+
 syntax
   "_events"      :: "logic \<Rightarrow> logic" ("events\<^sub>u'(_')")
   "_tocks"       :: "logic \<Rightarrow> logic" ("tocks\<^sub>u'(_')")
