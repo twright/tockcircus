@@ -31,7 +31,8 @@ text \<open> We record patience/urgency via the @{const pat} variable instead of
 text \<open> The $ref$ variable is not simply a set, but a set augmented with the @{term "\<^bold>\<bullet>"} that denotes
   stability. We need this because tick-tock traces can end without a refusal. Note that unlike
   in the trace this is a refusal over @{typ "'e tev"} so that we can refuse tocks at the end. \<close>
-
+definition tc_time :: "('e set, 's) uexpr \<Rightarrow> (nat set, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<T>'(_, _')") where 
+[upred_defs]: "\<T>(X, A) = U(\<exists> t \<in> tocks \<lceil>- X\<rceil>\<^sub>S\<^sub><. $tr\<acute> = $tr @ \<guillemotleft>t\<guillemotright> \<and> length(\<guillemotleft>t\<guillemotright>) \<in> \<lceil>A\<rceil>\<^sub>S\<^sub>< \<and> $st\<acute> = $st)"
 text \<open> The interpretation of $wait$ changes to there being both stable (quiescent) and unstable.
   Extra information is needed for refusals. What is the meaning pericondition? \<close>
 

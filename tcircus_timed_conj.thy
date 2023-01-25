@@ -1,5 +1,5 @@
 theory tcircus_timed_conj
-  imports "tcircus_calc" UTP.utp_concurrency
+  imports "tcircus_rel" UTP.utp_concurrency
 begin
 definition mk_refvar_set where
   "mk_refvar_set E p = ((torefvars E)
@@ -116,14 +116,6 @@ lemma tconj_rfnil2:
   "U(($ref\<acute> = \<guillemotleft>rfset E\<guillemotright>) \<squnion>\<^sub>t ($ref\<acute> = \<guillemotleft>rfset F\<guillemotright>))
  = U($ref\<acute> = \<guillemotleft>rfset E\<guillemotright> \<and> \<guillemotleft>E = F\<guillemotright>)"
   by (rel_auto)
-
-lemma tconj_rfset:
-  "(\<E>(s\<^sub>1,t,E\<^sub>1,p\<^sub>1) \<squnion>\<^sub>t \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
-  apply (rel_auto)
-  apply (smt (z3) UnCI)
-  apply (smt (z3) Un_iff)
-  apply (smt (z3) Un_iff)
-  done
 
 lemma tconj_assoc:
   "((P \<squnion>\<^sub>t Q) \<squnion>\<^sub>t R) = (P \<squnion>\<^sub>t (Q \<squnion>\<^sub>t R))"

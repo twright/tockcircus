@@ -1,7 +1,7 @@
 section \<open> Calculations \<close>
 
 theory tcircus_calc
-  imports tcircus_idle
+  imports tcircus_idle tcircus_timed_conj
 begin
 
 abbreviation tsyme :: "('e reftrace, 's) uexpr \<Rightarrow> ('s, 'e) taction" where
@@ -87,6 +87,14 @@ lemma instability_subsumed: "\<E>(s, t, E, p) \<sqsubseteq> \<U>(s, t)"
 (* Original version was p1 \<and> p2 *)
 lemma "(\<E>(s\<^sub>1, t, E\<^sub>1, p\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
+
+lemma tconj_rfset:
+  "(\<E>(s\<^sub>1,t,E\<^sub>1,p\<^sub>1) \<squnion>\<^sub>t \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
+  apply (rel_auto)
+  apply (smt (z3) UnCI)
+  apply (smt (z3) Un_iff)
+  apply (smt (z3) Un_iff)
+  done
 
 lemma stability_modulo_ref: "(\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<E>(s, t, E, p)) = (\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<U>(s, t))"
   by (rel_auto)
@@ -216,12 +224,35 @@ lemma [rpred]: "idle(\<U>(s, Evt t # ts)) = false"
 lemma [rpred]: "(\<T>(X\<^sub>1, A\<^sub>1) \<and> \<T>(X\<^sub>2, A\<^sub>2)) = \<T>(X\<^sub>1 \<union> X\<^sub>2, A\<^sub>1 \<inter> A\<^sub>2)"
   by (rel_auto)
 
+lemma [rpred]: "((\<T>(X\<^sub>1, A\<^sub>1)) \<squnion>\<^sub>t (\<T>(X\<^sub>2, A\<^sub>2))) = \<T>(X\<^sub>1 \<union> X\<^sub>2, A\<^sub>1 \<inter> A\<^sub>2)"
+  by (rel_auto)
+
+lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion>\<^sub>t (\<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true))) 
+       = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
+  by (rel_blast)
+  
 lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true)) 
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
   by (rel_auto)
 
+lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion>\<^sub>t (\<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true))) 
+       = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
+  by rel_blast
+
 lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
+
+lemma [rpred]: "((\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1)) \<squnion>\<^sub>t (\<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)))
+              = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
+  apply rel_auto
+  apply blast
+  apply blast
+  apply blast
+  apply blast
+  apply blast
+  apply blast
+  apply (smt (z3) Un_iff tocks_inter1 tocks_inter2)
+  done
 
 lemma nat_set_simps [simp]:
   fixes m::"(nat, _) uexpr"
@@ -258,6 +289,10 @@ lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
 
 lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
   by (rel_auto)
+
+lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle(P)) = idle(P)"
+  apply (rel_auto)
+  by fastforce
 
 lemma unstable_TRF:
   assumes "P is TRF"
@@ -296,5 +331,19 @@ proof -
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
+
+
+lemma TRR_tconj_time [rpred]:
+  assumes "P is TRR"
+  shows "((time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true))) \<squnion>\<^sub>t P) = P"
+proof -
+  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, false)) \<squnion>\<^sub>t TRR(P)) = TRR(P)"
+    apply (rel_auto)
+    nitpick
+    sledgehammer
+  thus ?thesis
+    by (simp add: Healthy_if assms)
+qed
+
 
 end
