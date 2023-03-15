@@ -42,7 +42,7 @@ text \<open> A timed observation represents a period of delay. The set @{term X}
   periods, for example @{term "{0..n}"} means a delay of between $0$ and $n$ units. \<close>
 
 definition tc_time :: "('e set, 's) uexpr \<Rightarrow> (nat set, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<T>'(_, _')") where 
-[upred_defs]: "\<T>(X, A) = U(\<exists> t \<in> tocks \<lceil>- X\<rceil>\<^sub>S\<^sub><. $tr\<acute> = $tr @ \<guillemotleft>t\<guillemotright> \<and> length(\<guillemotleft>t\<guillemotright>) \<in> \<lceil>A\<rceil>\<^sub>S\<^sub>< \<and> $st\<acute> = $st)"
+[upred_defs]: "\<T>(X, A) = U(\<exists> t \<in> tocks \<lceil>-X\<rceil>\<^sub>S\<^sub><. ($tr\<acute> = $tr @ \<guillemotleft>t\<guillemotright>) \<and> (length(\<guillemotleft>t\<guillemotright>) \<in> \<lceil>A\<rceil>\<^sub>S\<^sub><) \<and> ($st\<acute> = $st))"
 
 utp_lift_notation tc_stable
 utp_lift_notation tc_unstable
@@ -171,7 +171,7 @@ lemma time_single_atLeast [rpred]: "\<T>(X, {m}) ;; \<T>(X, {n..}) = \<T>(X, {m+
   apply (rule_tac x="take (\<lbrakk>m\<rbrakk>\<^sub>e s) t" in exI)
   apply (auto)
   apply (rule_tac x="drop (\<lbrakk>m\<rbrakk>\<^sub>e s) t" in bexI)
-   apply (auto)
+  apply (auto)
   done
 
 lemma split_time_dom:
@@ -200,22 +200,40 @@ proof (trr_auto)
 qed
 
 (* Changes from true to false *)
-lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, false)"
+lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, true)"
   by rel_auto
 
-lemma [rpred]: "idle(\<T>(X, A)) = \<T>(X, A)" 
+lemma [rpred]: "idle\<^sub>I(\<T>(X, A)) = \<T>(X, A)" 
   by (rel_auto, simp add: tocks_subset)
 
-lemma time_tocks_stable [rpred]: "idle(\<T>(X, A) ;; \<E>(s, [], E, p)) = \<T>(X, A) ;; \<E>(s, [], E, p)"
+lemma [rpred]: "idle(\<T>(X, A)) = (\<T>(X, A) \<and> $pat\<acute>)" 
+  by (rel_auto, simp add: tocks_subset)
+
+lemma time_tocks_stable_insistant [rpred]: "idle\<^sub>I(\<T>(X, A) ;; \<E>(s, [], E, p)) = \<T>(X, A) ;; \<E>(s, [], E, p)"
   by (rel_auto; simp add: tocks_subset)
+
+lemma time_tocks_stable [rpred]: "idle(\<T>(X, A) ;; \<E>(s, [], E, p)) = (\<T>(X, A) ;; \<E>(s, [], E, True))"
+  by (rel_auto; simp add: tocks_subset)
+
+lemma [rpred]: "idle\<^sub>I(\<T>(X, A) ;; \<U>(s, [])) = \<T>(X, A) ;; \<U>(s, [])"
+  by (rel_auto, simp add: tocks_subset)
 
 lemma [rpred]: "idle(\<T>(X, A) ;; \<U>(s, [])) = \<T>(X, A) ;; \<U>(s, [])"
   by (rel_auto, simp add: tocks_subset)
 
-lemma [rpred]: "idle(\<E>(s, [], E, p)) = \<E>(s, [], E, p)"
+lemma [rpred]: "idle\<^sub>I(\<E>(s, [], E, p)) = \<E>(s, [], E, p)"
   by (rel_auto)
 
+lemma [rpred]: "idle(\<E>(s, [], E, p)) = \<E>(s, [], E, True)"
+  by (rel_auto)
+
+lemma [rpred]: "idle\<^sub>I(\<E>(s, Evt t # ts, E, p)) = false"
+  by (rel_simp)
+
 lemma [rpred]: "idle(\<E>(s, Evt t # ts, E, p)) = false"
+  by (rel_simp)
+
+lemma [rpred]: "idle\<^sub>I(\<U>(s, Evt t # ts)) = false"
   by (rel_simp)
 
 lemma [rpred]: "idle(\<U>(s, Evt t # ts)) = false"
@@ -259,21 +277,33 @@ lemma nat_set_simps [simp]:
   shows "U({0..<m} \<inter> {m}) = U({})" "U(A \<inter> A) = U(A)"
   by (rel_simp+)
 
+lemma [rpred]: "active\<^sub>I(\<U>(s, [])) = false"
+  by (rel_auto)
+
+lemma [rpred]: "idle\<^sub>I(\<U>(s, [])) = \<U>(s, [])"
+  by (rel_auto)
+
 lemma [rpred]: "active(\<U>(s, [])) = false"
   by (rel_auto)
 
 lemma [rpred]: "idle(\<U>(s, [])) = \<U>(s, [])"
   by (rel_auto)
 
+lemma [rpred]: "(P \<squnion>\<^sub>t false) = false" "(false \<squnion>\<^sub>t P) = false"
+  by (rel_auto+)
+
 lemma [rpred]:
   assumes "P is TRR"
-  shows "time(P ;; \<U>(true, [])) = time(P)"
+  shows "time(P ;; \<U>(true, [])) = time(P)" "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
 proof -
-  have "time(TRR(P) ;; \<U>(true, [])) = time(TRR P)"
-    by (rel_blast)
-  thus ?thesis
-    by (simp add: Healthy_if assms)
+  have "time(TRR(P) ;; \<U>(true, [])) = time(TRR P)" "time\<^sub>I(TRR(P) ;; \<U>(true, [])) = time\<^sub>I(TRR P)"
+    by (rel_blast+)
+  thus "time(P ;; \<U>(true, [])) = time(P)" "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
+    by (simp_all add: Healthy_if assms)
 qed
+
+lemma [rpred]: "idle\<^sub>I(\<T>(X, T) ;; \<U>(true, [Evt a])) = false"
+  by (rel_simp)
 
 lemma [rpred]: "idle(\<T>(X, T) ;; \<U>(true, [Evt a])) = false"
   by (rel_simp)
@@ -281,18 +311,33 @@ lemma [rpred]: "idle(\<T>(X, T) ;; \<U>(true, [Evt a])) = false"
 lemma [simp]: "U(insert x (insert x A)) = U(insert x A)"
   by (rel_auto)
 
+lemma [rpred]: "active\<^sub>I(\<T>(X, {0..})) = false"
+  by (rel_auto)
+
 lemma [rpred]: "active(\<T>(X, {0..})) = false"
   by (rel_auto)
+
+lemma [rpred]: "active\<^sub>I(\<T>(X, T) ;; \<U>(s, [])) = false"
+  by (trr_auto)
 
 lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
 
+lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle\<^sub>I(P)) = idle\<^sub>I(P)"
+  by (rel_auto)
+
 lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
   by (rel_auto)
 
-lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle(P)) = idle(P)"
+lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle\<^sub>I(P)) = idle\<^sub>I(P)"
   apply (rel_auto)
   by fastforce
+
+lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle(P)) = idle(P)"
+  apply (rel_auto)
+  by (metis Prefix_Order.prefixE append_minus)
+
+(*  by fastforce *)
 
 lemma unstable_TRF:
   assumes "P is TRF"
@@ -307,6 +352,22 @@ qed
 text \<open> If a pericondition @{term P} contains an unstable version of each postcondition observation
   in @{term Q}, then every time trace of the @{term P} has an extension in @{term Q}. \<close>
 
+lemma time_peri_in_post_insistant:
+  assumes "P is TRR" "P is TIP" "Q is TRF" "P \<sqsubseteq> Q ;; \<U>(true, [])"
+  shows "time\<^sub>I(P) \<sqsubseteq> Q"
+proof -
+  have "Q ;; \<U>(true, []) ;; II\<^sub>t \<sqsubseteq> Q"
+    by (trr_auto cls: assms, blast)
+  also have "P ;; II\<^sub>t \<sqsubseteq> ..."
+    by (simp add: RA1 assms(4) urel_dioid.mult_isor)
+  also have "time\<^sub>I(P) ;; II\<^sub>t \<sqsubseteq> ..."
+    by (simp add: TIP_has_time assms(1) assms(2) urel_dioid.mult_isor utp_pred_laws.inf.orderI)
+  also have "... = time\<^sub>I(P)"
+    by (simp add: TRF_right_unit TRF_time_insistant assms(1))
+  finally show ?thesis .
+qed
+
+(*
 lemma time_peri_in_post:
   assumes "P is TRR" "P is TIP" "Q is TRF" "P \<sqsubseteq> Q ;; \<U>(true, [])"
   shows "time(P) \<sqsubseteq> Q"
@@ -321,12 +382,14 @@ proof -
     by (simp add: TRF_right_unit TRF_time assms(1))
   finally show ?thesis .
 qed
+*)
+
 
 lemma TRR_conj_time [rpred]:
   assumes "P is TRR"
-  shows "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> P) = P"
+  shows "(time\<^sub>I(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> P) = P"
 proof -
-  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> TRR(P)) = TRR(P)"
+  have "(time\<^sub>I(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> TRR(P)) = TRR(P)"
     by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
@@ -337,13 +400,35 @@ lemma TRR_tconj_time [rpred]:
   assumes "P is TRR"
   shows "((time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true))) \<squnion>\<^sub>t P) = P"
 proof -
-  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, false)) \<squnion>\<^sub>t TRR(P)) = TRR(P)"
-    apply (rel_auto)
-    nitpick
-    sledgehammer
+  have 1: "((time\<^sub>I(\<T>({}, {0..})) \<and> $pat\<acute>) ;; \<E>(true, [], {}, true)) = (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))"
+    by (rel_auto)
+  have 2: "(time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) = ((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>)"
+    by rel_auto
+  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P)) = (((time\<^sub>I(\<T>({}, {0..})) \<and> $pat\<acute>) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = ((time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P))"
+    apply(simp add: 1)
+    done
+  also have "\<dots> = (((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>) \<squnion>\<^sub>t TRR(P))"
+    by (metis "2")
+  also have "\<dots> = (TRR(P) \<squnion>\<^sub>t ((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>))"
+    by (simp add: tconj_comm)
+  also have "\<dots> = (TRR(P) \<and> (\<exists> $pat\<acute> \<bullet> time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)))"
+    apply(auto simp add: conj_tconj unrest)
+    done
+  also have "\<dots> = ((\<exists> $pat\<acute> \<bullet> time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) \<and> TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = ((time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, false)) \<and> TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = TRR P"
+    apply(rel_blast)
+    done
+  finally have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P)) = TRR(P)" .
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
-
 
 end

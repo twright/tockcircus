@@ -3,46 +3,6 @@ theory tcircus_laws
 begin
 
 
-lemma TRC_unrests:
-  assumes "P is TRC"
-  shows "$ref \<sharp> TRC(P)" "$ref\<acute> \<sharp> TRC(P)"
-        "$pat \<sharp> TRC(P)" "$pat\<acute> \<sharp> TRC(P)"        
-        "$ok \<sharp> TRC(P)" "$ok\<acute> \<sharp> TRC(P)"
-        "$wait \<sharp> TRC(P)" "$wait\<acute> \<sharp> TRC(P)"
-  by (rel_auto+)
-
-lemma TRC_unrests':
-  assumes "P is TRC"
-  shows "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$pat \<sharp> P" "$pat\<acute> \<sharp> P"
-        "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-  by (metis Healthy_if TRC_unrests assms)+
-
-lemma TRRUnrestConcretify:
-  assumes "$ref \<sharp> P" "$pat \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$pat\<rbrakk>)"
-  using assms by pred_auto
-
-lemma TRFUnrestConcretify:
-  assumes "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$pat \<sharp> P" "$pat\<acute> \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>)"
-  using assms by pred_auto
-
-lemma TRCconcretify:
-  assumes "P is TRC"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>)"
-  by (rule TRFUnrestConcretify)
-     (simp_all add: TRC_unrests' assms)
-
-lemma TRRconcretify:
-  assumes "P is TRR"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$pat\<rbrakk>)"
-proof -
-  have "$ref \<sharp> P" "$pat \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P" 
-    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
-  thus ?thesis
-    by (rule TRRUnrestConcretify)
-qed
-
 
 lemma TRFconcretify:
   assumes "P is TRF"
