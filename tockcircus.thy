@@ -219,8 +219,10 @@ lemma "\<T>({}, {0..}) ;; \<E>(true, [], {}, true) is TRR"
   apply(trr_auto)
   done
 
+(*
 lemma "(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<sqsubseteq> \<U>(true, [])"
   by (rel_simp)
+*)
 
 lemma "false is TRF"
   apply (simp add: closure)
@@ -338,9 +340,9 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
 [upred_defs]:
 "P \<box> Q =
   \<^bold>R((pre\<^sub>R(P) \<and> pre\<^sub>R(Q))
-  \<turnstile> ((idle(peri\<^sub>R(P)) \<squnion>\<^sub>t idle(peri\<^sub>R(Q))) 
-   \<or> (time(peri\<^sub>R(P)) \<squnion>\<^sub>t active(peri\<^sub>R(Q)))
-   \<or> (time(peri\<^sub>R(Q)) \<squnion>\<^sub>t active(peri\<^sub>R(P))))
+  \<turnstile> ((idle\<^sub>I(peri\<^sub>R(P)) \<squnion>\<^sub>t idle\<^sub>I(peri\<^sub>R(Q))) 
+   \<or> (time\<^sub>I(peri\<^sub>R(P)) \<and> active\<^sub>I(peri\<^sub>R(Q)))
+   \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> active\<^sub>I(peri\<^sub>R(P))))
   \<diamondop> ((time\<^sub>I(peri\<^sub>R(P)) \<and> post\<^sub>R(Q))
    \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> post\<^sub>R(P))))"
 
@@ -424,6 +426,7 @@ next
 qed
 *)
 
+(*
 lemma ExtChoice_dual:
   assumes "P is TC" "Q is TC" "peri\<^sub>R P is TIP" "peri\<^sub>R Q is TIP"
   shows "ExtChoice {P, Q} id = P \<box> Q"
@@ -439,6 +442,7 @@ lemma ExtChoice_dual:
   apply (smt TC_inner_closures(2) TIP_time_active assms(1) assms(2) assms(3) assms(4) conj_comm utp_pred_laws.inf_left_commute utp_pred_laws.sup_commute)
   *)
   oops
+*)
 
 text \<open> Proving idempotence of binary external choice is complicated by the need to show that
   @{term "(time(peri\<^sub>R(P)) \<and> post\<^sub>R(P)) = post\<^sub>R(P)"} \<close>
@@ -486,40 +490,40 @@ lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<sqsubseteq> \<U>
   apply(trr_auto)
   done
 
+(*
 lemma [rpred]:
   assumes "(P \<and> $pat\<acute>) \<sqsubseteq> Q"
   shows "((P \<and> $pat\<acute>) \<squnion>\<^sub>t Q) = Q"
   using assms 
   unfolding upred_ref_iff
   apply rel_auto
+  apply blast
+  apply (smt (z3))
   by (smt (z3))
- 
+*)
+
 lemma "Skip \<box> Stop = Skip"
   apply(rdes_simp cls: extChoice_def)
   apply(rel_auto)
-  using tocks_Nil by blast
+  done
   
 lemma "Wait m \<box> Wait m = Wait m"
-  apply (rdes_simp cls: extChoice_def)
-  apply(rel_auto)
-  apply blast+
+  apply (rdes_eq_split cls: extChoice_def)
+  apply rel_auto
+   apply trr_auto
+  apply blast
+  apply (metis patience.simps(3))
+  apply trr_auto
   done
 
 lemma "Wait m \<box> Wait n = Wait U(min m n)"
-  apply(rdes_simp cls: extChoice_def)
-  apply(rule rdes_tri_eq_intro)
+  apply(rdes_eq_split cls: extChoice_def)
   apply(rel_auto)
-  apply(trr_auto)
-  apply blast
-  apply (metis le_eq_less_or_eq min.cobounded2 min.commute)
-  apply(trr_auto)
-  (*
-  apply meson
-  apply linarith
-  apply meson
-  apply (metis min_def)
-  apply (metis le_eq_less_or_eq min.cobounded1 min_def)
-  *)
+   apply(trr_auto)
+     apply blast
+    apply (metis (no_types, hide_lams) patience.simps(3))
+   apply (metis (no_types) less_linear min.strict_order_iff min_less_iff_disj patience.simps(3))
+   apply(trr_auto)
   done
 
 lemma [rpred]: "active\<^sub>I(\<E>(true, [], {}, false)) = false"
@@ -533,59 +537,88 @@ lemma [rpred]: "time(\<E>(true, [], {}, false)) = \<E>(true, [], {}, false)"
   done
 *)
 
-(* TODO: check if this should be true *)
-lemma "Skip \<box> Stop\<^sub>U = Skip"
+lemma "\<U>(true, []) \<squnion>\<^sub>t \<E>(true, [], {}, false) = \<U>(true, [])"
+  by (trr_auto)
+  
+
+lemma "\<U>(true, []) \<squnion>\<^sub>t \<E>(true, [], {}, false) = \<E>(true, [], {}, true)"
+  apply(trr_simp)
+  apply(meson)
+  nitpick
+  oops
+
+(* Now changed to an actual true result *)
+lemma "Skip \<box> Stop\<^sub>U =  Skip"
   apply (rdes_eq_split cls: extChoice_def)
   apply (rel_auto)
   apply(trr_auto)
-  apply blast
   apply(trr_auto)
   done
-(* Now finally works! *)
 
 lemma "Skip \<box> Div = Skip"
-  apply (rdes_eq cls: extChoice_def)
-  apply (blast)
+  apply(rdes_eq cls: extChoice_def)
   done
 
 lemma "Wait(n + 1) \<box> Div = Div"
-  apply (rdes_eq_split cls: extChoice_def)
-  apply(blast)
-  apply (trr_auto)
-  apply (metis list.size(3) tocks_Nil zero_less_Suc)
-  apply(trr_auto)
+  apply(rdes_eq cls: extChoice_def)
   done
 
 (* Was broken *)
-(*
-lemma "($pat\<acute> \<and> Wait(n + 1)) \<box> ($pat\<acute> \<and> Stop\<^sub>U) = (Stop\<^sub>U)"
-  apply (rdes_simp)
-  apply (simp add: extChoice_def)
-  apply(rel_auto)
-  apply blast+
-  nitpick
-*)
-
 lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
   apply(rdes_eq_split cls: extChoice_def)
     apply(rel_auto)
-   prefer 2 apply(trr_auto)
+   apply(trr_auto)
+  apply (metis patience.distinct(1))
   apply(trr_auto)
-  oops
+  done
 
 lemma "Stop \<box> do\<^sub>T(a) = do\<^sub>T(a)"
   apply(rdes_eq_split cls: extChoice_def)
   apply blast
-  apply(trr_auto)
-  apply blast
-  apply (metis tock_ord_refl tocks_idleprefix_fp tocks_iff_idleprefix_fp)
-  apply (metis tock_ord_refl)
+   apply(trr_auto)
+  apply (metis idleprefix_tocks tocks_idleprefix_fp)
+  apply (trr_auto)
+  done
+
+(* TODO: pending sort hypothesis? *)
+lemma "Wait m \<box> Skip = Skip"
+  apply (rdes_eq_split cls: extChoice_def)
+  apply (rel_auto)
+   apply(trr_auto)
   apply(trr_auto)
   done
 
-lemma "Wait m \<box> Skip = Skip"
-  apply(rdes_eq cls: extChoice_def)
-  by (smt (z3) append_Nil2 idleprefix.simps(1) list.size(3) neq0_conv tocks_iff_idleprefix_fp)
+lemma extChoice_stop_unit:
+  assumes "P is TC"
+  shows "Stop \<box> P = P"
+  apply (rdes_eq_split cls: assms extChoice_def)
+    apply simp
+  prefer 2
+   apply(trr_auto cls: assms)
+  apply(trr_auto cls: assms)
+  apply meson
+    apply (metis append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+                    apply (metis patience.distinct(1))
+  oops
+
+(*
+  prefer 2
+  apply(trr_auto cls: assms)
+  apply blast
+  apply (metis append_Nil2 hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+  apply blast
+  oops
+*)
+(*
+  apply (rdes_eq_split cls: assms extChoice_def)
+    apply(rel_auto)
+   apply(rel_auto)
+  apply blast
+  apply (smt (z3) append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+*)
+(*
+         apply (metis append_Nil2 hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+*)
 
 lemma extChoice_commute:
   assumes "P is TC" "Q is TC"
@@ -600,6 +633,7 @@ lemma TRC_conj [closure]: "\<lbrakk> P is TRC; Q is TRC \<rbrakk> \<Longrightarr
 lemma TRF_conj [closure]: "\<lbrakk> P is TRF; Q is TRF \<rbrakk> \<Longrightarrow> (P \<and> Q) is TRF"
   by (simp add: TRF_implies_TRR TRF_intro TRF_unrests(1) TRF_unrests(2) TRR_conj unrest_conj)
 
+(*
 definition R1p where
 R1p_def [upred_defs]: "R1p (P) = (P \<squnion>\<^sub>t (($tr \<le>\<^sub>u $tr\<acute>) \<and> $pat\<acute>))"
 
@@ -607,7 +641,9 @@ utp_const R1p
 
 lemma "R1 P = R1p P"
   apply(rel_auto)
-  by blast
+  apply blast
+  oops
+*)
 
 (* The definition of R1 is still valid (phew!) *)
 
@@ -685,7 +721,7 @@ lemma TRF_conj [closure]: "\<lbrakk> P is TRF; Q is TRF \<rbrakk> \<Longrightarr
   by (simp add: TRF_implies_TRR TRF_intro TRF_unrests(1) TRF_unrests(2) TRR_conj unrest_conj)
 *)
 
-lemma uns_refine: "P \<sqsubseteq> \<U>(true, []) \<Longrightarrow> idle(P) \<sqsubseteq> \<U>(true, [])"
+lemma uns_refine: "P \<sqsubseteq> \<U>(true, []) \<Longrightarrow> idle\<^sub>I(P) \<sqsubseteq> \<U>(true, [])"
   by (rel_auto)
 
 lemma timeI_TRF:
@@ -716,6 +752,9 @@ lemma extChoice_closure [closure]:
       apply (simp_all add: closure assms)
     apply(rule TRF_intro)
   apply (meson TC_inner_closures(1) TC_inner_closures(2) TC_inner_closures(3) TRC_implies_TRR TRF_implies_TRR TRR_closed_impl TRR_conj assms(1) assms(2) time_urgent_TRR trel_theory.disj_is_healthy)
+  apply (metis (no_types, lifting) NRD_is_RD RD_healths(2) RD_reactive_tri_design TC_implies_NRD TC_inner_closures(1) TC_inner_closures(2) TC_inner_closures(3) TRC_implies_TRR TRF_conj_closure TRF_time_insistant TRF_unrests(1) TRR_closed_impl TRR_implies_RR assms(1) assms(2) postR_RR postR_rdes tfin_theory.disj_is_healthy)
+  apply (metis (no_types, lifting) NRD_is_RD RD_healths(2) RD_reactive_tri_design TC_implies_NRD TC_inner_closures(1) TC_inner_closures(2) TC_inner_closures(3) TRC_implies_TRR TRF_conj_closure TRF_time_insistant TRF_unrests(2) TRR_closed_impl TRR_implies_RR assms(1) assms(2) postR_RR postR_rdes tfin_theory.disj_is_healthy)
+   apply(trr_simp cls: assms)
   oops
   (*
   sledgehammer
@@ -737,6 +776,90 @@ proof -
 qed
 *)
 
+(*
+lemma
+  shows "\<U>(true, []) is Hpat"
+  apply(rel_auto)
+  done
+
+
+lemma
+  assumes "R is Hpat"
+  shows "((P \<squnion>\<^sub>t Q) \<sqinter> R) = ((P \<sqinter> R) \<squnion>\<^sub>t (Q \<sqinter> R))"
+proof -
+  have 1: "R = ($pat\<acute> \<and> R)"
+    by (metis Healthy_if Hpat_def assms conj_comm)
+
+  show ?thesis
+    apply(subst (1 2 3) 1)
+    apply(simp add: tconj_alt_def)
+    apply(rel_auto)
+    oops
+*)
+
+lemma extChoice_assoc:
+  assumes "P is TC" "Q is TC" "R is TC"
+  shows "P \<box> Q \<box> R = P \<box> (Q \<box> R)"
+  apply(rdes_eq_split cls: assms extChoice_def)
+    apply simp
+  oops
+
+lemma
+  assumes "R is Hinsist"
+  shows "((P \<squnion>\<^sub>t Q) \<sqinter> R) = ((P \<sqinter> R) \<squnion>\<^sub>t (Q \<sqinter> R))"
+proof -
+  have 1: "R = (\<exists> $pat\<acute> \<bullet> R)"
+    by (metis Healthy_if Hinsist_def assms)
+
+  show ?thesis
+    apply(subst (1 2 3) 1)
+    apply(rel_auto)
+    apply blast+
+    done
+qed
+
+lemma trr_uns_distrib:
+  assumes "P is TRR" "Q is TRR"
+  shows "((P \<squnion>\<^sub>t Q) \<sqinter> \<U>(true, [])) = ((P \<sqinter> \<U>(true, [])) \<squnion>\<^sub>t (Q \<sqinter> \<U>(true, [])))"
+  apply(trr_auto cls: assms)
+  apply blast+
+  done
+
+lemma
+  assumes "P is TRR" "Q is TRR" "R is TRR"
+  shows "((P \<squnion>\<^sub>t Q) \<sqinter> R) = ((P \<sqinter> R) \<squnion>\<^sub>t (Q \<sqinter> R))"
+  apply(subst (12 10 8 6 5 3 1) TRRconcretify)
+  apply(simp_all add: assms)
+  apply(simp add: tconj_alt_def)
+  apply(rel_auto)
+  oops
+
+lemma uns_tconj:
+  assumes  "P is TRR" "Q is TRR" "P \<sqsubseteq> \<U>(true, [])" "Q \<sqsubseteq> \<U>(true, [])"
+  shows "P \<squnion>\<^sub>t Q \<sqsubseteq> \<U>(true, [])"
+proof -
+  have 1: "P = (P \<sqinter> \<U>(true, []))" "Q = (Q \<sqinter> \<U>(true, []))"
+    by (simp_all add: assms(3) assms(4) semilattice_sup_class.sup_absorb1)
+    (* by (simp_all add: assms utp_pred_laws.sup.absorb1) *)
+
+  have "P \<squnion>\<^sub>t Q = (P \<sqinter> \<U>(true, [])) \<squnion>\<^sub>t (Q \<sqinter> \<U>(true, []))"
+    using 1 by presburger
+  also have "\<dots> = ((P \<squnion>\<^sub>t Q) \<sqinter> \<U>(true, []))"
+    by (simp add: assms(1) assms(2) trr_uns_distrib)
+  finally show "P \<squnion>\<^sub>t Q \<sqsubseteq> \<U>(true, [])"
+    by (meson semilattice_sup_class.sup.order_iff)
+qed
+
+(*
+lemma TIP_time_active [rpred]:
+  assumes "P is TRR" "P is TIP"
+  shows "(active\<^sub>I(P) \<and> time\<^sub>I(P)) = active\<^sub>I(P)"
+  apply (trr_auto cls: assms)
+  apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
+  apply (rel_blast)
+  done
+*)
+
 lemma extChoice_closure [closure]:
   assumes "P is TC" "Q is TC"
   shows "P \<box> Q is TC"
@@ -745,72 +868,80 @@ proof (rdes_simp cls: assms extChoice_def)
           "pre\<^sub>R Q is TRC" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
     using assms TC_inner_closures by auto
 
-  (*
-  have "idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) is TRR"
-    using "1"(1) "1"(2) TRC_implies_TRR TRR_closed_impl idle_TRR by blast
-  moreover have "idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) is TRR"
-    by (simp add: "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl idle_TRR)
-  ultimately have 2: "idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) is TRR"
-    by (simp add: tconj_TRR)
-  *)
-  (*  " \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)"
-    
+  have "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<sqsubseteq> \<U>(true, [])"
+    by (metis (no_types, lifting) TC_inner_closures(4) assms(1) disj_upred_def rea_impl_def semilattice_sup_class.sup.order_iff utp_pred_laws.sup_assoc)
+  then have 2: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<sqsubseteq> \<U>(true, [])"
+    by (meson uns_refine)
 
-                \<or> time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t active(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<squnion>\<^sub>t active(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) is TRR *)
+  have "(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> \<U>(true, [])"
+    by (metis TC_inner_closures(4) assms(2) disj_upred_def rea_impl_disj semilattice_sup_class.le_iff_sup)
+  then have 3: "idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> \<U>(true, [])"
+    by (meson uns_refine)
 
-(*
-  have "idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq>
-    \<U>(true, [])"
-    apply(rule TRR_transfer_refine)
-    apply (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl idle_TRR tconj_TRR)
-     apply(rel_auto)
-    apply(subst tconj_alt_def)
-    apply(rel_simp)
-    sledgehammer
-*)  
+  have 4: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> \<U>(true, [])"
+    by (simp add: "1"(1) "1"(2) "1"(4) "1"(5) "2" "3" TRC_implies_TRR TRR_closed_impl idle_TRR_insistant uns_tconj)
+
+  have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+    \<sqsubseteq>  (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+      \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
+     ;; \<U>(true, [])"
+    apply(trr_auto cls: 1)
+    sorry
+
+  have 5: "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) = (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    by (metis "1"(1) "1"(2) TRC_implies_TRR TRR_closed_impl TRR_idle_or_active_insistant disj_comm)
+
+  have 6: "((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))
+      = (((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))
+       \<or> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, [])))"
+    by (metis "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl TRR_idle_or_active_insistant conj_disj_distr seqr_or_distl)
+
+  have 7: "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+         \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, [])"
+    apply(trr_auto cls: 1)
+    sorry
+
+  have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+      \<sqsubseteq> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))"
+    apply(trr_auto cls: 1)
+    sorry
 
   have "pre\<^sub>R P \<and> pre\<^sub>R Q is TRC"
     by (simp add: "1"(1) "1"(4) TRC_conj)
-  moreover have 3: "(idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                \<or> time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t active(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<squnion>\<^sub>t active(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) is TRR"
-    by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl active_TRR idle_TRR tconj_TRR time_TRR trel_theory.disj_is_healthy)
+  moreover have 3: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) is TRR"
+    by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_TRR time_urgent_TRR trel_theory.disj_is_healthy)
+    (* by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl active_TRR idle_TRR tconj_TRR time_TRR trel_theory.disj_is_healthy) *)
   moreover have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) is TRF"
     by (metis (no_types, lifting) "1"(1) "1"(2) "1"(3) "1"(4) "1"(5) "1"(6) NRD_is_RD
         RD_reactive_tri_design TC_implies_NRD TRC_implies_TRR TRF_conj TRF_implies_TRR
         TRF_time_insistant TRR_closed_impl TRR_implies_RR assms(1) assms(2) postR_rdes
         tfin_theory.disj_is_healthy)
-  moreover have "(idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                \<or> time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t active(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<squnion>\<^sub>t active(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
                \<sqsubseteq> \<U>(true, [])"
-    apply(rule TRR_transfer_refine)
-    apply(simp add: 3)
-    apply(rel_auto)
-    apply(simp add: tconj_alt_def)
-    apply(rel_simp)
-    sorry
-  moreover have "(idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-               \<or> time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t active(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-               \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<squnion>\<^sub>t active(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
-               \<sqsubseteq> (time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
-               \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) ;; \<U>(true, [])"
-    apply(rule TRR_transfer_refine)
-    using "3" apply linarith
-     prefer 2 apply (simp add: tconj_alt_def)
-     apply(rel_simp)
-    sledgehammer
-    sorry
+    by (meson "4" utp_pred_laws.sup.coboundedI1)
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+               \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+               \<or>  time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
+              ;; \<U>(true, [])"
+    apply(trr_simp cls: 1)
+    apply(safe)
+    sorry (* TODO: How do we prove this? *)
   ultimately show "\<^bold>R ((pre\<^sub>R P \<and> pre\<^sub>R Q)
-                   \<turnstile> (idle(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                   \<or> time(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t active(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
-                   \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<squnion>\<^sub>t active(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+                   \<turnstile> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                   \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                   \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
                    \<diamondop> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
                    \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)))
                    is TC"
-    by (rule TC_intro)
+    by (meson "1"(1) "1"(2) "1"(4) "1"(5) TC_intro TRC_implies_TRR TRR_closed_impl TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_urgent_TRR trel_theory.disj_is_healthy)
 qed
 
 (*
@@ -839,35 +970,29 @@ proof -
 qed
 *)
 
-(*
 lemma extChoice_idem:
   assumes "P is TC" "peri\<^sub>R(P) is TIP"
   shows "P \<box> P = P"
 proof -
-  have 1: "time(peri\<^sub>R P) \<sqsubseteq> post\<^sub>R P"
-    by (rule time_peri_in_post, simp_all add: closure assms)
+  have 1: "time\<^sub>I(peri\<^sub>R P) \<sqsubseteq> post\<^sub>R P"
+    by (rule time_peri_in_post_insistant, simp_all add: closure assms)
   show ?thesis
+    apply (rdes_simp cls: assms extChoice_def)
     apply (rdes_eq_split cls: assms)
       apply (simp add: assms rpred closure)
      apply (simp_all add: assms utp_pred_laws.inf_commute closure rpred)
-    apply (simp add: "1" conj_comm utp_pred_laws.inf.absorb1)
-    done
-qed
-*)
+     prefer 2
+    oops
 
-lemma extChoice_unit:
-  assumes "P is TC"
-  shows "Stop \<box> P = P"
-  apply(rdes_simp cls: assms)
-  apply(simp add: )
-  apply (rdes_eq_split cls: assms)
-  apply (simp_all)
-   apply(rel_auto)
-  (* oops *)
+(*
+    apply (simp add: "1" conj_comm utp_pred_laws.inf.absorb1)
+*)
   
 lemma "Stop \<box> \<langle>\<sigma>\<rangle>\<^sub>T = \<langle>\<sigma>\<rangle>\<^sub>T"
   oops
-(*  by (simp add: AssignsT_TC extChoice_unit) *)
+(*
+   by (simp add: AssignsT_TC extChoice_unit)
+*)
 
 text \<open> Pedro Comment: Renaming should be a relation rather than a function. \<close>
 

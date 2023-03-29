@@ -4,6 +4,14 @@ theory tcircus_reftrace_calculation
   imports "tockcircus" "tcircus_laws" "tcircus_reftrace_semantics" "UTP.utp_full"
 begin
 
+lemma "tttraces (\<U>(true, [])) = {[], [otick]}"
+  apply(rdes_simp)
+  apply(rel_auto)
+  done
+
+lemma "(\<U>(true, []) \<squnion>\<^sub>t \<U>(true, [])) = \<U>(true, [])"
+  by trr_auto
+     metis
 
 subsection \<open> Div \<close>
 

@@ -23,13 +23,13 @@ text \<open> We introduce a small algebra for peri- and postconditions to captur
   also update the state? \<close>
 
 definition tc_stable :: "'s upred \<Rightarrow> ('e reftrace, 's) uexpr \<Rightarrow> ('e set, 's) uexpr \<Rightarrow> 's upred \<Rightarrow> ('s, 'e) taction" ("\<E>'(_, _, _, _')") where
-[upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> (\<lceil>p\<rceil>\<^sub>S\<^sub>< \<Rightarrow> $pat\<acute>))"
+[upred_defs]: "\<E>(s,t,E,p) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> (\<forall> e\<in>\<lceil>E\<rceil>\<^sub>S\<^sub><. \<guillemotleft>e\<guillemotright> \<notin>\<^sub>\<R> $ref\<acute>) \<and> ((\<lceil>p\<rceil>\<^sub>S\<^sub>< \<Rightarrow> ($pat\<acute> = [true]\<^sub>\<P>)) \<or> $pat\<acute> = unpat))"
 
 text \<open> We also need unstable intermediate observations, which the following relation provides. It
   has no set associated, since no refusal set is observed. \<close>
 
 definition tc_unstable :: "'s upred \<Rightarrow> ('e tev list, 's) uexpr \<Rightarrow> ('s, 'e) taction" ("\<U>'(_, _')") where
-[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+[upred_defs]: "\<U>(s,t) = U(\<lceil>s\<rceil>\<^sub>S\<^sub>< \<and> tsyme t \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = unpat)"
 
 text \<open> A final observation is similar to a stable observation, except it can update the state 
   variables and does not characterise a refusal set. \<close>
@@ -75,8 +75,10 @@ lemma [unrest]: "$st\<acute> \<sharp> \<U>(s, t)"
 
 text \<open> Unstable observations are subsumed by stable ones \<close>
 
+(* TODO: Should this be true? *)
 lemma patient_instability_subsumed: "\<E>(s, t, E, true) \<sqsubseteq> \<U>(s, t)"
-  by (rel_auto)
+  apply (rel_auto)
+  done
 
 lemma insistant_instability_subsumed: "\<E>(s, t, E, false) \<sqsubseteq> \<U>(s, t)"
   by (rel_auto)
@@ -90,11 +92,12 @@ lemma "(\<E>(s\<^sub>1, t, E\<^sub>1, p\<^sub>1) \<and> \<E>(s\<^sub>2, t, E\<^s
 
 lemma tconj_rfset:
   "(\<E>(s\<^sub>1,t,E\<^sub>1,p\<^sub>1) \<squnion>\<^sub>t \<E>(s\<^sub>2, t, E\<^sub>2, p\<^sub>2)) = \<E>(s\<^sub>1 \<and> s\<^sub>2, t, E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<and> p\<^sub>2)"
-  apply (rel_auto)
-  apply (smt (z3) UnCI)
-  apply (smt (z3) Un_iff)
-  apply (smt (z3) Un_iff)
-  done
+  apply (rel_simp)
+  apply(safe)
+(*  apply blast+ *)
+  apply (smt (z3) UnCI Un_iff)+
+     apply(simp)
+  oops
 
 lemma stability_modulo_ref: "(\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<E>(s, t, E, p)) = (\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<U>(s, t))"
   by (rel_auto)
@@ -112,6 +115,8 @@ lemma time_stable_compose:
   apply (trr_auto)
   apply (metis lit.rep_eq tock_ord_append tocks_order_power)
   apply (metis lit.rep_eq tock_ord_append tocks_order_power)
+  apply (metis lit.rep_eq tock_ord_append tocks_order_power)
+  apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
   apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
   apply (metis (mono_tags, hide_lams) append_take_drop_id length_replicate power_replicate tock_ord_decompose(1) tock_ord_decompose(2) tock_ord_def tock_power_in_tocks tocks_ord_closed)
   done
@@ -134,7 +139,9 @@ lemma [rpred]: "\<F>(s\<^sub>1, t\<^sub>1, \<sigma>) ;; \<E>(s\<^sub>2, t\<^sub>
   apply (trr_auto)
   apply (metis tock_ord_append)
   using tock_ord_append apply blast
+  apply (meson tock_ord_append)
   apply (metis append_take_drop_id tock_ord_decompose(1) tock_ord_decompose(2))
+   apply (metis append_take_drop_id tock_ord_decompose(1) tock_ord_decompose(2))
   apply (metis append_take_drop_id tock_ord_decompose(1) tock_ord_decompose(2))
   done
 
@@ -200,32 +207,42 @@ proof (trr_auto)
 qed
 
 (* Changes from true to false *)
+(*
 lemma idle_true [rpred]: "idle(true) = \<T>({}, {0..}) ;; \<E>(true, [], {}, true)"
   by rel_auto
+*)
 
 lemma [rpred]: "idle\<^sub>I(\<T>(X, A)) = \<T>(X, A)" 
   by (rel_auto, simp add: tocks_subset)
 
-lemma [rpred]: "idle(\<T>(X, A)) = (\<T>(X, A) \<and> $pat\<acute>)" 
+(*
+lemma [rpred]: "idle(\<T>(X, A)) = \<T>(X, A) \<and> U($pat\<acute> = [True]\<^sub>\<P>)" 
   by (rel_auto, simp add: tocks_subset)
+*)
 
 lemma time_tocks_stable_insistant [rpred]: "idle\<^sub>I(\<T>(X, A) ;; \<E>(s, [], E, p)) = \<T>(X, A) ;; \<E>(s, [], E, p)"
   by (rel_auto; simp add: tocks_subset)
 
+(*
 lemma time_tocks_stable [rpred]: "idle(\<T>(X, A) ;; \<E>(s, [], E, p)) = (\<T>(X, A) ;; \<E>(s, [], E, True))"
   by (rel_auto; simp add: tocks_subset)
+*)
 
 lemma [rpred]: "idle\<^sub>I(\<T>(X, A) ;; \<U>(s, [])) = \<T>(X, A) ;; \<U>(s, [])"
   by (rel_auto, simp add: tocks_subset)
 
+(*
 lemma [rpred]: "idle(\<T>(X, A) ;; \<U>(s, [])) = \<T>(X, A) ;; \<U>(s, [])"
   by (rel_auto, simp add: tocks_subset)
+*)
 
 lemma [rpred]: "idle\<^sub>I(\<E>(s, [], E, p)) = \<E>(s, [], E, p)"
   by (rel_auto)
 
+(*
 lemma [rpred]: "idle(\<E>(s, [], E, p)) = \<E>(s, [], E, True)"
   by (rel_auto)
+*)
 
 lemma [rpred]: "idle\<^sub>I(\<E>(s, Evt t # ts, E, p)) = false"
   by (rel_simp)
@@ -247,15 +264,20 @@ lemma [rpred]: "((\<T>(X\<^sub>1, A\<^sub>1)) \<squnion>\<^sub>t (\<T>(X\<^sub>2
 
 lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion>\<^sub>t (\<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true))) 
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
-  by (rel_blast)
-  
+  apply(trr_auto)
+  apply (metis patience.distinct(1) tocks_inter1 tocks_inter2)
+  apply (metis patience.distinct(1) tocks_inter1 tocks_inter2)
+  done
+
 lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true)) 
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
   by (rel_auto)
 
 lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion>\<^sub>t (\<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true))) 
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
-  by rel_blast
+  apply rel_auto
+  apply blast
+  by (smt (z3) patience.distinct(1) tocks_inter1 tocks_inter2)
 
 lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
@@ -268,9 +290,10 @@ lemma [rpred]: "((\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1)) \<squnion>
   apply blast
   apply blast
   apply blast
-  apply blast
-  apply (smt (z3) Un_iff tocks_inter1 tocks_inter2)
-  done
+    apply blast
+  apply (smt (z3) Un_iff patience.distinct(1) tocks_inter1 tocks_inter2)
+  (* apply (smt (z3) Un_iff tocks_inter1 tocks_inter2) *)
+  by (smt (z3) Un_iff patience.distinct(1) tocks_inter1 tocks_inter2)
 
 lemma nat_set_simps [simp]:
   fixes m::"(nat, _) uexpr"
@@ -286,8 +309,15 @@ lemma [rpred]: "idle\<^sub>I(\<U>(s, [])) = \<U>(s, [])"
 lemma [rpred]: "active(\<U>(s, [])) = false"
   by (rel_auto)
 
+(*
 lemma [rpred]: "idle(\<U>(s, [])) = \<U>(s, [])"
   by (rel_auto)
+*)
+
+(*
+lemma [rpred]: "(true \<squnion>\<^sub>t \<U>(true, [])) = true"
+  apply (rel_auto)
+*)
 
 lemma [rpred]: "(P \<squnion>\<^sub>t false) = false" "(false \<squnion>\<^sub>t P) = false"
   by (rel_auto+)
@@ -320,8 +350,10 @@ lemma [rpred]: "active(\<T>(X, {0..})) = false"
 lemma [rpred]: "active\<^sub>I(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
 
+(*
 lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
+*)
 
 lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle\<^sub>I(P)) = idle\<^sub>I(P)"
   by (rel_auto)
@@ -330,20 +362,24 @@ lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = 
   by (rel_auto)
 
 lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle\<^sub>I(P)) = idle\<^sub>I(P)"
-  apply (rel_auto)
+  apply rel_simp
+  apply safe
+  oops
+(*
+  sledgehammer
   by fastforce
+*)
 
 lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle(P)) = idle(P)"
-  apply (rel_auto)
-  by (metis Prefix_Order.prefixE append_minus)
+  oops
 
 (*  by fastforce *)
 
 lemma unstable_TRF:
   assumes "P is TRF"
-  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+  shows "P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = unpat)"
 proof -
-  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+  have "TRF P ;; \<U>(true, []) = U((\<exists> $st\<acute> \<bullet> TRF P) \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = unpat)"
     by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
@@ -357,7 +393,8 @@ lemma time_peri_in_post_insistant:
   shows "time\<^sub>I(P) \<sqsubseteq> Q"
 proof -
   have "Q ;; \<U>(true, []) ;; II\<^sub>t \<sqsubseteq> Q"
-    by (trr_auto cls: assms, blast)
+    apply (trr_simp cls: assms)
+    by blast
   also have "P ;; II\<^sub>t \<sqsubseteq> ..."
     by (simp add: RA1 assms(4) urel_dioid.mult_isor)
   also have "time\<^sub>I(P) ;; II\<^sub>t \<sqsubseteq> ..."
@@ -395,7 +432,47 @@ proof -
     by (simp add: Healthy_if assms)
 qed
 
+lemma TRR_tconj_time [rpred]:
+  assumes "P is TRR"
+  shows "((time\<^sub>I(\<T>({}, {0..}) ;; \<E>(true, [], {}, true))) \<squnion>\<^sub>t P) = P"
+  apply(trr_auto cls: assms)
+  oops
 
+(*
+proof -
+  have 1: "((time\<^sub>I(\<T>({}, {0..}))) ;; \<E>(true, [], {}, true)) = (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))"
+    by (rel_auto)
+  have 2: "(time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) = ((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>)"
+    by rel_auto
+  have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P)) = (((time\<^sub>I(\<T>({}, {0..})) \<and> $pat\<acute>) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = ((time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P))"
+    apply(simp add: 1)
+    done
+  also have "\<dots> = (((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>) \<squnion>\<^sub>t TRR(P))"
+    by (metis "2")
+  also have "\<dots> = (TRR(P) \<squnion>\<^sub>t ((\<exists> $pat\<acute> \<bullet> (time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true))) \<and> $pat\<acute>))"
+    by (simp add: tconj_comm)
+  also have "\<dots> = (TRR(P) \<and> (\<exists> $pat\<acute> \<bullet> time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)))"
+    apply(auto simp add: conj_tconj unrest)
+    done
+  also have "\<dots> = ((\<exists> $pat\<acute> \<bullet> time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, true)) \<and> TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = ((time\<^sub>I(\<T>({}, {0..})) ;; \<E>(true, [], {}, false)) \<and> TRR(P))"
+    apply(rel_blast)
+    done
+  also have "\<dots> = TRR P"
+    apply(rel_blast)
+    done
+  finally have "(time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t TRR(P)) = TRR(P)" .
+  thus ?thesis
+    by (simp add: Healthy_if assms)
+qed
+*)
+
+(*
 lemma TRR_tconj_time [rpred]:
   assumes "P is TRR"
   shows "((time(\<T>({}, {0..}) ;; \<E>(true, [], {}, true))) \<squnion>\<^sub>t P) = P"
@@ -430,5 +507,6 @@ proof -
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
+*)
 
 end
