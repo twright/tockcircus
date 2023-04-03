@@ -501,5 +501,14 @@ proof -
     by (rule TRRUnrestConcretify)
 qed
 
+lemma TRFconcretify:
+  assumes "P is TRF"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>, \<guillemotleft>unpat\<guillemotright>,\<guillemotleft>unpat\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>)"
+proof -
+  have "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$pat \<sharp> P" "$pat\<acute> \<sharp> P"  "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
+    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
+  thus ?thesis
+    by (rule TRFUnrestConcretify)
+qed                    
 
 end

@@ -3,17 +3,6 @@ theory tcircus_laws
 begin
 
 
-
-lemma TRFconcretify:
-  assumes "P is TRF"
-  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>)"
-proof -
-  have "$ref \<sharp> P" "$ref\<acute> \<sharp> P" "$pat \<sharp> P" "$pat\<acute> \<sharp> P"  "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P"
-    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
-  thus ?thesis
-    by (rule TRFUnrestConcretify)
-qed
-
 lemma TCpostconcretify: "(P::'\<theta> ttcsp) is TC \<Longrightarrow> post\<^sub>R P = P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>rfnil\<guillemotright>, \<guillemotleft>False\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$ref\<acute>,$pat,$pat\<acute>\<rbrakk>"
 proof -
   assume 1: "P is TC"
@@ -44,6 +33,7 @@ proof -
     apply(rel_auto)
     done
 qed
+
 
 lemma TRRSeqExpand:
   fixes P::"('b, 'a) tt_vars hrel" and Q::"('b, 'a) tt_vars hrel"
