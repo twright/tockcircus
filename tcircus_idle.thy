@@ -11,7 +11,7 @@ definition filter_idle_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) tactio
 
 (* \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> *)
 definition filter_time_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("time\<^sub>I'(_')") where
-[upred_defs]: "filter_time_urgent P = U(R1(\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> P\<lbrakk>idleprefix(&tt)/&tt\<rbrakk>))"
+[upred_defs]: "filter_time_urgent P = U(R1(\<exists> $st\<acute> \<bullet> P\<lbrakk>idleprefix(&tt), rfnil, unpat/&tt, $ref\<acute>, $pat\<acute>\<rbrakk>))"
 
 definition filter_active_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("active\<^sub>I'(_')") where 
 [upred_defs]: "filter_active_urgent(P) = U(R1(\<exists> t e t'. P \<and> (\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<and> (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>)))"
@@ -276,8 +276,11 @@ lemma TIP_has_time [rpred]:
   shows "(P \<and> time\<^sub>I(P)) = P"
   apply (trr_auto cls: assms)
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
+  oops
+(*
   apply (rel_blast)
   done
+*)
 
 (*
 lemma TIP_has_time_tconj [rpred]:
@@ -295,8 +298,11 @@ lemma TIP_time_active_urgent_conj [rpred]:
   shows "(active\<^sub>I(P) \<and> time\<^sub>I(P)) = active\<^sub>I(P)"
   apply (trr_auto cls: assms)
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
+  oops
+(*
   apply (rel_blast)
   done
+*)
 
 (*
 lemma TIP_time_active_tconj [rpred]:
@@ -341,7 +347,11 @@ qed
 
 lemma TRF_time_insistant [closure]:
   "P is TRR \<Longrightarrow> time\<^sub>I(P) is TRF"
-  by (rule TRF_intro, simp add: closure unrest, simp_all add: filter_time_urgent_def unrest)
+  apply (rule TRF_intro)
+  apply(simp add: closure unrest)
+  apply(simp_all add: filter_time_urgent_def R1_def)
+  apply(rel_auto+)
+  done
 
 (*
 lemma TRF_time [closure]:

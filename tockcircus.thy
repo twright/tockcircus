@@ -336,6 +336,17 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
 [upred_defs]: "P \<box> Q = ExtChoice {P, Q} id"
 *)
 
+(*
+lemma
+  assumes "P is TRF"
+  shows "P = (time\<^sub>I(P) \<or> active\<^sub>I(P))"
+  apply(subst (6 3 1) TRFconcretify)
+   apply (simp add: assms)
+  apply(rel_simp)
+  apply(safe)
+  oops
+*)
+
 definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Rightarrow> ('s, 'e) taction" (infixl "\<box>" 69) where
 [upred_defs]:
 "P \<box> Q =
@@ -928,8 +939,8 @@ proof (rdes_simp cls: assms extChoice_def)
   moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
-               \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
-               \<or>  time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
+               \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+               \<or>  time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
               ;; \<U>(true, [])"
     apply(trr_simp cls: 1)
     apply(safe)

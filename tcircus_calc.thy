@@ -266,7 +266,6 @@ lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
   apply(trr_auto)
   apply (metis patience.distinct(1) tocks_inter1 tocks_inter2)
-  apply (metis patience.distinct(1) tocks_inter1 tocks_inter2)
   done
 
 lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true)) 
@@ -275,10 +274,7 @@ lemma [rpred]: "(\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true) \<and> \<T>
 
 lemma [rpred]: "((\<T>(A, T\<^sub>1) ;; \<E>(s\<^sub>1, [], {}, true)) \<squnion>\<^sub>t (\<T>(B, T\<^sub>2) ;; \<E>(s\<^sub>2, [], {}, true))) 
        = \<T>(A \<union> B, T\<^sub>1 \<inter> T\<^sub>2) ;; \<E>(s\<^sub>1 \<and> s\<^sub>2, [], {}, true)"
-  apply rel_auto
-  apply blast
-  by (smt (z3) patience.distinct(1) tocks_inter1 tocks_inter2)
-
+  by (rel_auto; blast)
 lemma [rpred]: "(\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1) \<and> \<T>(Y, B) ;; \<E>(true, [], E\<^sub>2, p\<^sub>2)) = \<T>(X \<union> Y, A \<inter> B) ;; \<E>(true, [], E\<^sub>1 \<union> E\<^sub>2, p\<^sub>1 \<or> p\<^sub>2)"
   by (rel_auto)
 
@@ -287,13 +283,12 @@ lemma [rpred]: "((\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1)) \<squnion>
   apply rel_auto
   apply blast
   apply blast
+  apply (smt (z3) patience.distinct(2))
   apply blast
   apply blast
-  apply blast
-    apply blast
+  apply (smt (z3) patience.distinct(1))
   apply (smt (z3) Un_iff patience.distinct(1) tocks_inter1 tocks_inter2)
-  (* apply (smt (z3) Un_iff tocks_inter1 tocks_inter2) *)
-  by (smt (z3) Un_iff patience.distinct(1) tocks_inter1 tocks_inter2)
+  done
 
 lemma nat_set_simps [simp]:
   fixes m::"(nat, _) uexpr"
@@ -324,13 +319,16 @@ lemma [rpred]: "(P \<squnion>\<^sub>t false) = false" "(false \<squnion>\<^sub>t
 
 lemma [rpred]:
   assumes "P is TRR"
-  shows "time(P ;; \<U>(true, [])) = time(P)" "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
+  shows "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
 proof -
-  have "time(TRR(P) ;; \<U>(true, [])) = time(TRR P)" "time\<^sub>I(TRR(P) ;; \<U>(true, [])) = time\<^sub>I(TRR P)"
-    by (rel_blast+)
+  have "time\<^sub>I(TRR(P) ;; \<U>(true, [])) = time\<^sub>I(TRR P)"
+    apply (rel_auto)
+    oops
+(*
   thus "time(P ;; \<U>(true, [])) = time(P)" "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
     by (simp_all add: Healthy_if assms)
 qed
+*)
 
 lemma [rpred]: "idle\<^sub>I(\<T>(X, T) ;; \<U>(true, [Evt a])) = false"
   by (rel_simp)
@@ -361,8 +359,10 @@ lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle\<^sub>
 lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
   by (rel_auto)
 
-lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle\<^sub>I(P)) = idle\<^sub>I(P)"
-  apply rel_simp
+lemma [rpred]:
+  assumes "P is TRR"
+  shows "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle\<^sub>I(P)) = idle\<^sub>I(P)"
+  apply (trr_auto cls: assms)
   apply safe
   oops
 (*
@@ -371,7 +371,8 @@ lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>
 *)
 
 lemma [rpred]: "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle(P)) = idle(P)"
-  oops
+  apply (rel_auto)
+  by (metis Prefix_Order.prefixE append_minus patience.distinct(1))
 
 (*  by fastforce *)
 
