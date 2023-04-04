@@ -276,11 +276,8 @@ lemma TIP_has_time [rpred]:
   shows "(P \<and> time\<^sub>I(P)) = P"
   apply (trr_auto cls: assms)
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
-  oops
-(*
-  apply (rel_blast)
+  apply(rel_blast)
   done
-*)
 
 (*
 lemma TIP_has_time_tconj [rpred]:
@@ -295,14 +292,19 @@ lemma TIP_has_time_tconj [rpred]:
 
 lemma TIP_time_active_urgent_conj [rpred]:
   assumes "P is TRR" "P is TIP"
+  shows "(active\<^sub>I(P) \<squnion>\<^sub>t time\<^sub>I(P)) = active\<^sub>I(P)"
+  apply (trr_auto cls: assms)
+  apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
+  apply(rel_simp)+
+  oops
+
+lemma TIP_time_active_urgent_conj [rpred]:
+  assumes "P is TRR" "P is TIP"
   shows "(active\<^sub>I(P) \<and> time\<^sub>I(P)) = active\<^sub>I(P)"
   apply (trr_auto cls: assms)
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
-  oops
-(*
-  apply (rel_blast)
+  apply(rel_auto+)
   done
-*)
 
 (*
 lemma TIP_time_active_tconj [rpred]:

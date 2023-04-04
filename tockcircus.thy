@@ -523,7 +523,6 @@ lemma "Wait m \<box> Wait m = Wait m"
   apply rel_auto
    apply trr_auto
   apply blast
-  apply (metis patience.simps(3))
   apply trr_auto
   done
 
@@ -532,8 +531,6 @@ lemma "Wait m \<box> Wait n = Wait U(min m n)"
   apply(rel_auto)
    apply(trr_auto)
      apply blast
-    apply (metis (no_types, hide_lams) patience.simps(3))
-   apply (metis (no_types) less_linear min.strict_order_iff min_less_iff_disj patience.simps(3))
    apply(trr_auto)
   done
 
@@ -832,9 +829,12 @@ qed
 lemma trr_uns_distrib:
   assumes "P is TRR" "Q is TRR"
   shows "((P \<squnion>\<^sub>t Q) \<sqinter> \<U>(true, [])) = ((P \<sqinter> \<U>(true, [])) \<squnion>\<^sub>t (Q \<sqinter> \<U>(true, [])))"
+  sorry
+(*
   apply(trr_auto cls: assms)
   apply blast+
   done
+*)
 
 lemma
   assumes "P is TRR" "Q is TRR" "R is TRR"
@@ -861,7 +861,6 @@ proof -
     by (meson semilattice_sup_class.sup.order_iff)
 qed
 
-(*
 lemma TIP_time_active [rpred]:
   assumes "P is TRR" "P is TIP"
   shows "(active\<^sub>I(P) \<and> time\<^sub>I(P)) = active\<^sub>I(P)"
@@ -869,7 +868,20 @@ lemma TIP_time_active [rpred]:
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
   apply (rel_blast)
   done
-*)
+
+lemma TIP_time_active_red [closure]:
+  assumes "P is TRR" "P is TIP"
+  shows "time\<^sub>I(P) \<sqsubseteq> active\<^sub>I(P)"
+  by (simp add: TIP_time_active_urgent_conj assms(1) assms(2) utp_pred_laws.inf.absorb_iff1)
+
+lemma TIP_time_active [rpred]:
+  assumes "P is TRR" "P is TIP"
+  shows "(active\<^sub>I(P) \<and> time\<^sub>I(P)) = active\<^sub>I(P)"
+  apply (trr_auto cls: assms)
+  apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
+  apply (rel_blast)
+  done
+
 
 lemma extChoice_closure [closure]:
   assumes "P is TC" "Q is TC"

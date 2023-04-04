@@ -70,6 +70,10 @@ definition TRR2 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 definition TRR3 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR3(P) = (P ;; II\<^sub>t)"
 
+(* Patience healthiness *)
+definition TRR5 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
+[upred_defs]: "TRR5(P) = U(P \<and> (P\<lbrakk>\<guillemotleft>[False]\<^sub>\<P>\<guillemotright>/$pat\<acute>\<rbrakk> \<Rightarrow> P\<lbrakk>\<guillemotleft>[True]\<^sub>\<P>\<guillemotright>/$pat\<acute>\<rbrakk>))"
+
 definition uns :: "('s,'e) taction" where
 [upred_defs]: "uns = U($tr\<acute> = $tr \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = unpat)"
 
@@ -426,7 +430,7 @@ text \<open> The following healthiness condition is a weakened form of prefix cl
   admit every idle prefix with the state unchanged and the unstable refusal. \<close>
 
 definition TIP :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TIP(P) = (P \<or> U((\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> t. P\<lbrakk>[],\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> $tr\<acute> = $tr @ idleprefix(\<guillemotleft>t\<guillemotright>)) \<and> $st\<acute> = $st \<and> $ref\<acute> = \<^bold>\<bullet>))"
+[upred_defs]: "TIP(P) = (P \<or> U((\<exists> $st\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> \<bullet> \<exists> t. P\<lbrakk>[],\<guillemotleft>t\<guillemotright>/$tr,$tr\<acute>\<rbrakk> \<and> $tr\<acute> = $tr @ idleprefix(\<guillemotleft>t\<guillemotright>)) \<and> $st\<acute> = $st \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute> = \<guillemotleft>unpat\<guillemotright>))"
 
 utp_const RR TIP
 
@@ -435,9 +439,9 @@ lemma TIP_idem [simp]: "TIP (TIP P) = TIP P"
 
 lemma TIP_prop:
   assumes "P is TRR" "P is TIP"
-  shows "U(P\<lbrakk>$st,\<^bold>\<bullet>,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> P" 
+  shows "U(P\<lbrakk>$st,\<^bold>\<bullet>,unpat,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$pat\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> P" 
 proof -
-  have "U(TIP(TRR(P))\<lbrakk>$st,\<^bold>\<bullet>,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> TRR(P)"
+  have "U(TIP(TRR(P))\<lbrakk>$st,\<^bold>\<bullet>,\<guillemotleft>unpat\<guillemotright>,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$pat\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> TRR(P)"
     by (rel_simp, blast)
   thus ?thesis
     by (simp add: Healthy_if assms(1) assms(2))

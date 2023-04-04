@@ -96,7 +96,7 @@ lemma tconj_rfset:
   apply(safe)
 (*  apply blast+ *)
   apply (smt (z3) UnCI Un_iff)+
-     apply(simp)
+     apply(simp_all)
   oops
 
 lemma stability_modulo_ref: "(\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<E>(s, t, E, p)) = (\<exists> $pat\<acute> \<bullet> \<exists> $ref\<acute> \<bullet> \<U>(s, t))"
