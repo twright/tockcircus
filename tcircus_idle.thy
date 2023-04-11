@@ -8,7 +8,6 @@ begin
 definition filter_idle_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("idle\<^sub>I'(_')") where
 [upred_defs]: "filter_idle_urgent P = U(R1(P \<and> (&tt \<in> tocks UNIV)))"
 
-
 (* \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> *)
 definition filter_time_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("time\<^sub>I'(_')") where
 [upred_defs]: "filter_time_urgent P = U(R1(\<exists> $st\<acute> \<bullet> P\<lbrakk>idleprefix(&tt),rfnil,True/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>))"
@@ -28,6 +27,11 @@ definition filter_active :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("
 [upred_defs]: "filter_active(P) = U(R1(\<exists> t e t'. (P \<and> $pat\<acute>) \<squnion>\<^sub>t (\<guillemotleft>t\<guillemotright> \<in> tocks UNIV \<and> $pat\<acute>) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright> \<and> $pat\<acute>)))"
 
 utp_const filter_idle filter_active filter_time filter_idle_urgent filter_active_urgent filter_time_urgent
+
+(*
+definition filter_idle_hide :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("idle\<^sub>I'(_')") where
+[upred_defs]: "filter_idle_urgent P = \<exists> st\<acute> "
+*)
 
 lemma S1: "U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>)) = U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<and> (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>))"
   by (rel_auto)

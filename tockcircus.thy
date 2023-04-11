@@ -361,8 +361,10 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
   \<turnstile> ((idle\<^sub>I(peri\<^sub>R(P)) \<squnion>\<^sub>t idle\<^sub>I(peri\<^sub>R(Q))) 
    \<or> (time\<^sub>I(peri\<^sub>R(P)) \<and> active\<^sub>I(peri\<^sub>R(Q)))
    \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> active\<^sub>I(peri\<^sub>R(P))))
-  \<diamondop> ((time\<^sub>I(peri\<^sub>R(P)) \<and> post\<^sub>R(Q))
-   \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> post\<^sub>R(P))))"
+  \<diamondop> ((idle\<^sub>I(peri\<^sub>R(P)) ;; II\<^sub>t) \<and> idle\<^sub>I(post\<^sub>R(Q))
+   \<or> ((idle\<^sub>I(peri\<^sub>R(Q)) ;; II\<^sub>t) \<and> idle\<^sub>I(post\<^sub>R(P)))
+   \<or> (time\<^sub>I(peri\<^sub>R(P)) \<and> active\<^sub>I(post\<^sub>R(Q)))
+   \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> active\<^sub>I(post\<^sub>R(P)))))"
 
 text \<open> Currently broken due to patience \<close>
 (*
@@ -521,8 +523,10 @@ lemma [rpred]:
 *)
 
 lemma "Skip \<box> Stop = Skip"
-  apply(rdes_simp cls: extChoice_def)
-  apply(rel_auto)
+  apply(rdes_eq_split cls: extChoice_def)
+    apply(rel_auto)
+   apply(trr_auto)
+  apply(trr_auto)
   done
   
 lemma "Wait m \<box> Wait m = Wait m"
@@ -542,8 +546,8 @@ lemma "Wait m \<box> Wait n = Wait U(min m n)"
   apply blast  
   apply meson
 
-   apply(trr_auto)
-
+   apply(trr_simp)
+  apply (smt (z3) le_eq_less_or_eq min.commute min_def tocks_idleprefix_fp)
   done
 
 lemma [rpred]: "active\<^sub>I(\<E>(true, [], {}, false)) = false"
@@ -598,6 +602,8 @@ lemma "Stop \<box> do\<^sub>T(a) = do\<^sub>T(a)"
    apply(trr_auto)
   apply (metis idleprefix_tocks tocks_idleprefix_fp)
   apply (trr_auto)
+  apply (metis tocks_idleprefix_fp tocks_iff_idleprefix_fp)
+  apply (metis idleprefix_tocks tocks_idleprefix_fp)
   done
 
 (* TODO: pending sort hypothesis? *)
@@ -605,7 +611,8 @@ lemma "Wait m \<box> Skip = Skip"
   apply (rdes_eq_split cls: extChoice_def)
   apply (rel_auto)
    apply(trr_auto)
-  apply(trr_auto)
+  apply(trr_simp)
+  apply (metis list.size(3) neq0_conv tocks_Nil tocks_idleprefix_fp)
   done
 
 lemma
@@ -619,7 +626,7 @@ lemma "Stop \<box> Stop\<^sub>U = Stop\<^sub>U"
   apply(trr_auto)
   apply(trr_auto)
   apply (metis patience.distinct(1) tocks_Nil)
-  apply(rel_auto)
+  apply(trr_auto)
   done
 
 
@@ -627,21 +634,21 @@ lemma "Stop \<box> Div = Div"
   apply (rdes_eq_split cls: extChoice_def)
   apply(trr_auto)
   apply(trr_auto)
-  apply (metis patience.distinct(1) tocks_Nil)
+  apply (trr_auto)
   done
 
 lemma "Stop \<box> Wait(n) = Wait(n)"
   apply (rdes_eq_split cls: extChoice_def)
   apply(trr_auto)
   apply(trr_auto)
-  apply (simp)
+  apply (trr_auto)
   done
 
 lemma "Stop \<box> Skip = Skip"
   apply (rdes_eq_split cls: extChoice_def)
   apply(trr_auto)
   apply(trr_auto)
-  apply(simp)
+  apply(trr_auto)
   done
 
 
@@ -660,8 +667,10 @@ lemma extChoice_stop_unit:
   apply (rdes_eq_split cls: assms extChoice_def)
     apply simp
   prefer 2
-  apply(trr_auto cls: assms)
-  apply(trr_auto cls: assms)
+   apply(trr_auto cls: assms)
+  apply (metis append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+  apply (metis append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
+   apply(trr_auto cls: assms)
   apply meson
     apply (metis append_self_conv hd_Cons_tl hd_activesuffix idle_active_decomp idleprefix_tocks rangeE)
       apply (metis)
@@ -691,6 +700,8 @@ lemma extChoice_commute:
   shows "P \<box> Q = Q \<box> P"
   apply(rdes_eq_split cls: assms extChoice_def)
   apply(simp_all add: conj_comm conj_assoc tconj_comm disj_comm)
+  apply(trr_simp cls: assms)
+  apply(safe)
   done
 
 lemma TRC_conj [closure]: "\<lbrakk> P is TRC; Q is TRC \<rbrakk> \<Longrightarrow> (P \<and> Q) is TRC"
