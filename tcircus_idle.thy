@@ -11,7 +11,7 @@ definition filter_idle_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) tactio
 
 (* \<exists> $ref\<acute> \<bullet> \<exists> $pat\<acute> *)
 definition filter_time_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("time\<^sub>I'(_')") where
-[upred_defs]: "filter_time_urgent P = U(R1(\<exists> $st\<acute> \<bullet> P\<lbrakk>idleprefix(&tt), rfnil, unpat/&tt, $ref\<acute>, $pat\<acute>\<rbrakk>))"
+[upred_defs]: "filter_time_urgent P = U(R1(\<exists> $st\<acute> \<bullet> P\<lbrakk>idleprefix(&tt),rfnil,True/&tt,$ref\<acute>,$pat\<acute>\<rbrakk>))"
 
 definition filter_active_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("active\<^sub>I'(_')") where 
 [upred_defs]: "filter_active_urgent(P) = U(R1(\<exists> t e t'. P \<and> (\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<and> (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>)))"
@@ -19,29 +19,28 @@ definition filter_active_urgent :: "('s, 'e) taction \<Rightarrow> ('s, 'e) tact
 utp_const filter_time_urgent filter_idle_urgent filter_active_urgent
 
 definition filter_idle :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("idle'(_')") where
-[upred_defs]: "filter_idle P = U(idle\<^sub>I(P) \<and> $pat\<acute> = [True]\<^sub>\<P>)"
-
+[upred_defs]: "filter_idle P = U(idle\<^sub>I(P) \<and> $pat\<acute>)"
 
 definition filter_time :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("time'(_')") where
-[upred_defs]: "filter_time P = U(time\<^sub>I(P) \<and> $pat\<acute> = [True]\<^sub>\<P>)"
+[upred_defs]: "filter_time P = U(time\<^sub>I(P) \<and> $pat\<acute>)"
 
 definition filter_active :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("active'(_')") where 
-[upred_defs]: "filter_active(P) = U(R1(\<exists> t e t'. (P \<and> $pat\<acute> = [True]\<^sub>\<P>) \<squnion>\<^sub>t (\<guillemotleft>t\<guillemotright> \<in> tocks UNIV \<and> $pat\<acute> = [True]\<^sub>\<P>) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright> \<and> $pat\<acute> = [True]\<^sub>\<P>)))"
+[upred_defs]: "filter_active(P) = U(R1(\<exists> t e t'. (P \<and> $pat\<acute>) \<squnion>\<^sub>t (\<guillemotleft>t\<guillemotright> \<in> tocks UNIV \<and> $pat\<acute>) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright> \<and> $pat\<acute>)))"
 
-utp_const filter_idle filter_active filter_time
+utp_const filter_idle filter_active filter_time filter_idle_urgent filter_active_urgent filter_time_urgent
 
 lemma S1: "U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>)) = U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<and> (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>))"
   by (rel_auto)
 
 lemma conj_tconj:
   assumes "$pat\<acute> \<sharp> Q"
-  shows "U(P \<squnion>\<^sub>t (Q \<and> $pat\<acute> = [True]\<^sub>\<P>)) = U(P \<and> Q \<and> $pat\<acute> = [True]\<^sub>\<P>)" (is "?l = ?r")
+  shows "U(P \<squnion>\<^sub>t (Q \<and> $pat\<acute>)) = U(P \<and> Q \<and> $pat\<acute>)" (is "?l = ?r")
 proof - 
   have 1: "Q = (\<forall> $pat\<acute>  \<bullet> Q)" "Q = (\<exists> $pat\<acute>  \<bullet> Q)"
     using assms by (simp_all add: all_unrest ex_unrest)
-  have 2: "U(Q \<and> $pat\<acute> = [True]\<^sub>\<P>) = U((\<forall> $pat\<acute> \<bullet> Q) \<and> $pat\<acute> = [True]\<^sub>\<P>)"
+  have 2: "U(Q \<and> $pat\<acute>) = U((\<forall> $pat\<acute> \<bullet> Q) \<and> $pat\<acute>)"
     using 1 by auto
-  have "?l = U(P \<squnion>\<^sub>t ((\<forall> $pat\<acute> \<bullet> Q) \<and> $pat\<acute> = [True]\<^sub>\<P>))"
+  have "?l = U(P \<squnion>\<^sub>t ((\<forall> $pat\<acute> \<bullet> Q) \<and> $pat\<acute>))"
     using 2 by auto
   also have "\<dots> = (P \<and> (\<forall> $pat\<acute> \<bullet> Q))"
     apply(rel_auto)
@@ -70,7 +69,7 @@ proof -
   finally show ?thesis .
 qed
 
-lemma idle_form: "idle(P) = U(idle\<^sub>I(P) \<and> $pat\<acute> = [True]\<^sub>\<P>)"
+lemma idle_form: "idle(P) = U(idle\<^sub>I(P) \<and> $pat\<acute>)"
   by (simp add: filter_idle_def)
 
 (*
@@ -208,7 +207,7 @@ lemma idle_disj_insistant [rpred]: "idle\<^sub>I(P \<or> Q) = (idle\<^sub>I(P) \
 lemma idle_idem_insistant [rpred]: "idle\<^sub>I(idle\<^sub>I(P)) = idle\<^sub>I(P)"
   by rel_auto
 
-lemma idle_true': "idle(true) = U(R1(&tt \<in> tocks UNIV \<and> $pat\<acute> = [True]\<^sub>\<P>))"
+lemma idle_true': "idle(true) = U(R1(&tt \<in> tocks UNIV \<and> $pat\<acute>))"
   by rel_auto
 
 lemma idle_true'_insistant: "idle\<^sub>I(true) = U(R1(&tt \<in> tocks UNIV))"
@@ -250,7 +249,7 @@ lemma refine_eval_dest: "P \<sqsubseteq> Q \<Longrightarrow> \<lbrakk>Q\<rbrakk>
 lemma Healthy_after: "\<lbrakk> \<And> i. P i is H \<rbrakk> \<Longrightarrow> H \<circ> P = P"
   by (metis (mono_tags, lifting) Healthy_if fun.map_cong fun.map_id0 id_apply image_iff)
 
-lemma idle_skip [rpred]: "idle(II\<^sub>t) = U(II\<^sub>t \<and> $pat\<acute> = [True]\<^sub>\<P>)"
+lemma idle_skip [rpred]: "idle(II\<^sub>t) = U(II\<^sub>t \<and> $pat\<acute>)"
   apply(simp add: idle_form)
   apply (rel_auto)
   done
@@ -279,6 +278,11 @@ lemma TIP_has_time [rpred]:
   apply(rel_blast)
   done
 
+lemma TIP_time_refine [closure]:
+  assumes "P is TRR" "P is TIP"
+  shows "time\<^sub>I(P) \<sqsubseteq> P"
+  by (simp add: TIP_has_time assms(1) assms(2) utp_pred_laws.inf.orderI)
+
 (*
 lemma TIP_has_time_tconj [rpred]:
   assumes "P is TRR" "P is TIP"
@@ -290,12 +294,12 @@ lemma TIP_has_time_tconj [rpred]:
   done
 *)
 
-lemma TIP_time_active_urgent_conj [rpred]:
+lemma TIP_time_active_urgent_tconj [rpred]:
   assumes "P is TRR" "P is TIP"
   shows "(active\<^sub>I(P) \<squnion>\<^sub>t time\<^sub>I(P)) = active\<^sub>I(P)"
   apply (trr_auto cls: assms)
   apply (drule refine_eval_dest[OF TIP_prop[OF assms(1) assms(2)]])
-  apply(rel_simp)+
+     apply(rel_simp)+
   oops
 
 lemma TIP_time_active_urgent_conj [rpred]:
@@ -350,8 +354,7 @@ qed
 lemma TRF_time_insistant [closure]:
   "P is TRR \<Longrightarrow> time\<^sub>I(P) is TRF"
   apply (rule TRF_intro)
-  apply(simp add: closure unrest)
-  apply(simp_all add: filter_time_urgent_def R1_def)
+  apply(simp_all add: closure)
   apply(rel_auto+)
   done
 

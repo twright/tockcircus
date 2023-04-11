@@ -73,9 +73,7 @@ definition MPatConj :: "(('s, 'e) tt_vars) merge" where [upred_defs]:
             \<and> ($st\<acute> = $1:st)
             \<and> ($ref\<acute> = $0:ref)
             \<and> ($ref\<acute> = $1:ref)
-            \<and> ($0:pat = [True]\<^sub>\<P> \<longrightarrow> $1:pat = [True]\<^sub>\<P> \<longrightarrow> $pat\<acute> = [True]\<^sub>\<P>)
-            \<and> (($0:pat = unpat) = ($pat\<acute> = unpat))
-            \<and> (($1:pat = unpat) = ($pat\<acute> = unpat))
+            \<and> ($0:pat \<longrightarrow> $1:pat \<longrightarrow> $pat\<acute>)
             )"
 
 (*
@@ -111,9 +109,10 @@ lemma tconj_rfnil:
 *)
 
 lemma tconj_patient:
-  "U((P \<and> $pat\<acute> = [True]\<^sub>\<P>) \<squnion>\<^sub>t (Q \<and> $pat\<acute> = [True]\<^sub>\<P>))
- = U(P \<and> Q \<and> $pat\<acute> = [True]\<^sub>\<P>)"
-  by (rel_auto)
+  "U((P \<and> $pat\<acute>) \<squnion>\<^sub>t (Q \<and> $pat\<acute>))
+ = U(P \<and> Q \<and> $pat\<acute>)"
+  apply (rel_auto)
+  by blast
 
 lemma tconj_insistant:
   assumes "$pat\<acute> \<sharp> P" "$pat\<acute> \<sharp> Q"
@@ -145,17 +144,15 @@ lemma tconj_comm:
   by (simp add: tconj_def par_by_merge_commute MPatConj_sim)
 
 lemma tconj_alt_def: "(P \<squnion>\<^sub>t Q) = (\<^bold>\<exists> (pat0, pat1) \<bullet> P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>
-                                                 \<and> (\<guillemotleft>pat0 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> \<guillemotleft>pat1 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>[True]\<^sub>\<P>\<guillemotright>))
-                                                 \<and> (\<guillemotleft>pat0 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>))
-                                                 \<and> (\<guillemotleft>pat1 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)))"
+                                                 \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> $pat\<acute>))"
   by (rel_blast)
 
 lemma tconj_TRR [closure]:
   assumes "P is TRR" "Q is TRR"
    shows "P \<squnion>\<^sub>t Q is TRR"
 proof -
-  have 1: "TRR (\<^bold>\<exists> (pat0, pat1) \<bullet> P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> \<guillemotleft>pat1 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>[True]\<^sub>\<P>\<guillemotright>)) \<and> (\<guillemotleft>pat0 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) \<and> (\<guillemotleft>pat1 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) )
-      = (\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> \<guillemotleft>pat1 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>[True]\<^sub>\<P>\<guillemotright>)) \<and> (\<guillemotleft>pat0 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) \<and> (\<guillemotleft>pat1 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) ))"
+  have 1: "TRR (\<^bold>\<exists> (pat0, pat1) \<bullet> P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) )
+      = (\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) ))"
     apply (rel_auto)
     apply blast+
     done
@@ -179,9 +176,9 @@ proof -
   have 6: "P = R2(P)" "Q = R2(Q)"
     using assms
     by (simp_all add: Healthy_if RR_implies_R2 TRR_implies_RR)
-  have 7: "(\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> \<guillemotleft>pat1 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>[True]\<^sub>\<P>\<guillemotright>)) \<and> (\<guillemotleft>pat0 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) \<and> (\<guillemotleft>pat1 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>))))
-         = (\<^bold>\<exists> (pat0, pat1) \<bullet> (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> \<guillemotleft>pat1 = [True]\<^sub>\<P>\<guillemotright> \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>[True]\<^sub>\<P>\<guillemotright>)) \<and> (\<guillemotleft>pat0 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) \<and> (\<guillemotleft>pat1 = unpat\<guillemotright> \<Leftrightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>unpat\<guillemotright>)) ))"
-    apply (subst (27 24 7 4) TRRconcretify)
+  have 7: "(\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>))))
+         = (\<^bold>\<exists> (pat0, pat1) \<bullet> (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) ))"
+    apply (subst (23 19 9 5) TRRconcretify)
     apply (simp add: assms)+
     apply(rel_auto)
     apply ((subst 4(1))?; (subst 4(2))?; (subst (asm) 6(1))?; (subst (asm) 6(2))?; rel_blast)+
