@@ -28,10 +28,10 @@ definition filter_active :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("
 
 utp_const filter_idle filter_active filter_time filter_idle_urgent filter_active_urgent filter_time_urgent
 
-(*
-definition filter_idle_hide :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("idle\<^sub>I'(_')") where
-[upred_defs]: "filter_idle_urgent P = \<exists> st\<acute> "
-*)
+definition filter_idle_end :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" ("idle\<^sub>E'(_')") where
+[upred_defs]: "filter_idle_end P = (idle\<^sub>I(P)\<lbrakk>\<guillemotleft>rfnil\<guillemotright>,true/$ref\<acute>,$pat\<acute>\<rbrakk>) "
+
+utp_const filter_idle_end
 
 lemma S1: "U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<squnion>\<^sub>t (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>)) = U((\<guillemotleft>t\<guillemotright> \<in> tocks UNIV) \<and> (&tt = \<guillemotleft>t @ (Evt e # t')\<guillemotright>))"
   by (rel_auto)
@@ -116,6 +116,19 @@ proof -
     by rel_blast
   thus "idle\<^sub>I(P) is TRR" by (metis Healthy_def assms)
 qed
+
+lemma idle_TRR_insistant_end [closure]: assumes "P is TRR" shows "idle\<^sub>E(P) is TRR"
+proof -
+  have "TRR(idle\<^sub>E(TRR(P))) = idle\<^sub>E(TRR(P))"
+    by rel_blast
+  thus "idle\<^sub>E(P) is TRR" by (metis Healthy_def assms)
+qed
+
+lemma idle_TRF_insistant_end [closure]: assumes "P is TRR" shows "idle\<^sub>E(P) is TRF"
+  apply(rule TRF_intro)
+  using TRF_implies_TRR assms idle_TRR_insistant_end apply blast
+  apply rel_auto+
+  done
 
 (*
 lemma active_TRR [closure]: assumes "P is TRR" shows "active(P) is TRR"

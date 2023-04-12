@@ -361,8 +361,8 @@ definition extChoice :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction \<Right
   \<turnstile> ((idle\<^sub>I(peri\<^sub>R(P)) \<squnion>\<^sub>t idle\<^sub>I(peri\<^sub>R(Q))) 
    \<or> (time\<^sub>I(peri\<^sub>R(P)) \<and> active\<^sub>I(peri\<^sub>R(Q)))
    \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> active\<^sub>I(peri\<^sub>R(P))))
-  \<diamondop> ((idle\<^sub>I(peri\<^sub>R(P)) ;; II\<^sub>t) \<and> idle\<^sub>I(post\<^sub>R(Q))
-   \<or> ((idle\<^sub>I(peri\<^sub>R(Q)) ;; II\<^sub>t) \<and> idle\<^sub>I(post\<^sub>R(P)))
+  \<diamondop> (idle\<^sub>E(peri\<^sub>R(P)) \<and> idle\<^sub>I(post\<^sub>R(Q))
+   \<or> (idle\<^sub>E(peri\<^sub>R(Q)) \<and> idle\<^sub>I(post\<^sub>R(P)))
    \<or> (time\<^sub>I(peri\<^sub>R(P)) \<and> active\<^sub>I(post\<^sub>R(Q)))
    \<or> (time\<^sub>I(peri\<^sub>R(Q)) \<and> active\<^sub>I(post\<^sub>R(P)))))"
 
@@ -546,7 +546,7 @@ lemma "Wait m \<box> Wait n = Wait U(min m n)"
   apply blast  
   apply meson
 
-   apply(trr_simp)
+  apply(trr_simp)
   apply (smt (z3) le_eq_less_or_eq min.commute min_def tocks_idleprefix_fp)
   done
 
@@ -590,8 +590,8 @@ lemma "Wait(n + 1) \<box> Div = Div"
 (* Was broken *)
 lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
   apply(rdes_eq_split cls: extChoice_def)
-    apply(rel_auto)
-   apply(trr_auto)
+  apply(rel_auto)
+  apply(trr_auto)
   apply (metis patience.distinct(1))
   apply(trr_auto)
   done
@@ -699,9 +699,7 @@ lemma extChoice_commute:
   assumes "P is TC" "Q is TC"
   shows "P \<box> Q = Q \<box> P"
   apply(rdes_eq_split cls: assms extChoice_def)
-  apply(simp_all add: conj_comm conj_assoc tconj_comm disj_comm)
-  apply(trr_simp cls: assms)
-  apply(safe)
+  apply(simp_all add: conj_comm conj_assoc tconj_comm disj_comm utp_pred_laws.sup_left_commute)
   done
 
 lemma TRC_conj [closure]: "\<lbrakk> P is TRC; Q is TRC \<rbrakk> \<Longrightarrow> (P \<and> Q) is TRC"
@@ -815,6 +813,7 @@ lemma timeI_unrests:
   shows "$ref\<acute> \<sharp> time\<^sub>I(P)" "$pat\<acute> \<sharp> time\<^sub>I(P)"
   by (rel_auto+)
 
+(*
 lemma extChoice_closure [closure]:
   assumes "P is TC" "Q is TC"
   shows "P \<box> Q is TC"
@@ -827,6 +826,7 @@ lemma extChoice_closure [closure]:
   apply (metis (no_types, lifting) NRD_is_RD RD_healths(2) RD_reactive_tri_design TC_implies_NRD TC_inner_closures(1) TC_inner_closures(2) TC_inner_closures(3) TRC_implies_TRR TRF_conj_closure TRF_time_insistant TRF_unrests(2) TRR_closed_impl TRR_implies_RR assms(1) assms(2) postR_RR postR_rdes tfin_theory.disj_is_healthy)
    apply(trr_simp cls: assms)
   oops
+*)
   (*
   sledgehammer
   apply(rel_simp)
@@ -949,7 +949,7 @@ lemma
   shows "time\<^sub>I(P) \<sqsubseteq> idle\<^sub>I(P)"
   by (metis TIP_time_refine TRR_idle_or_active_insistant assms(1) assms(2) disj_upred_def semilattice_sup_class.le_sup_iff)
 
-lemma TIP_time_active_red [closure]:"P \<sqsubseteq> active\<^sub>I(P)"
+lemma TIP_time_active_red [closure]:
   assumes "P is TRR" "P is TIP"
   shows "time\<^sub>I(P) \<sqsubseteq> active\<^sub>I(P)"
   by (simp add: TIP_time_active_urgent_conj assms(1) assms(2) utp_pred_laws.inf.absorb_iff1)
@@ -1012,7 +1012,7 @@ proof (rdes_simp cls: assms extChoice_def)
 
   have "pre\<^sub>R P \<and> pre\<^sub>R Q is TRC"
     by (simp add: "1"(1) "1"(4) TRC_conj)
-  moreover have 3: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+  moreover have 3: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R ;P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) is TRR"
     by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_TRR time_urgent_TRR trel_theory.disj_is_healthy)

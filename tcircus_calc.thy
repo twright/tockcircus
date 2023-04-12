@@ -510,7 +510,7 @@ proof -
 qed
 *)
 
-
+(*
 lemma TRR_conj_time [rpred]:
   assumes "P is TRR" "P is TRR6"
   shows "(time\<^sub>I(\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<and> P) = P"
@@ -521,6 +521,7 @@ proof -
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
+*)
 
 lemma TRR_tconj_time [rpred]:
   assumes "P is TRR"
