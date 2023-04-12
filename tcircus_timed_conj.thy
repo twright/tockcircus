@@ -147,6 +147,13 @@ lemma tconj_alt_def: "(P \<squnion>\<^sub>t Q) = (\<^bold>\<exists> (pat0, pat1)
                                                  \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> $pat\<acute>))"
   by (rel_blast)
 
+lemma tconj_mono:
+  assumes "P \<sqsubseteq> Q"
+  shows "P \<squnion>\<^sub>t R \<sqsubseteq> Q \<squnion>\<^sub>t R" "R \<squnion>\<^sub>t P \<sqsubseteq> R \<squnion>\<^sub>t Q"
+  apply(simp_all add: tconj_alt_def)
+  using assms by (rel_blast)+
+
+
 lemma tconj_TRR [closure]:
   assumes "P is TRR" "Q is TRR"
    shows "P \<squnion>\<^sub>t Q is TRR"

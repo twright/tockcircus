@@ -352,6 +352,16 @@ lemma [rpred]: "active(\<T>(X, {0..})) = false"
 lemma [rpred]: "active\<^sub>I(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)
 
+lemma active_uns [rpred]:
+  assumes "P is TRR"
+  shows "active\<^sub>I(P ;; \<U>(true, [])) = active\<^sub>I(P) ;; \<U>(true, [])"
+proof -
+  have "active\<^sub>I(TRR(P) ;; \<U>(true, [])) = active\<^sub>I(TRR P) ;; \<U>(true, [])"
+    by (rel_blast+)
+  thus "active\<^sub>I(P ;; \<U>(true, [])) = active\<^sub>I(P) ;; \<U>(true, [])"
+    by (simp_all add: Healthy_if assms)
+qed
+
 (*
 lemma [rpred]: "active(\<T>(X, T) ;; \<U>(s, [])) = false"
   by (trr_auto)

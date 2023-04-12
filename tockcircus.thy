@@ -539,13 +539,12 @@ lemma "Wait m \<box> Wait m = Wait m"
 lemma "Wait m \<box> Wait n = Wait U(min m n)"
   apply(rdes_eq_split cls: extChoice_def)
   apply(rel_auto)
-   apply(trr_auto)
+  apply(trr_auto)
   apply (meson le_eq_less_or_eq min.cobounded1)  
   apply (metis min.right_idem min.strict_order_iff)
-     apply metis
+  apply metis
   apply blast  
   apply meson
-
   apply(trr_simp)
   apply (smt (z3) le_eq_less_or_eq min.commute min_def tocks_idleprefix_fp)
   done
@@ -559,11 +558,11 @@ lemma [rpred]: "time(\<E>(true, [], {}, false)) = \<E>(true, [], {}, false)"
   apply(simp add: tc_stable_def filter_time_def filter_time_urgent_def)
   apply(rel_auto)
   done
-*)
+*)l
 
 lemma "\<U>(true, []) \<squnion>\<^sub>t \<E>(true, [], {}, false) = \<U>(true, [])"
   by (trr_auto)
-  
+ 
 
 lemma "\<U>(true, []) \<squnion>\<^sub>t \<E>(true, [], {}, false) = \<E>(true, [], {}, true)"
   apply(trr_simp)
@@ -592,7 +591,6 @@ lemma "Wait(n + 1) \<box> Stop\<^sub>U = Stop\<^sub>U"
   apply(rdes_eq_split cls: extChoice_def)
   apply(rel_auto)
   apply(trr_auto)
-  apply (metis patience.distinct(1))
   apply(trr_auto)
   done
 
@@ -625,7 +623,6 @@ lemma "Stop \<box> Stop\<^sub>U = Stop\<^sub>U"
   apply (rdes_eq_split cls: extChoice_def)
   apply(trr_auto)
   apply(trr_auto)
-  apply (metis patience.distinct(1) tocks_Nil)
   apply(trr_auto)
   done
 
@@ -959,6 +956,99 @@ lemma TIP_time_idle [closure]:
   shows "P = (idle\<^sub>I(P) \<or> time\<^sub>I(P))"
   oops
 
+lemma "\<U>(true, []) \<sqsubseteq> (time\<^sub>I(TRR P) \<and> ((TRF Q) ;; \<U>(true, [])))"
+  apply(trr_simp)
+  oops
+
+lemma "S \<sqsubseteq> (R \<and> S)"
+  by simp
+
+lemma "(R \<or> S) \<sqsubseteq> S"
+  by simp
+
+lemma
+  assumes "P is TRR"
+  shows "time\<^sub>I(P) is TRF"
+  using TRF_time_insistant assms by auto
+
+lemma active_TRF [closure]:
+  assumes "P is TRF"
+  shows "active\<^sub>I(P) is TRF"
+proof -
+  have 1: "$ref\<acute> \<sharp> P" "$pat\<acute> \<sharp> P"
+    using TRF_unrests assms by auto
+
+  show ?thesis
+    apply(rule TRF_intro)
+    using TRF_implies_TRR active_TRR_insistant assms apply blast
+    using 1(1) apply(rel_auto)
+    using 1(2) apply(rel_auto)
+    done
+qed
+
+lemma time_active_uns:
+  assumes "P is TRR" "Q is TRF"
+  shows "(time\<^sub>I(P) \<and> (active\<^sub>I(Q) ;; \<U>(true, []))) = ((time\<^sub>I(P) \<and> active\<^sub>I(Q)) ;; \<U>(true, []))"
+proof -
+  have 1: "time\<^sub>I(P) \<and> active\<^sub>I(Q) is TRF" 
+    by (simp add: TRF_conj_closure TRF_time_insistant active_TRF assms(1) assms(2))
+
+  show ?thesis
+    apply(simp add: unstable_TRF 1 assms closure)
+    apply(rel_auto)
+    done
+qed
+
+lemma
+  assumes "P is TRR"
+  shows "P \<sqsubseteq> active\<^sub>I(P)"
+  by (metis TRR_idle_or_active_insistant assms disj_upred_def semilattice_sup_class.le_sup_iff trel_theory.utp_po.le_refl)
+
+(*
+lemma idle_time:
+  shows "idle\<^sub>I(P) = (idle\<^sub>I(P) \<and> time\<^sub>I(P))"
+  apply(rel_auto)
+  by (metis Prefix_Order.prefixE append_minus)
+
+lemma idle_time_refine:
+  shows "time\<^sub>I(P) \<sqsubseteq> idle\<^sub>I(P)"
+  by (meson idle_time utp_pred_laws.inf.orderI)
+*)
+
+lemma tconj_conj_refine: "(P \<squnion>\<^sub>t Q) \<sqsubseteq> (P \<and> Q)"
+  apply(rel_simp)
+  by blast
+
+lemma
+  assumes "P is TRR" "P is TIP"
+  shows "(idle\<^sub>I(P) ;; \<U>(true, [])) \<sqsubseteq> time\<^sub>I(P)"
+    apply(subst (4 2) TRRconcretify)
+   apply (simp add: assms)
+  apply(rel_auto)
+  oops
+
+lemma
+  assumes "P is TRR" "P is TIP"
+  shows "(idle\<^sub>I(P) ;; \<U>(true, [])) = time\<^sub>I(P) ;; \<U>(true, [])"
+  apply(subst (6 2) TRRconcretify)
+   apply (simp add: assms)
+  apply(rel_auto)
+  oops
+
+lemma idle_I_idle_E:
+  "(idle\<^sub>I(P) \<squnion>\<^sub>t (Q ;; \<U>(true, []))) \<sqsubseteq> (idle\<^sub>E(P) \<and> (Q ;; \<U>(true, [])))"
+  "((Q ;; \<U>(true, [])) \<squnion>\<^sub>t idle\<^sub>I(P)) \<sqsubseteq> ((Q ;; \<U>(true, [])) \<and> idle\<^sub>E(P))"
+  by rel_blast+
+
+lemma
+  assumes "P is TRF" "Q is TRF"
+  shows "(P \<and> (Q ;; \<U>(true, []))) = ((P \<and> Q) ;; \<U>(true, []))"
+proof -
+  have "(TRF P \<and> (TRF Q ;; \<U>(true, []))) = ((TRF P \<and> TRF Q) ;; \<U>(true, []))"
+    apply(trr_auto cls: assms)
+    oops  
+qed
+
 lemma extChoice_closure [closure]:
   assumes "P is TC" "Q is TC"
   shows "P \<box> Q is TC"
@@ -966,6 +1056,15 @@ proof (rdes_simp cls: assms extChoice_def)
   have 1: "pre\<^sub>R P is TRC" "peri\<^sub>R P is TRR" "post\<^sub>R P is TRF"
           "pre\<^sub>R Q is TRC" "peri\<^sub>R Q is TRR" "post\<^sub>R Q is TRF"
     using assms TC_inner_closures by auto
+  have 9: "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) is TRR" "(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) is TRR" "(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) is TRF"
+          "(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) is TRR" "(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) is TRR" "(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) is TRF"
+       apply (simp add: "1"(1) "1"(2) TRC_implies_TRR TRR_closed_impl)
+    apply (simp add: "1"(1) "1"(3) TRC_implies_TRR TRF_implies_TRR TRR_closed_impl)
+    apply (metis "1"(3) NRD_is_RD RD_reactive_tri_design TC_implies_NRD TRF_implies_TRR TRR_implies_RR assms(1) postR_rdes preR_NRD_RR)
+      apply (simp add: "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl)
+    apply (simp add: "1"(4) "1"(6) TRC_implies_TRR TRF_implies_TRR TRR_closed_impl)
+    apply (metis "1"(6) NRD_is_RD RD_reactive_tri_design TC_implies_NRD TRF_implies_TRR TRR_implies_RR assms(2) postR_rdes preR_NRD_RR)
+    done
 
   have 10: "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) = TIP(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)"
            "(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) = TIP(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)"
@@ -984,6 +1083,7 @@ proof (rdes_simp cls: assms extChoice_def)
   have 4: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> \<U>(true, [])"
     by (simp add: "1"(1) "1"(2) "1"(4) "1"(5) "2" "3" TRC_implies_TRR TRR_closed_impl idle_TRR_insistant uns_tconj)
 
+  (*
   have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
     \<sqsubseteq>  (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
@@ -991,16 +1091,29 @@ proof (rdes_simp cls: assms extChoice_def)
     apply(trr_auto cls: 1)
     sorry
 
+  
+
   have 5: "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) = (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
-    by (metis "1"(1) "1"(2) TRC_implies_TRR TRR_closed_impl TRR_idle_or_active_insistant disj_comm)
+    by (metis "9"(1) TRR_idle_or_active_insistant disj_comm)
 
   have 6: "((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))
       = (((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))
        \<or> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, [])))"
-    by (metis "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl TRR_idle_or_active_insistant conj_disj_distr seqr_or_distl)
+    by (metis "9"(3) TRR_idle_or_active_insistant seqr_or_distl utp_pred_laws.inf_sup_distrib1)
+  *)
 
+(*
   have 7: "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
          \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, [])"
+    apply(trr_auto cls: 1)
+    sorry
+
+  have "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> \<U>(true, [])"
+    using "4" by blast
+
+  have "idle\<^sub>I(TRR(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) \<squnion>\<^sub>t idle\<^sub>I(TRR(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+     \<sqsubseteq> ((time\<^sub>I(TRR(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) \<and> TRF(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+       \<or> time\<^sub>I(TRR(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) \<and> TRF(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) ;; \<U>(true, []))"
     apply(trr_auto cls: 1)
     sorry
 
@@ -1009,20 +1122,145 @@ proof (rdes_simp cls: assms extChoice_def)
       \<sqsubseteq> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))"
     apply(trr_auto cls: 1)
     sorry
+*)
+
+  have 71: "(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<sqsubseteq> ((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, []))"
+    by (metis NRD_is_RD RD_healths(2) RD_reactive_tri_design TC_implies_NRD TC_inner_closures(5) assms(1) postR_RR postR_rdes preR_NRD_RR rea_impl_def utp_pred_laws.sup.coboundedI2)
+  from 71 have 72: "active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<sqsubseteq> active\<^sub>I((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;;  \<U>(true, []))"
+    by (metis active_disj_insistant utp_pred_laws.sup.absorb_iff2)
+  from 71 have 73: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<sqsubseteq> idle\<^sub>I((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, []))"
+    by (metis idle_conj_insistant utp_pred_laws.inf.absorb_iff2)
+  have 74: "idle\<^sub>I((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) = (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, []))"
+    by (rel_auto)
+
+
+  have 81: "(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> ((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;;  \<U>(true, []))"
+    by (metis NRD_is_RD RD_healths(2) RD_reactive_tri_design TC_implies_NRD TC_inner_closures(5) assms(2) postR_RR postR_rdes preR_NRD_RR rea_impl_def utp_pred_laws.sup.coboundedI2)
+  from 81 have 82: "active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> active\<^sub>I((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))"
+    by (metis active_disj_insistant utp_pred_laws.sup.absorb_iff2)
+  from 81 have 83: "idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<sqsubseteq> idle\<^sub>I((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))"
+    by (metis idle_conj_insistant utp_pred_laws.inf.absorb_iff2)
+  have 84: "idle\<^sub>I((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, [])) = (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))"
+    by (rel_auto)
+
+  have 91: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+          \<sqsubseteq> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))"
+    by (metis "83" "84" tconj_mono(2))
+  have 92: "idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+          \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)"
+    by (metis "73" "74" tconj_mono(1))
+  have 93: "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+          \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, [])))"
+    by (metis "82" "9"(5) active_uns utp_pred_laws.inf.orderI utp_pred_laws.inf_idem utp_pred_laws.inf_mono)
+  have 94: "(time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+          \<sqsubseteq> (time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))"
+    by (metis "72" "9"(2) active_uns utp_pred_laws.inf.idem utp_pred_laws.inf.orderI utp_pred_laws.inf_mono)
+
+  have 101: "((idle\<^sub>E(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))))
+           \<sqsubseteq> ((idle\<^sub>E(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)) ;; \<U>(true, []))"
+    sledgehammer
+
+  have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+      \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    by simp 
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+               \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))"
+    by (meson "91" "92" "93" "94" utp_pred_laws.sup.mono)
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))
+               \<sqsubseteq> (idle\<^sub>E(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) \<and> idle\<^sub>E(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))"
+    by (metis (no_types, lifting) idle_I_idle_E(1) idle_I_idle_E(2) utp_pred_laws.distrib_sup_le utp_pred_laws.sup.mono utp_pred_laws.sup_inf_distrib1)
+  moreover have "(idle\<^sub>E(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])) \<and> idle\<^sub>E(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))
+               \<sqsubseteq> (((idle\<^sub>E(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)) ;; \<U>(true, []))
+                 \<or> ((idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) \<and> idle\<^sub>E(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)) ;; \<U>(true, []))
+                 \<or> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)) ;; \<U>(true, []))
+                 \<or> ((time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) ;; \<U>(true, [])))"
+    sorry
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+               \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))"
+    using 7 8 by (meson order_refl utp_pred_laws.inf_mono utp_pred_laws.sup_mono)
+  moreover have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I((pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I((pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))
+               = (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))"
+    by (simp add: 9 rpred)
+  moreover have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q) ;; \<U>(true, []))
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P) ;; \<U>(true, [])))
+                = ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+                  \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) ;; \<U>(true, []))"
+    by (simp add: "9"(1) "9"(3) "9"(4) "9"(6) seqr_or_distl time_active_uns)
+  ultimately have 10: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                      \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                      \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+                      \<sqsubseteq> ((time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
+                       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) ;; \<U>(true, []))"
+    by (metis utp_pred_laws.le_supI2)
+
+  have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+      \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+       \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    by (meson order_refl tconj_conj_refine utp_pred_laws.sup.mono)
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+               \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    by (smt (z3) conj_comm disj_conj_abs idle_time_refine order_class.order.eq_iff utp_pred_laws.inf_absorb2 utp_pred_laws.le_sup_iff utp_pred_laws.sup.assoc)
+  moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
+               \<sqsubseteq> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)
+                \<or> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+                \<or> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    by (smt (z3) conj_comm idle_time order_refl utp_pred_laws.inf.cobounded2 utp_pred_laws.le_inf_iff utp_pred_laws.sup.commute utp_pred_laws.sup_left_idem utp_pred_laws.sup_mono)
+
+
+  have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q))
+    \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+      \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))"
+    sorry
 
   have "pre\<^sub>R P \<and> pre\<^sub>R Q is TRC"
     by (simp add: "1"(1) "1"(4) TRC_conj)
-  moreover have 3: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R ;P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
+  moreover have 3: "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P)) is TRR"
     by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_TRR time_urgent_TRR trel_theory.disj_is_healthy)
     (* by (meson "1"(1) "1"(2) "1"(4) "1"(5) TRC_implies_TRR TRR_closed_impl active_TRR idle_TRR tconj_TRR time_TRR trel_theory.disj_is_healthy) *)
   moreover have "(time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)) is TRF"
-    by (metis (no_types, lifting) "1"(1) "1"(2) "1"(3) "1"(4) "1"(5) "1"(6) NRD_is_RD
-        RD_reactive_tri_design TC_implies_NRD TRC_implies_TRR TRF_conj TRF_implies_TRR
-        TRF_time_insistant TRR_closed_impl TRR_implies_RR assms(1) assms(2) postR_rdes
-        tfin_theory.disj_is_healthy)
+    by (simp add: "9"(1) "9"(3) "9"(4) "9"(6) TRF_conj_closure TRF_time_insistant tfin_theory.disj_is_healthy)
   moreover have "(idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> active\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
                 \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> active\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P))
@@ -1034,10 +1272,6 @@ proof (rdes_simp cls: assms extChoice_def)
                \<sqsubseteq> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
                \<or>  time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P))
               ;; \<U>(true, [])"
-    apply(subst (4 3 2 1) 10(1))
-    apply(subst (4 3 2 1) 10(2))
-    apply(trr_simp cls: 1)
-    apply(safe)
     sorry (* TODO: How do we prove this? *)
   ultimately show "\<^bold>R ((pre\<^sub>R P \<and> pre\<^sub>R Q)
                    \<turnstile> (idle\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<squnion>\<^sub>t idle\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q)
@@ -1046,7 +1280,7 @@ proof (rdes_simp cls: assms extChoice_def)
                    \<diamondop> (time\<^sub>I(pre\<^sub>R P \<Rightarrow>\<^sub>r peri\<^sub>R P) \<and> (pre\<^sub>R Q \<Rightarrow>\<^sub>r post\<^sub>R Q)
                    \<or> time\<^sub>I(pre\<^sub>R Q \<Rightarrow>\<^sub>r peri\<^sub>R Q) \<and> (pre\<^sub>R P \<Rightarrow>\<^sub>r post\<^sub>R P)))
                    is TC"
-    by (meson "1"(1) "1"(2) "1"(4) "1"(5) TC_intro TRC_implies_TRR TRR_closed_impl TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_urgent_TRR trel_theory.disj_is_healthy)
+    by (meson "9"(1) "9"(4) TC_intro TRR_conj active_TRR_insistant idle_TRR_insistant tconj_TRR time_urgent_TRR trel_theory.disj_is_healthy)
 qed
 
 (*
@@ -1087,6 +1321,7 @@ proof -
       apply (simp add: assms rpred closure)
      apply (simp_all add: assms utp_pred_laws.inf_commute closure rpred)
      prefer 2
+     apply(trr_auto cls: assms)
     oops
 
 (*
