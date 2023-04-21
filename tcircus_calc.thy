@@ -290,7 +290,7 @@ lemma [rpred]: "((\<T>(X, A) ;; \<E>(true, [], E\<^sub>1, p\<^sub>1)) \<squnion>
   apply blast
   apply blast
   apply blast
-     apply blast
+  apply blast
   apply (smt (z3) Un_iff tocks_inter1 tocks_inter2)+
   done
 
@@ -372,50 +372,6 @@ lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle\<^sub>
 
 lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = idle(P)"
   by (rel_auto)
-
-definition TRR6 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR6(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> $pat\<acute>))"
-
-lemma TRR6_idem:
-  "TRR6(TRR6(P)) = TRR6 P"
-  by (rel_auto)
-
-lemma TRR6_prop:
-  assumes "P is TRR6"
-  shows "U(P\<lbrakk>True/$pat\<acute>\<rbrakk>) \<sqsubseteq> P" 
-proof -
-  have "TRR6(P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> TRR6(P)"
-    by (rel_auto)
-  thus ?thesis
-    by (simp add: Healthy_if assms(1))
-qed
-
-definition TRR7 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR7(P) = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> \<not>$pat\<acute>))"
-
-lemma TRR7_idem:
-  "TRR7(TRR7(P)) = TRR7 P"
-  by (rel_auto)
-
-lemma TRR7_prop:
-  assumes "P is TRR7"
-  shows "U(P\<lbrakk>False/$pat\<acute>\<rbrakk>) \<sqsubseteq> P" 
-proof -
-  have "TRR7(P)\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> TRR7(P)"
-    by (rel_auto)
-  thus ?thesis
-    by (simp add: Healthy_if assms(1))
-qed
-
-lemma [closure]:
-  assumes "P is TRR"
-  shows "TRR6(P) is TRR"
-proof - 
-  have "TRR(TRR6(TRR(P))) = TRR6(TRR(P))"
-    by (rel_auto)
-  thus ?thesis
-    by (metis Healthy_def assms)
-qed
 
 lemma [rpred]:
   assumes "P is TRR" "P is TRR6"

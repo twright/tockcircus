@@ -80,14 +80,61 @@ definition uns :: "('s,'e) taction" where
 definition TRR4 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR4 P Q = (Q \<or> P ;; uns)"
 
+
+definition TRR6 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
+[upred_defs]: "TRR6(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> $pat\<acute>))"
+
+no_utp_lift TRR6
+
+lemma TRR6_idem:
+  "TRR6(TRR6(P)) = TRR6 P"
+  by (rel_auto)
+
+lemma TRR6_alt_def:
+  "(P is TRR6) = (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P)"
+proof 
+  assume 1: "P is TRR6"
+  have "TRR6(P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> TRR6(P)"
+    by (rel_auto)
+  thus "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
+    by (simp add: Healthy_if 1)
+next
+  assume "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
+  thus "P is TRR6"
+    by(rel_auto; smt (z3))
+qed
+
+lemma [closure]:
+  assumes "P is TRR1"
+  shows "TRR6(P) is TRR1"
+proof - 
+  have "TRR1(TRR6(TRR1(P))) = TRR6(TRR1(P))"
+    by (rel_auto)
+  thus ?thesis
+    by (metis Healthy_def assms)
+qed
+
+lemma [closure]:
+  assumes "P is RR"
+  shows "TRR6(P) is RR"
+proof - 
+  have "RR(TRR6(RR(P))) = TRR6(RR(P))"
+    by (rel_auto)
+  thus ?thesis
+    by (metis Healthy_def assms)
+qed
+
 definition Hpat :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "Hpat(P) = (P \<and> U($pat\<acute>))"
 
 definition Hinsist :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "Hinsist(P) = (\<exists> $pat\<acute> \<bullet> P)"
 
+definition TRRw :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
+[upred_defs]: "TRRw(P) = TRR1(RR(P))"
+
 definition TRR :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR(P) = TRR1(RR(P))"
+[upred_defs]: "TRR(P) = TRR6(TRRw(P))"
 
 definition TRC :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRC(P) = TRR1(RC(P))"
@@ -113,11 +160,17 @@ lemma Hpat_Continuous [closure]: "Continuous Hpat"
 lemma Hinsist_Continuous [closure]: "Continuous Hinsist"
   by (rel_blast)
 
+lemma TRRw_idem: "TRRw(TRRw(P)) = TRRw(P)"
+  by (rel_blast)
+
 lemma TRR_idem: "TRR(TRR(P)) = TRR(P)"
   by (rel_blast)
 
 lemma TRF_idem: "TRF(TRF(P)) = TRF(P)"
   by (rel_blast)
+
+lemma TRR_TRR1_raw: "TRR P is TRR1"
+  by (rel_auto)
 
 lemma TRR_Idempotent [closure]: "Idempotent TRR"
   by (simp add: TRR_idem Idempotent_def)
@@ -125,25 +178,73 @@ lemma TRR_Idempotent [closure]: "Idempotent TRR"
 lemma TRF_Idempotent [closure]: "Idempotent TRF"
   by (simp add: TRF_idem Idempotent_def)
 
+lemma TRRw_Idempotent [closure]: "Idempotent TRRw"
+  by (simp add: TRRw_idem Idempotent_def)
+
+lemma TRRw_Continuous [closure]: "Continuous TRRw"
+  by (rel_blast)
+
 lemma TRR_Continuous [closure]: "Continuous TRR"
+  by (rel_blast)
+
+lemma TRR6_Continuous [closure]: "Continuous TRR6"
   by (rel_blast)
 
 lemma TRF_Continuous [closure]: "Continuous TRF"
   by (rel_blast)
 
-lemma TRR_alt_def: "TRR(P :: ('s,'e) taction) = (\<exists> $ref \<bullet> (\<exists> $pat \<bullet> RR(P)))"
-  by rel_auto
+lemma TRR_alt_def: "TRR(P :: ('s,'e) taction) = (\<exists> $ref \<bullet> (\<exists> $pat \<bullet> TRR6(RR(P))))"
+  by rel_blast
+
+lemma TRRw_alt_def: "TRRw(P :: ('s,'e) taction) = (\<exists> $ref \<bullet> (\<exists> $pat \<bullet> RR(P)))"
+  by (rel_auto)
+
+lemma TRRw_intro:
+  assumes "$ref \<sharp> P" "$pat \<sharp> P" "P is RR"
+  shows "P is TRRw"
+  by (metis Healthy_def TRRw_alt_def assms ex_unrest)
 
 lemma TRR_intro:
-  assumes "$ref \<sharp> P" "$pat \<sharp> P" "P is RR"
+  assumes "$ref \<sharp> P" "$pat \<sharp> P" "P is RR" "P is TRR6"
   shows "P is TRR"
   by (simp add: TRR_alt_def Healthy_def, simp add: Healthy_if assms ex_unrest)
 
+lemma TRRw_unrest_ref [unrest]: "P is TRRw \<Longrightarrow> $ref \<sharp> P"
+  by (metis (no_types, lifting) Healthy_if TRRw_alt_def exists_twice in_var_uvar ref_vwb_lens unrest_as_exists vwb_lens_mwb)
+
+lemma TRRw_unrest_pat [unrest]: "P is TRRw \<Longrightarrow> $pat \<sharp> P"
+  by (metis (no_types, lifting) Healthy_if TRRw_alt_def ex_commute exists_twice in_var_indep in_var_uvar pat_vwb_lens tt_vars.indeps(1) unrest_as_exists vwb_lens.axioms(2))
+
 lemma TRR_unrest_ref [unrest]: "P is TRR \<Longrightarrow> $ref \<sharp> P"
-  by (metis (no_types, lifting) Healthy_if TRR_alt_def exists_twice in_var_uvar ref_vwb_lens unrest_as_exists vwb_lens_mwb)
+  by (metis (no_types, lifting) Healthy_if TRR_alt_def exists_twice in_var_uvar ref_vwb_lens unrest_as_exists vwb_lens.axioms(2))
 
 lemma TRR_unrest_pat [unrest]: "P is TRR \<Longrightarrow> $pat \<sharp> P"
   by (metis (no_types, lifting) Healthy_if TRR_alt_def ex_commute exists_twice in_var_indep in_var_uvar pat_vwb_lens tt_vars.indeps(1) unrest_as_exists vwb_lens.axioms(2))
+
+lemma TRRw_TRR [closure]:
+  assumes "P is TRRw"
+  shows "P is TRR1"
+proof -
+  have "TRRw(P) is TRR1"
+    by (rel_auto)
+  thus ?thesis
+    by (simp add: Healthy_if assms)
+qed
+
+lemma TRR_TRR1 [closure]:
+  assumes "P is TRR"
+  shows "P is TRR1"
+  by (metis Healthy_if TRR_TRR1_raw assms)
+
+lemma TRR_TRRw [closure]:
+  assumes "P is TRR"
+  shows "P is TRRw"
+proof - 
+  have "TRR P is TRRw"
+    by (rel_auto)
+  thus ?thesis
+    by (simp add: Healthy_if assms)
+qed
 
 lemma TRR_implies_RR [closure]: 
   assumes "P is TRR"
@@ -158,34 +259,78 @@ qed
 lemma RR_TRR [closure]: "P is RR \<Longrightarrow> TRR P is RR"
   using Healthy_def TRR_idem TRR_implies_RR by auto
 
+lemma TRC_RR_raw: "TRC(P) is RR"
+  apply(rel_auto)
+  apply(meson eq_iff minus_cancel_le)
+  apply(metis (no_types, hide_lams) Prefix_Order.prefixE Prefix_Order.prefixI Prefix_Order.same_prefix_prefix plus_list_def trace_class.add_diff_cancel_left)
+  done
+
+lemma TRC_RR [closure]:
+  assumes "P is TRC"
+  shows "P is RR"
+  by (metis Healthy_if TRC_RR_raw assms)
+
+lemma TRC_TRR1_raw [closure]: "TRC(P) is TRRw"
+proof -
+  have "$pat \<sharp> TRC P" "$ref \<sharp> TRC P"
+    by (rel_auto)+
+  thus "TRC P is TRRw"
+    by (simp add: TRC_RR_raw TRRw_intro)
+qed
+
+lemma TRC_TRR1 [closure]:
+  assumes "P is TRC"
+  shows "P is TRRw"
+  by (metis Healthy_if TRC_TRR1_raw assms)
+
+lemma TRC_TRR6 [closure]:
+  assumes "P is TRC"
+  shows "P is TRR6"
+proof -
+  have "TRC(P) is TRR6"
+    apply(rel_auto)
+    apply(meson)
+    done
+  thus "P is TRR6"
+    by (simp add: Healthy_if assms)
+qed
+
 lemma TRC_implies_TRR [closure]:
   assumes "P is TRC"
   shows "P is TRR"
-proof -
-  have "TRC(P) is TRR"
-    apply (rel_auto)
-    apply (meson eq_iff minus_cancel_le)
-    apply (metis (no_types, hide_lams) Prefix_Order.prefixE Prefix_Order.prefixI Prefix_Order.same_prefix_prefix plus_list_def trace_class.add_diff_cancel_left)
-    done
-  thus ?thesis
-    by (simp add: Healthy_if assms)
-qed
+  by (simp add: Healthy_if Healthy_intro TRC_RR TRC_TRR1 TRC_TRR6 TRR_def assms)
+
+lemma TRC_RC2_raw [closure]: "TRC(P) is RC2"
+  by (rel_auto, blast)
 
 lemma TRC_implies_RC2 [closure]:
   assumes "P is TRC"
   shows "P is RC2"
-proof -
-  have "TRC(P) is RC2"
-    by (rel_auto, blast)
-  thus ?thesis
-    by (simp add: Healthy_if assms)
-qed
+  by (metis Healthy_if TRC_RC2_raw assms)
 
 lemma TRC_implies_RC [closure]: "P is TRC \<Longrightarrow> P is RC"
   by (simp add: RC_intro_prefix_closed TRC_implies_RC2 TRC_implies_TRR TRR_implies_RR)
 
+lemma TRC_idem: 
+  assumes "P is TRR"
+  shows "TRC (TRC P) = TRC P"
+proof -
+  have 1: "TRC P is RC"
+    apply(rule RC_intro_prefix_closed)
+    using TRC_RR_raw apply blast
+    by (simp add: TRC_RC2_raw)
+  have "TRC(TRC P) = TRR1(RC(TRC P))"
+    by (meson TRC_def)
+  also have "\<dots> = TRR1(TRC P)"
+    by (simp add: "1" Healthy_if)
+  also have "\<dots> = TRC P"
+    by (meson Healthy_if TRC_TRR1_raw TRRw_TRR)
+  finally show "TRC(TRC P) = TRC P" .
+qed
+
 lemma TRR_closed_TRC [closure]: "TRC(P) is TRR"
-  by (metis (no_types, hide_lams) Healthy_Idempotent Healthy_if RC1_RR_closed RC_def TRC_def TRR_Idempotent TRR_def comp_apply rrel_theory.HCond_Idempotent)
+  by (metis Healthy_if Healthy_intro RC_intro_prefix_closed TRC_RC2_raw TRC_RR_raw TRC_TRR1_raw
+      TRC_def TRC_implies_TRR TRRw_TRR)
 
 lemma tc_skip_self_unit [simp]: "II\<^sub>t ;; II\<^sub>t = II\<^sub>t"
   by (rel_auto)
@@ -196,8 +341,25 @@ lemma TRR_tc_skip [closure]: "II\<^sub>t is TRR"
 lemma TRF_implies_TRR3 [closure]: "P is TRF \<Longrightarrow> P is TRR3"
   by (metis (no_types, hide_lams) Healthy_def RA1 TRF_def TRR3_def tc_skip_self_unit)
 
+lemma TRR6_closed_seq [closure]: "Q is TRR6 \<Longrightarrow> P ;; Q is TRR6"
+proof -
+  assume "Q is TRR6"
+  hence 1: "P ;; Q = P ;; TRR6 Q"
+    by (simp add: Healthy_if)
+  also have "\<dots> = TRR6(P ;; TRR6 Q)"
+    by rel_blast
+  also have "\<dots> = TRR6(P ;; Q)"
+    by (simp add: 1)
+  finally have "P ;; Q = TRR6(P ;; Q)" .
+  thus ?thesis
+    by (metis Healthy_intro)
+qed
+
+lemma TRRw_closed_seq [closure]: "\<lbrakk> P is TRRw; Q is TRRw \<rbrakk> \<Longrightarrow> P ;; Q is TRRw"
+  by (metis (no_types, hide_lams) Healthy_if Healthy_intro RA1 RR_idem TRR1_def TRR_implies_RR TRR_tc_skip TRRw_def seq_RR_closed)
+
 lemma TRR_closed_seq [closure]: "\<lbrakk> P is TRR; Q is TRR \<rbrakk> \<Longrightarrow> P ;; Q is TRR"
-  by (rule TRR_intro, simp_all add: closure unrest)
+  by (metis (no_types, hide_lams) Healthy_if Healthy_intro TRR6_closed_seq TRR6_idem TRR_def TRR_implies_RR TRR_intro TRR_unrest_pat TRR_unrest_ref seq_RR_closed unrest_semir_undash)
 
 lemma TRF_implies_TRR [closure]: "P is TRF \<Longrightarrow> P is TRR"
   by (metis Healthy_def TRF_def TRR3_def TRR_closed_seq TRR_idem TRR_tc_skip)
@@ -240,7 +402,7 @@ lemma TRR_TRR3 [closure]: "P is TRR \<Longrightarrow> TRR3(P) is TRR"
 lemma TRF_tc_skip [closure]: "II\<^sub>t is TRF"
   by rel_auto
 
-no_utp_lift RR TRR TRF
+no_utp_lift RR TRR TRF TRR1
 
 lemma TRR_transfer_refine:
   fixes P Q :: "('s, 'e) taction"
@@ -249,13 +411,18 @@ lemma TRR_transfer_refine:
                    \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> Q))"
   shows "P \<sqsubseteq> Q"
 proof -
-  have "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR P) 
-                     \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR Q))"
-    by (metis Healthy_if assms(1) assms(2) assms(3))
-  hence "TRR P \<sqsubseteq> TRR Q"
+  have 1: "P = TRR1(RR P)" "Q = TRR1(RR Q)" 
+    by (simp_all add: Healthy_if TRR_TRR1 TRR_implies_RR assms(1-2))
+  have "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR1(RR P)) 
+                     \<sqsubseteq> U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR1(RR Q)))"
+    using assms(3)
+    apply(subst (asm) 1(1))
+    apply(subst (asm) 1(2))
+    by simp
+  hence "TRR1(RR P) \<sqsubseteq> TRR1(RR Q)"
     by (rel_auto)
   thus ?thesis
-    by (metis Healthy_if assms(1) assms(2))
+    using "1"(1) "1"(2) by fastforce
 qed
 
 lemma TRR_transfer_eq:
@@ -265,13 +432,18 @@ lemma TRR_transfer_eq:
                    = U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> Q))"
   shows "P = Q"
 proof -
-  have "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR P) 
-                     = U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR Q))"
-    by (metis Healthy_if assms(1) assms(2) assms(3))
-  hence "TRR P = TRR Q"
+  have 1: "P = TRR1(RR P)" "Q = TRR1(RR Q)" 
+    by (simp_all add: Healthy_if TRR_TRR1 TRR_implies_RR assms(1-2))
+  have "(\<And> t s s' r p. U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR1(RR P)) 
+                     = U([$ok \<mapsto>\<^sub>s true, $ok\<acute> \<mapsto>\<^sub>s true, $wait \<mapsto>\<^sub>s true, $wait\<acute> \<mapsto>\<^sub>s true, $tr \<mapsto>\<^sub>s [], $tr\<acute> \<mapsto>\<^sub>s \<guillemotleft>t\<guillemotright>, $st \<mapsto>\<^sub>s \<guillemotleft>s\<guillemotright>, $st\<acute> \<mapsto>\<^sub>s \<guillemotleft>s'\<guillemotright>, $ref \<mapsto>\<^sub>s \<^bold>\<bullet>, $ref\<acute> \<mapsto>\<^sub>s \<guillemotleft>r\<guillemotright>, $pat \<mapsto>\<^sub>s false, $pat\<acute> \<mapsto>\<^sub>s \<guillemotleft>p\<guillemotright>] \<dagger> TRR1(RR Q)))"
+    using assms(3)
+    apply(subst (asm) 1(1))
+    apply(subst (asm) 1(2))
+    by simp
+  hence "TRR1(RR P) = TRR1(RR Q)"
     by (rel_auto)
   thus ?thesis
-    by (metis Healthy_if assms(1) assms(2))
+    using "1"(1) "1"(2) by fastforce
 qed
 
 lemmas TRR_transfer = TRR_transfer_refine TRR_transfer_eq
@@ -282,18 +454,69 @@ method trr_simp uses cls = (rule_tac TRR_transfer, simp add: closure cls, simp a
 
 method trr_auto uses cls = (rule_tac TRR_transfer, simp add: closure cls, simp add: closure cls, rel_auto)
 
+lemma TRRw_closed_disj [closure]:
+  assumes "P is TRRw" "Q is TRRw"
+  shows "(P \<or> Q) is TRRw"
+  by (simp add: TRRw_Continuous TRRw_idem assms(1) assms(2) utp_theory.intro
+      utp_theory_continuous.disj_is_healthy utp_theory_continuous.intro
+      utp_theory_continuous_axioms.intro)
+
 lemma TRR_closed_disj [closure]:
   assumes "P is TRR" "Q is TRR"
   shows "(P \<or> Q) is TRR"
-  by (rule TRR_intro, simp_all add: unrest closure assms)
+  by (simp add: TRR_Continuous TRR_idem assms(1) assms(2) utp_theory.intro
+      utp_theory_continuous.disj_is_healthy utp_theory_continuous.intro
+      utp_theory_continuous_axioms.intro)
 
-lemma TRR_closed_neg [closure]: "P is TRR \<Longrightarrow> \<not>\<^sub>r P is TRR"
+(*
+(*  :: "('t::trace,'\<alpha>,'\<beta>) rel_rp \<Rightarrow> ('t,'\<alpha>,'\<beta>) rel_rp" *)
+definition t_not ("\<not>\<^sub>t _" [40] 40) 
+where [upred_defs]: "(\<not>\<^sub>t P) = U(TRR6(\<not>\<^sub>r P))"
+
+no_utp_lift t_not
+
+(* :: "('t::trace,'\<alpha>,'\<beta>) rel_rp \<Rightarrow> ('t,'\<alpha>,'\<beta>) rel_rp \<Rightarrow> ('t,'\<alpha>,'\<beta>) rel_rp" *)
+definition t_diff (infixl "-\<^sub>r" 65)
+where [upred_defs]: "t_diff P Q = (P \<and> \<not>\<^sub>r Q)"
+
+(*  "('t::trace,'\<alpha>,'\<beta>) rel_rp \<Rightarrow> ('t,'\<alpha>,'\<beta>) rel_rp \<Rightarrow> ('t,'\<alpha>,'\<beta>) rel_rp" *) 
+
+definition rea_impl (infixr "\<Rightarrow>\<^sub>t" 25)
+where [upred_defs]: "(P \<Rightarrow>\<^sub>t Q) = (\<not>\<^sub>t P \<or> Q)"
+
+lemma TRR_closed_neg [closure]: "\<not>\<^sub>t P is TRR6"
+  by (rel_auto)
+*)
+
+lemma TRRw_closed_neg [closure]:
+  assumes "P is TRRw"
+  shows "\<not>\<^sub>r P is TRRw"
+proof -
+  have "\<not>\<^sub>r TRRw(P) is TRRw"
+    by (rel_auto)
+  thus "?thesis"
+    by (simp add: Healthy_if assms)
+qed
+
+(*
+lemma TRR_closed_neg [closure]:
+  assumes "P is TRR1" "P is RR"
+  shows "\<not>\<^sub>r P is TRR1"
+  apply(rule TRR1_intro)
+  using assms(1) apply(rel_simp)
+  apply(simp add: unrest assms)
+*)
+(*
+lemma TRR_closed_neg [closure]: "P is TRR \<Longrightarrow> \<not>\<^sub>t P is TRR"
+  apply(rule TRR_intro)
+  apply(rel_auto)
   by (rule TRR_intro, simp_all add: unrest closure)
 
 lemma TRR_closed_impl [closure]:
   assumes "P is TRR" "Q is TRR"
   shows "(P \<Rightarrow>\<^sub>r Q) is TRR"
   by (simp add: TRR_closed_disj TRR_closed_neg assms(1) assms(2) rea_impl_def)
+*)
 
 lemma TRR_conj [closure]:
   assumes "P is TRR" "Q is TRR"
@@ -310,7 +533,7 @@ lemma TRR_ex_ref' [closure]:
   shows "(\<exists> $ref\<acute> \<bullet> P) is TRR"
 proof -
   have "(\<exists> $ref\<acute> \<bullet> TRR(P)) is TRR"
-    by (rel_auto)
+    by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
 qed
@@ -321,24 +544,73 @@ lemma TRR_ex_pat' [closure]:
   shows "(\<exists> $pat\<acute> \<bullet> P) is TRR"
 proof -
   have "(\<exists> $pat\<acute> \<bullet> TRR(P)) is TRR"
-    by (rel_auto)
+    by (rel_blast)
   thus ?thesis
     by (simp add: Healthy_if assms)
+qed
+
+lemma TRR6_not_refines:
+  "(P is TRR6) \<Longrightarrow> ((\<not>\<^sub>r P) \<sqsubseteq> (\<not>\<^sub>r P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)"
+proof -
+  assume 1: "P is TRR6"
+  have "(\<not>\<^sub>r TRR6(P)) \<sqsubseteq> (\<not>\<^sub>r TRR6(P))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by (rel_auto)
+  thus "(\<not>\<^sub>r P) \<sqsubseteq> (\<not>\<^sub>r P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by (simp add: Healthy_if 1)
+qed
+
+lemma not_refines_TRR6:
+  "P is R1 \<Longrightarrow> ((\<not>\<^sub>r P) \<sqsubseteq> (\<not>\<^sub>r P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>) \<Longrightarrow> (P is TRR6)"
+proof -
+  assume 1: "P is R1"
+  assume "(\<not>\<^sub>r P) \<sqsubseteq> (\<not>\<^sub>r P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+  hence "R1(P) is TRR6"
+    by (rel_auto; smt (z3))
+  thus "P is TRR6"
+    by (simp add: "1" Healthy_if)
 qed
 
 lemma TRR_USUP_closed [closure]:
   assumes "\<And> i. P(i) is TRR" "I \<noteq> {}"
   shows "(\<And> i\<in>I \<bullet> P(i)) is TRR"
 proof -
-  have "(\<And> i\<in>I \<bullet> P(i)) = (\<not>\<^sub>r (\<Or> i\<in>I \<bullet> \<not>\<^sub>r P(i)))"
+  have "\<And> i. (\<not>\<^sub>r P(i)) \<sqsubseteq> ((\<not>\<^sub>r P(i))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)"
+    by (metis Healthy_if Healthy_intro TRR6_idem TRR6_not_refines TRR_def assms(1))
+  hence "(\<Or> i\<in>I \<bullet> \<not>\<^sub>r P(i)) \<sqsubseteq> (\<Or> i\<in>I \<bullet> ((\<not>\<^sub>r P(i))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>))"
+    by (rel_blast)
+  hence "\<not>\<^sub>r (\<Or> i\<in>I \<bullet> \<not>\<^sub>r P(i)) is TRR6"
+    by (simp add: UINF_R1_closed not_refines_TRR6 rea_not_R1 rea_not_not subst_UINF)
+  moreover have "\<not>\<^sub>r (\<Or> i\<in>I \<bullet> \<not>\<^sub>r P(i)) is TRRw"
+    by (meson TRR_TRRw TRRw_Continuous TRRw_closed_neg UINF_mem_Continuous_closed assms)
+  moreover have "(\<And> i\<in>I \<bullet> P(i)) = (\<not>\<^sub>r (\<Or> i\<in>I \<bullet> \<not>\<^sub>r P(i)))"
     by (simp add: rpred closure assms)
-  also have "... is TRR"
-    by (meson TRR_Continuous TRR_closed_neg UINF_mem_Continuous_closed assms(1) assms(2))
-  finally show ?thesis .
+  ultimately show ?thesis
+    by (simp add: Healthy_def TRR_def)
+qed
+
+lemma TRRw_closed_wp [closure]: "\<lbrakk> P is TRRw; Q is TRRw \<rbrakk> \<Longrightarrow> P wp\<^sub>r Q is TRRw"
+  by (simp add: wp_rea_def closure)
+
+
+lemma TRR6_closed_wp [closure]: "Q is TRR6 \<Longrightarrow> P wp\<^sub>r Q is TRR6"
+proof -
+  assume "Q is TRR6"
+  hence "(\<not>\<^sub>r Q) \<sqsubseteq> (\<not>\<^sub>r Q)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by (meson TRR6_not_refines)
+  hence "(P ;; (\<not>\<^sub>r Q)) \<sqsubseteq> (P ;; (\<not>\<^sub>r Q)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)"
+    by (meson urel_dioid.mult_isol)
+  moreover have "(P ;; (\<not>\<^sub>r Q)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>) = (P ;; (\<not>\<^sub>r Q))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by rel_auto
+  ultimately have "(P ;; (\<not>\<^sub>r Q)) \<sqsubseteq> (P ;; (\<not>\<^sub>r Q))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by simp
+  hence "\<not>\<^sub>r (P ;; (\<not>\<^sub>r Q)) is TRR6"
+    by (metis (no_types, lifting) R1_rea_not R1_rea_not' TRR6_alt_def TRR6_not_refines disj_upred_def not_refines_TRR6 rea_not_R1 rea_not_def semilattice_sup_class.sup.order_iff subst_not utp_pred_laws.compl_sup utp_pred_laws.inf.cobounded2)
+  thus ?thesis
+    by (simp add: wp_rea_def)
 qed
 
 lemma TRR_closed_wp [closure]: "\<lbrakk> P is TRR; Q is TRR \<rbrakk> \<Longrightarrow> P wp\<^sub>r Q is TRR"
-  by (simp add: wp_rea_def closure)
+  by (metis Healthy_if Healthy_intro TRR6_closed_wp TRR_TRRw TRR_def TRRw_closed_wp)
 
 lemma TRR_RC2_closed [closure]:
    assumes "P is TRR" shows "RC2(P) is TRR"
@@ -353,14 +625,14 @@ qed
 lemma TRR_left_unit [rpred]: 
   assumes "P is TRR"
   shows "II\<^sub>t ;; P = P"
-  by (metis Healthy_if TRR1_def TRR_def TRR_implies_RR assms)
+  by (metis Healthy_if TRR1_def TRR_TRR1 assms)
 
 method rrel_simp uses cls = (rule RR_eq_transfer, simp add: closure cls, simp add: closure cls)
 
 lemma TRR_ident_intro:
-  assumes "P is RR" "II\<^sub>t ;; P = P"
+  assumes "P is RR" "P is TRR6" "II\<^sub>t ;; P = P"
   shows "P is TRR"
-  by (metis Healthy_def TRR1_def TRR_def assms(1) assms(2))
+  by (simp add: Healthy_if Healthy_intro TRR1_def TRR_def TRRw_def assms(1) assms(2) assms(3))
 
 lemma TRR_wp_closure [closure]:
   assumes "P is TRR" "Q is TRC"
@@ -460,8 +732,6 @@ no_utp_lift lift_state_rel
 
 definition TDC :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" where
 [upred_defs]: "TDC(P) = U(\<exists> ref\<^sub>0. P\<lbrakk>\<guillemotleft>ref\<^sub>0\<guillemotright>/$ref\<acute>\<rbrakk> \<and> $ref\<acute> \<le> \<guillemotleft>ref\<^sub>0\<guillemotright>)"
-
-
 
 lemma TRC_unrests:
   assumes "P is TRC"
