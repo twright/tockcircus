@@ -154,47 +154,63 @@ lemma tconj_mono:
   using assms by (rel_blast)+
 
 
-lemma tconj_TRR [closure]:
-  assumes "P is TRR" "Q is TRR"
-   shows "P \<squnion>\<^sub>t Q is TRR"
+lemma tconj_TRRw [closure]:
+  assumes "P is TRRw" "Q is TRRw"
+   shows "P \<squnion>\<^sub>t Q is TRRw"
 proof -
-  have 1: "TRR (\<^bold>\<exists> (pat0, pat1) \<bullet> P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) )
-      = (\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) ))"
-    apply (rel_auto)
-    apply blast+
-    done
-  have "\<And>pat1. (\<^U>(TRR (Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>)) = \<^U>((TRR Q)\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>))"
-    apply(rel_auto)
-    done
-  hence 2: "\<And>pat1. (\<^U>(TRR (Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>)) = \<^U>(Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>))"
+  have 1: "TRRw (\<^bold>\<exists> (pat0, pat1) \<bullet> P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) )
+      = (\<^bold>\<exists> (pat0, pat1) \<bullet> TRRw (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) ))"
+    by rel_blast
+  have "\<And>pat1. (TRRw (Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>) = (TRRw Q)\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>)"
+    by rel_auto
+  hence 2: "\<And>pat1. (TRRw (Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>) = Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk>)"
     using assms(2) unfolding Healthy_def by metis
   
-  have "\<And>pat0. (\<^U>(TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>)) = \<^U>((TRR P)\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>))"
-    apply(rel_auto)
-    done
-  hence 3: "\<And>pat0. (\<^U>(TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>)) = \<^U>(P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>))"
+  have "\<And>pat0. (TRRw (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>) = (TRRw P)\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>)"
+    by rel_auto
+  hence 3: "\<And>pat0. (TRRw (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>) = P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk>)"
     using assms(1) unfolding Healthy_def by metis
   have 4: "P = R2c(P)" "Q = R2c(Q)"
-    using assms
-    by (simp_all add: Healthy_if RR_implies_R2c TRR_implies_RR)
+    by (metis (no_types, lifting) Healthy_if R1_RR R2c_R1_seq R2c_RR TRR1_def TRR_implies_RR TRR_tc_skip TRRw_def assms)+
   have 5: "P = R1(P)" "Q = R1(Q)"
-    using assms
-    by (simp_all add: Healthy_if RR_implies_R1 TRR_implies_RR)
+    by (metis Healthy_if R1_RR R1_seqr TRR1_def TRR_implies_RR TRR_tc_skip TRRw_def assms)+
   have 6: "P = R2(P)" "Q = R2(Q)"
-    using assms
-    by (simp_all add: Healthy_if RR_implies_R2 TRR_implies_RR)
-  have 7: "(\<^bold>\<exists> (pat0, pat1) \<bullet> TRR (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>))))
+    apply (metis "4"(1) "5"(1) R2_R2c_def)
+    by (metis "4"(2) "5"(2) R2_R2c_def)
+  have 7: "(\<^bold>\<exists> (pat0, pat1) \<bullet> TRRw (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>))))
          = (\<^bold>\<exists> (pat0, pat1) \<bullet> (P\<lbrakk>\<guillemotleft>pat0\<guillemotright>/$pat\<acute>\<rbrakk> \<and> Q\<lbrakk>\<guillemotleft>pat1\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (\<guillemotleft>pat0\<guillemotright> \<Rightarrow> \<guillemotleft>pat1\<guillemotright> \<Rightarrow> ($pat\<acute>)) ))"
-    apply (subst (23 19 9 5) TRRconcretify)
+    apply (subst (23 19 9 5) TRRwconcretify)
     apply (simp add: assms)+
     apply(rel_auto)
     apply ((subst 4(1))?; (subst 4(2))?; (subst (asm) 6(1))?; (subst (asm) 6(2))?; rel_blast)+
     done
-  have "(TRR P) \<squnion>\<^sub>t (TRR Q) = (TRR (P \<squnion>\<^sub>t Q))"
+  have "(TRRw P) \<squnion>\<^sub>t (TRRw Q) = (TRRw (P \<squnion>\<^sub>t Q))"
     by (simp add: "1" "7" tconj_alt_def Healthy_if assms)
   thus ?thesis
     by (metis Healthy_def assms)
 qed
+
+lemma tconj_TRR6 [closure]:
+  assumes "P is TRR6" "Q is TRR6"
+   shows "P \<squnion>\<^sub>t Q is TRR6"
+proof -
+  have "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P" "Q\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> Q"
+    by (meson TRR6_alt_def assms)+
+  hence "(P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<squnion>\<^sub>t Q\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>) \<sqsubseteq> (P \<squnion>\<^sub>t Q)"
+    by (meson dual_order.trans tconj_mono(1) tconj_mono(2))
+  moreover have "(P \<squnion>\<^sub>t Q)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<squnion>\<^sub>t Q\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
+    by (rel_auto)
+  ultimately have "(P \<squnion>\<^sub>t Q)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> (P \<squnion>\<^sub>t Q)"
+    by (meson dual_order.trans)
+  thus ?thesis
+    using TRR6_alt_def by blast
+qed
+
+
+lemma tconj_TRR [closure]:
+  assumes "P is TRR" "Q is TRR"
+  shows "P \<squnion>\<^sub>t Q is TRR"
+  by (metis Healthy_if Healthy_intro TRR_TRRw TRR_def assms(1) assms(2) tconj_TRR6 tconj_TRRw)
 
 lemma TRF_tconj_conj:
   assumes "P is TRF" "Q is TRF"
@@ -210,116 +226,5 @@ lemma TRF_tconj_closure [closure]:
   assumes "P is TRF" "Q is TRF"
   shows "(P \<squnion>\<^sub>t Q) is TRF"
   by (simp add: TRF_conj_closure TRF_tconj_conj assms)
-
-(*
-lemma tconj_RR:
-  assumes "P is RR" "Q is RR"
-   shows "P \<squnion>\<^sub>t Q is TRR"
-*)
-
-(*
-lemma tconj_TRR:
-  assumes "P is TRC" "Q is TRC"
-  shows "P \<squnion>\<^sub>t Q is RC"
-proof -
-  have 1: "P is TRR" "Q is TRR"
-    by (simp_all add: TRC_implies_TRR assms)
-  have 2: "P \<squnion>\<^sub>t Q is TRR"
-    by (simp add: 1 tconj_TRR)
-  have 3: "P = RC(P)" "Q = RC(Q)"
-    apply (metis Healthy_def' TRC_implies_RC assms(1))
-    apply (metis Healthy_def' TRC_implies_RC assms(2))
-    done
-  have 4: "P = RC2(P)" "Q = RC2(Q)"
-    apply (metis Healthy_def' TRC_implies_RC2 assms(1))
-    apply (metis Healthy_def' TRC_implies_RC2 assms(2))
-    done
-  have 5: "\<And>p. ((\<exists>a b. p = (conj a b)) = True)"
-    by auto
-  have "(P \<squnion>\<^sub>t Q) = (RC2 P \<squnion>\<^sub>t RC2 Q)"
-    using 4 by auto
-  also have "\<dots> = RC2(P \<squnion>\<^sub>t Q)"
-    apply(subst (3 2 1) RC2_form_1)
-    apply (simp add: "2" TRR_implies_RR)
-    apply (simp add: "1"(2) TRR_implies_RR)
-    apply (simp add: "1"(1) TRR_implies_RR)
-    apply (simp add: tconj_alt_def)
-    apply(subst (37 33 18 7) TRRconcretify) 
-        apply(simp_all add: 1)
-    apply(rel_simp)
-    apply(simp add: 5)
-    apply(safe)
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.select_convs(3) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.select_convs(3) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    sledgehammer run
-
-    apply(rel_auto)
-          prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))    
-    prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-  prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.select_convs(3) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    prefer 2 apply (smt (z3) des_vars.ext_inject des_vars.update_convs(1) rp_vars.ext_inject rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-     prefer 2 apply (smt (z3) des_vars.update_convs(1) rp_vars.update_convs(1) tt_vars.surjective tt_vars.update_convs(2))
-    oops
-
-  have "RC2(P \<squnion>\<^sub>t Q) = (P \<squnion>\<^sub>t Q)"
-    apply(rule TRR_transfer_eq)
-    (*
-    using 2 apply (metis (no_types, lifting) Healthy_if RC1_def RC_R2_def TRR_closed_neg TRR_closed_seq TRR_implies_RR o_apply rea_not_false trel_theory.top_closed)
-     apply (simp add: "2")
-    apply(subst (2) 3(1))
-    apply(subst (2) 3(2))
-    apply(rel_auto)
-    sledgehammer
-    oops
-    *)
-qed
-*)
-
-(* Not actually needed for anything!
-
-lemma tconj_rdes:
-  assumes "P\<^sub>1 is TRC" "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>1 is TRC" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
-  shows "\<^bold>R(P\<^sub>1 \<turnstile> P\<^sub>2 \<diamondop> P\<^sub>3) \<squnion>\<^sub>t \<^bold>R(Q\<^sub>1 \<turnstile> Q\<^sub>2 \<diamondop> Q\<^sub>3) = \<^bold>R(P\<^sub>1 \<or> Q\<^sub>1 \<turnstile> P\<^sub>2 \<squnion>\<^sub>t Q\<^sub>2 \<diamondop> P\<^sub>3 \<and> Q\<^sub>3)"
-  apply(rule TRR_transfer_eq)
-  apply(simp add: tconj_alt_def)
-  oops
-
-lemma tconj_rdes:
-  assumes "P\<^sub>1 is TRC" "P\<^sub>2 is TRR" "P\<^sub>3 is TRF" "Q\<^sub>1 is TRC" "Q\<^sub>2 is TRR" "Q\<^sub>3 is TRF"
-  shows "\<^bold>R(P\<^sub>1 \<turnstile> P\<^sub>2 \<diamondop> P\<^sub>3) \<squnion>\<^sub>t \<^bold>R(Q\<^sub>1 \<turnstile> Q\<^sub>2 \<diamondop> Q\<^sub>3) = \<^bold>R((P\<^sub>1 \<or> Q\<^sub>1) \<turnstile> (P\<^sub>2 \<squnion>\<^sub>t Q\<^sub>2) \<diamondop> (P\<^sub>3 \<and> Q\<^sub>3))"
-proof 
-
-  (* (rule rdes_tri_eq_intro)
-  have "(P\<^sub>1 \<or> Q\<^sub>1) is TRC"
-    by (metis Healthy_if Healthy_intro TRC_def TRC_implies_RC TRC_implies_TRR TRR1_def TRR_left_unit
-        assms(1) assms(4) disj_RC_closed trel_theory.disj_is_healthy)
-  moreover have "(P\<^sub>2 \<squnion>\<^sub>t Q\<^sub>2) is TRR"
-    by (simp add: assms(2) assms(5) tconj_TRR)
-  moreover have "(P\<^sub>3 \<and> Q\<^sub>3) is TRF"
-    by (simp add: TRF_conj_closure assms(3) assms(6))
-  moreover show "\<^bold>R (\<^U>(P\<^sub>1 \<or> Q\<^sub>1) \<turnstile> (P\<^sub>2 \<squnion>\<^sub>t Q\<^sub>2) \<diamondop> (P\<^sub>3 \<and> Q\<^sub>3)) is TC"
-    using assms sledgehammer
-  *)
-qed
-*)
-
-(*
-abbreviation "neg_pat \<equiv> U(($ok\<acute> = $ok)
-            \<and> ($wait\<acute> = $wait)
-            \<and> ($tr\<acute> = $tr)
-            \<and> ($st\<acute> = $st)
-            \<and> ($ref\<acute> = $ref)
-            \<and> (($pat \<Rightarrow> $pat\<acute>)))"
-
-lemma tconj_conj_pat:
-  "(P \<squnion>\<^sub>t Q) = ((P ;; neg_pat) \<and> (Q ;; neg_pat)) ;; neg_pat"
-  apply(rel_auto)
-  nitpick
-*)
 
 end

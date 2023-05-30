@@ -374,14 +374,16 @@ lemma [rpred]: "(\<T>({}, {0..}) ;; \<E>(true, [], {}, false) \<and> idle(P)) = 
   by (rel_auto)
 
 lemma [rpred]:
-  assumes "P is TRR" "P is TRR6"
+  assumes "P is TRR"
   shows "((\<T>({}, {0..}) ;; \<E>(true, [], {}, true)) \<squnion>\<^sub>t idle\<^sub>I(P)) = idle\<^sub>I(P)"
 proof -
   have 1: "P = TRR6(P)"
-    by (simp add: Healthy_if assms(2))
+    by (metis Healthy_if TRR_TRRw TRR_def assms)
+  have 2: "TRR6(P) is TRR"
+    using "1" assms by force
   show ?thesis
     apply(subst (2 1) 1)
-    apply(trr_auto cls: assms)
+    apply(trr_auto cls: 2)
     apply metis
     done
 qed
@@ -393,6 +395,7 @@ lemma [rpred]:
 proof -
   have "time\<^sub>I(TRF(P) ;; \<U>(true, [])) = time\<^sub>I(TRF(P))"
     apply(trr_auto cls: assms)
+    apply blast+
     done
   thus "time\<^sub>I(P ;; \<U>(true, [])) = time\<^sub>I(P)"
     by (simp_all add: Healthy_if assms)

@@ -70,10 +70,6 @@ definition TRR2 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 definition TRR3 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR3(P) = (P ;; II\<^sub>t)"
 
-(* Patience healthiness *)
-definition TRR5 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR5(P) = U(P \<and> (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<Rightarrow> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>))"
-
 definition uns :: "('s,'e) taction" where
 [upred_defs]: "uns = U($tr\<acute> = $tr \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
 
@@ -84,7 +80,16 @@ definition TRR4 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction \<Rightarrow> 
 definition TRR6 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR6(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> $pat\<acute>))"
 
-no_utp_lift TRR6
+definition TRR6a :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
+[upred_defs]: "TRR6a(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> ($wait \<Rightarrow> $pat\<acute>)))"
+
+definition J6 :: "('s,'e) taction" where
+[upred_defs]: "J6 = (($pat \<Rightarrow> $pat\<acute>) \<and> ($ref\<acute> =\<^sub>u $ref) \<and> ($ok\<acute> =\<^sub>u $ok) \<and> ($wait\<acute> =\<^sub>u $wait) \<and> II\<^sub>t)"
+
+definition J61 :: "('s,'e) taction" where
+[upred_defs]: "J61 = (($pat \<Rightarrow> $pat\<acute>) \<and> ($ref\<acute> =\<^sub>u $ref) \<and> II\<^sub>t)"
+
+no_utp_lift TRR6 J6 J61
 
 lemma TRR6_idem:
   "TRR6(TRR6(P)) = TRR6 P"
@@ -103,6 +108,11 @@ next
   thus "P is TRR6"
     by(rel_auto; smt (z3))
 qed
+
+lemma TRR6_J6:
+  "TRR6(P) = (P ;; J6)"
+  apply(rel_auto)
+  by (metis (full_types))
 
 lemma [closure]:
   assumes "P is TRR1"
@@ -132,6 +142,8 @@ definition Hinsist :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 
 definition TRRw :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRRw(P) = TRR1(RR(P))"
+
+no_utp_lift TRRw
 
 definition TRR :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR(P) = TRR6(TRRw(P))"
@@ -244,6 +256,16 @@ proof -
     by (rel_auto)
   thus ?thesis
     by (simp add: Healthy_if assms)
+qed
+
+lemma TRRw_implies_RR [closure]: 
+  assumes "P is TRRw"
+  shows "P is RR"
+proof -
+  have "RR(TRRw(P)) = TRRw(P)"
+    by (rel_blast)
+  thus ?thesis
+    by (metis Healthy_def assms)
 qed
 
 lemma TRR_implies_RR [closure]: 
@@ -765,15 +787,20 @@ lemma TRCconcretify:
   by (rule TRFUnrestConcretify)
      (simp_all add: TRC_unrests' assms)
 
-lemma TRRconcretify:
-  assumes "P is TRR"
+lemma TRRwconcretify:
+  assumes "P is TRRw"
   shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$pat\<rbrakk>)"
 proof -
   have "$ref \<sharp> P" "$pat \<sharp> P" "$ok \<sharp> P" "$ok\<acute> \<sharp> P" "$wait \<sharp> P" "$wait\<acute> \<sharp> P" 
-    by (auto simp add: unrest TRF_implies_TRR TRR_implies_RR assms)
+    by (simp_all add: assms closure unrest)
   thus ?thesis
     by (rule TRRUnrestConcretify)
 qed
+
+lemma TRRconcretify:
+  assumes "P is TRR"
+  shows "P = U(P\<lbrakk>\<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>True\<guillemotright>,\<guillemotleft>True\<guillemotright>, \<guillemotleft>rfnil\<guillemotright>,\<guillemotleft>False\<guillemotright>/$ok,$ok\<acute>,$wait,$wait\<acute>,$ref,$pat\<rbrakk>)"
+  by (meson TRR_TRRw TRRwconcretify assms)
 
 lemma TRFconcretify:
   assumes "P is TRF"

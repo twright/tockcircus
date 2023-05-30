@@ -14,6 +14,9 @@ definition Skip :: "('s,'e) taction" where
 lemma "\<U>(true, []) \<sqsubseteq> \<F>(true, [], id\<^sub>s) ;; \<U>(true, [])"
   by (trr_auto)
 
+definition TC0 :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" where
+[rdes_def]: "TC0(P) = TRR6 P"
+
 definition TC1 :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" where
 [rdes_def]: "TC1(P) = Skip ;; P"
 
@@ -29,7 +32,244 @@ definition TC2 :: "('s, 'e) taction \<Rightarrow> ('s, 'e) taction" where
 lemma TC2_idem: "TC2(TC2(P)) = TC2(P)"
   by (simp add: seqr_assoc Skip_self_unit TC2_def)
 
-definition [upred_defs]: "TC = NRD \<circ> TC2 \<circ> TC1" 
+lemma JC_wait:
+  "(( Q \<diamondop> R) ;; J6) = ((Q;;J6) \<diamondop> (R;;J6))"
+  by (rel_auto)
+
+lemma
+  "((true \<turnstile> Q) ;; (true \<turnstile> J6)) = (true \<turnstile> (Q;;J6))"
+  apply(rel_auto)
+  apply blast+
+  done
+
+lemma
+  "((R1(P) \<turnstile> Q) ;; (true\<^sub>r \<turnstile> J6)) = (R1(P) \<turnstile> (Q;;J6))"
+  apply(rel_auto)
+  oops
+
+lemma TRR6_des: "(TRC(P) \<turnstile> TRR6(Q)) is TRR6"
+  apply(subst TRR6_alt_def)
+  apply(rel_auto)
+  by meson
+
+lemma TRR6_des_TRC: "TRR6(TRC(P) \<turnstile> Q) = (TRC(P) \<turnstile> TRR6 Q)"
+proof -
+  have "(TRC(P) \<turnstile> TRR6 Q) = TRR6(TRC(P) \<turnstile> TRR6 Q)"
+    by (simp add: Healthy_if TRR6_des)
+  also have "\<dots> = TRR6(TRC(P) \<turnstile> Q)"
+    by (rel_auto)
+  finally show ?thesis ..
+qed
+
+lemma TRR6_des_RC: "TRR6(RC(P) \<turnstile> Q) = (TRR6(RC(P)) \<turnstile> TRR6(Q))"
+  by (rel_auto)
+
+lemma TRR6_wait:
+  "(TRR6 (Q \<diamondop> R)) = ((TRR6 Q) \<diamondop> (TRR6 R))"
+  by (rel_auto)
+
+lemma TRR6_TRF_wait:
+  "R is TRF \<Longrightarrow> (TRR6 (Q \<diamondop> R)) = ((TRR6 Q) \<diamondop> R)"
+proof -
+  assume 1: "R is TRF"
+  have 2: "TRR6 (TRF R) = (TRF R)"
+    by (metis "1" Healthy_if TRF_implies_TRR TRR_TRRw TRR_def)
+  hence "TRR6(R) = R"
+    by (metis "1" Healthy_if)
+  thus "(TRR6 (Q \<diamondop> R)) = ((TRR6 Q) \<diamondop> R)"
+    by (simp add: TRR6_wait)
+qed
+
+definition [rdes_def]: "TC3 (P) = (P \<triangleleft> $wait  \<triangleright> (P ;; J6))" (*(II\<^sub>C \<triangleleft> $wait \<triangleright> ((P ;; J6) \<triangleleft> $ok \<triangleright> P))"*)
+
+utp_const TC3
+
+lemma TC3_idem: "TC3(TC3(P)) = TC3(P)"
+  by (rdes_simp; rel_auto)
+
+lemma TC3R3c: "TC3(R3c(P)) = R3c(TRR6 P)"
+  apply(rdes_simp)
+  apply (rel_auto)
+  by (metis (full_types))
+
+lemma TC3R1: "TC3(R1(P)) = R1(TC3 P)"
+  apply(rdes_simp)
+  by (rel_auto)
+
+lemma TC3R2: "TC3(R2(P)) = R2(TC3 P)"
+  apply(rdes_simp)
+  by (rel_auto)
+
+lemma TRR6_R1: "TRR6(R1(P)) = R1(TRR6(P))"
+  by (rel_auto)
+
+lemma TRR6_R2c: "TRR6(R2c(P)) = R2c(TRR6(P))"
+  by (rel_auto)
+
+lemma TRR6_R: "TC3(\<^bold>R(P)) = \<^bold>R(TRR6(P))"
+  by (metis R2_comp_def RH_comp TC3R2 TC3R3c comp_apply)
+
+lemma "(II\<^sub>C ;; R3c(J6)) = R3c(II\<^sub>C ;; J6)"
+  apply(rel_auto)
+  apply blast+
+  done
+
+lemma "(II\<^sub>C ;; J6) = J6"
+  apply(rel_auto)
+  oops
+
+lemma "(II\<^sub>C ;; ($ok \<Rightarrow> J6)) = ($ok \<Rightarrow> J6)"
+  by (rel_auto)
+
+lemma "R1(J6) = J6 "
+  by (rel_auto)
+
+lemma "true\<^sub>r ;; P = R1(P)"
+  apply(rel_auto)
+  oops  
+
+lemma "TRR6(II\<^sub>t) = II\<^sub>t"
+  by (rel_auto)
+
+lemma "TRR6(II) = II"
+  apply(rel_simp)
+  oops
+
+lemma "TRR6(II\<^sub>C) = II\<^sub>C"
+  apply (rel_simp)
+  apply(safe)
+  apply(auto)
+  nitpick
+  oops
+
+lemma "R3c(R1(J6)) = R3c(J6)"
+  by (rel_auto)
+
+lemma R3cJ6: "(R3c(P) ;; R3c(J6)) = R3c(P ;; R3c(J6))"
+  by (rel_auto; blast)
+
+lemma "(R3c(P) ;; R3c(J6)) = R3c(P ;; J6)"
+  apply(rel_auto)
+  apply blast+
+  oops
+
+lemma "(\<^bold>R(P) ;; R3c(J6)) = \<^bold>R(R2(P) ;; R3c(J6))"
+proof -
+  have 1: "R3c(J6) = R2(R3c(J6))"
+    by (rel_auto)
+  have "(\<^bold>R(P) ;; R3c(J6)) = (R2(R3c(P)) ;; R3c(J6))"
+    by (simp add: R2_comp_def RH_comp)
+  also have "\<dots> = (R2(R3c(P)) ;; R2(R3c(J6)))"
+    apply(subst 1)
+    by blast
+  also have "\<dots> = (R2(R2(R3c(P)) ;; R2(R3c(J6))))"
+    by (simp add: R2_seqr_distribute)
+  also have "\<dots> = (R2(R3c(R2(P)) ;; R3c(R2(J6))))"
+    by (simp add: R1_R3c_commute R2_R2c_def R2c_R3c_commute)
+  also have "\<dots> = (R2(R3c(R2(P) ;; R3c(R2(J6)))))"
+    by (simp add: R2_comp_def R3c_semir_form)
+  also have "\<dots> = (R2(R3c(R2(P) ;; R2(R3c(J6)))))"
+    by (simp add: R1_R3c_commute R2_comp_def R2c_R3c_commute)
+  also have "\<dots> = (R2(R3c(R2(P) ;; R3c(J6))))"
+    by (metis "1")
+  also have "\<dots> = (\<^bold>R(R2(P) ;; R3c(J6)))"
+    by (simp add: R2_comp_def RH_comp)
+  finally show ?thesis .
+qed
+
+(*
+lemma "(\<^bold>R(P) ;; \<^bold>R(J6)) = \<^bold>R(P ;; J6)"
+  apply (rel_simp)
+  apply(safe)
+  apply (metis minus_zero_eq zero_list_def)
+  apply (metis minus_cancel order_refl)
+  apply blast
+  apply (meson order_trans)
+  apply (meson order_trans)
+  apply (meson order_trans)
+  apply (meson dual_order.trans)
+  apply (metis dual_order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson dual_order.trans)
+  apply (meson order_trans)
+  apply (meson dual_order.trans)+
+  apply (smt (z3) minus_zero_eq zero_list_def)
+  apply force
+  apply (smt (z3) minus_zero_eq zero_list_def)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (metis order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  prefer 6
+  apply (meson order_trans)
+  oops
+*)
+
+(*
+lemma "(\<^bold>R(P \<turnstile> Q) ;; \<^bold>R(true\<^sub>r \<turnstile> J6)) = \<^bold>R(P \<turnstile> Q ;; J6)"
+  apply(rel_simp)
+  apply(safe)
+  apply (metis minus_zero_eq zero_list_def) 
+    apply (metis dual_order.refl minus_cancel)
+    apply blast
+    apply (metis minus_zero_eq zero_list_def)
+    apply (metis minus_zero_eq zero_list_def)
+    apply (meson order_trans)
+    apply (meson dual_order.trans)
+    apply (meson order_trans)
+    apply (meson order.trans)
+    apply (meson order_trans)
+    apply (meson order.trans)
+    apply (meson order.trans)
+  apply (meson order_trans)
+  apply (meson dual_order.trans)
+  apply (meson order_trans)
+  apply (meson order_trans)
+  apply (meson dual_order.trans)
+  apply (meson order_trans)
+                      apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+  apply (meson order.trans)
+                      apply (meson order.trans)
+  prefer 5
+  apply force
+  prefer 5
+                      apply auto[1]
+  prefer 5
+  oops
+*)
+
+(*
+lemma TRR6_R3: "TRR6(TC1(R3c(P))) = TC1(R3c(TRR6(P)))"
+  by (rel_auto)
+*)
+
+definition [upred_defs]: "TC = NRD \<circ> TC3 \<circ> TC2 \<circ> TC1" 
 
 lemma TC_implies_NRD [closure]: "P is TC \<Longrightarrow> P is NRD"
   by (metis (no_types, hide_lams) Healthy_def TC_def NRD_idem comp_apply)
@@ -39,21 +279,480 @@ lemma NRD_rdes [rdes_def]:
   shows "NRD(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = (\<^bold>R(P \<turnstile> Q \<diamondop> R))"
   by (simp add: Healthy_if NRD_rdes_intro assms)
 
-lemma TC1_rdes:
+lemma "TRR6(R1 P) = R1(TRR6 P)"
+  by (rel_auto)
+
+lemma "TRR6(R2 P) = R2(TRR6 P)"
+  by (rel_auto)
+
+lemma "R3c(TRR6a(P)) = R3c(TRR6a(R3c(P)))"
+  by (rel_auto)
+
+(*
+lemma "((R3 P) ;; (J6 \<and> $pat)) = R3(P ;; (J6 \<and> $pat))"
+  by (rel_auto)
+*)
+
+(*
+lemma
+  "(P is H3 \<Longrightarrow> (P \<turnstile> Q) ;; (True \<turnstile> J6)) = (P \<turnstile> (Q;;J6))"
+  sorry
+*)
+
+(*
+lemma
+  "(\<^bold>R(P \<turnstile> Q) ;; \<^bold>R(true\<^sub>r \<turnstile> J6)) = \<^bold>R(P \<turnstile> (Q;;J6))"
+  apply(rel_simp)
+  apply(safe)
+                      apply (metis minus_zero_eq zero_list_def)
+  apply (metis dual_order.refl minus_cancel)
+
+    apply blast
+    apply (meson order.trans)    
+  apply (meson order_trans)
+  apply (meson order_trans)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+                      apply (metis order_trans minus_zero_eq zero_list_def dual_order.refl trace_class.diff_cancel)
+  oops
+*)
+
+(*
+lemma
+  "(\<^bold>R(true\<^sub>r \<turnstile> Q) ;; \<^bold>R(true\<^sub>r \<turnstile> J6)) = \<^bold>R(true\<^sub>r \<turnstile> (Q;;J6))"
+  apply(rel_auto)
+  apply (metis dual_order.refl trace_class.diff_cancel zero_list_def)
+  apply blast
+  apply (metis minus_zero_eq zero_list_def)
+  apply (metis minus_zero_eq zero_list_def)
+  apply (metis minus_zero_eq zero_list_def)
+  apply blast
+  oops
+*)
+
+lemma
+  "((\<^bold>R(true\<^sub>r \<turnstile> Q \<diamondop> R)) ;; \<^bold>R(true\<^sub>r \<turnstile> J6)) = (\<^bold>R(true\<^sub>r \<turnstile> (Q;;J6) \<diamondop> (R;;J6)))"
+  (* apply(rel_auto) *)
+  oops
+
+lemma TC0_des_0:
+  shows "((true \<turnstile> Q) ;; (true \<turnstile> J6)) = (true \<turnstile> (Q;;J6))"
+  apply(rel_auto)
+  apply(blast+)
+  done
+
+(*
+lemma "TC3(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC1(TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+  apply(simp add: TC1_def TC3_def)
+  apply(rel_auto)
+*)
+
+(*
+lemma TC0_des_0:
+  shows "((RC(P) \<turnstile> Q) ;; (true \<turnstile> J6)) = (TRC(P) \<turnstile> (Q;;J6))"
+  apply(rel_auto)
+  oops
+*)
+
+lemma TC3_rdes:
+  assumes "P is TRC" "Q is TRRw" "R is TRF"
+  shows "TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(P \<turnstile> TRR6(Q) \<diamondop> R)"
+(*  apply(rdes_eq_split) *)
+proof -
+  have "TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = (\<^bold>R(TRR6(P \<turnstile> Q \<diamondop> R)))"
+    by (simp add: TRR6_R)
+  also have "\<dots> = (\<^bold>R(P \<turnstile> TRR6(Q \<diamondop> R)))"
+    by (metis Healthy_if TRR6_des_TRC assms(1))
+  also have "\<dots> = \<^bold>R(P \<turnstile> TRR6(Q) \<diamondop> R)"
+    by (simp add: TRR6_TRF_wait assms(3))
+  finally show "?thesis" .
+qed
+
+lemma TRR6_TRF: "TRR6(TRF(P)) = TRF(TRR6(P))"
+  by (rel_auto; blast)
+
+lemma TRR6_TRC_RC: "TRR6(TRC(RC(P))) = TRC(TRR6(RC(P)))"
+  apply rel_auto
+  apply blast
+  apply blast
+  apply blast
+  apply meson
+  done
+
+lemma TRRw_TRC: "TRRw(TRR6(P)) = TRR6(TRRw(P))"
+  by (rel_auto; blast)
+
+lemma TC1_rdes_w:
   assumes "P is RC" "Q is RR" "R is RR"
-  shows "TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRR(Q)) \<diamondop> TRR(R))"
+  shows "TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRRw(Q)) \<diamondop> TRRw(R))"
   using assms
-  by (rdes_simp, simp add: TRR_def TRR1_def Healthy_if)
+  apply(rdes_eq_split)
+  apply blast  
+  apply (simp add: Healthy_if TRR1_def TRRw_def)
+  by (simp add: Healthy_if TRR1_def TRRw_def)
+
+lemma TC3_contract:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(TRR6 P \<turnstile> TRR6 Q \<diamondop> TRR6 R)"
+proof -
+  have "TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(TRR6(P \<turnstile> Q \<diamondop> R))"
+    by (meson TRR6_R)
+  also have "\<dots> = \<^bold>R(TRR6(P) \<turnstile> TRR6(Q \<diamondop> R))"
+    by (metis Healthy_if TRR6_des_RC assms(1))
+  also have "\<dots> = \<^bold>R(TRR6(P) \<turnstile> TRR6(Q) \<diamondop> TRR6(R))"
+    by (simp add: TRR6_wait)
+  finally show ?thesis .
+qed
+
+lemma TRR6_uns: "TRR6(\<U>(true, []) \<or> Q) = (\<U>(true, []) \<or> TRR6 Q)"
+  by (rel_auto)
+
+(*
+lemma "((P ;; J6) ;; Skip) = ((P ;; Skip) ;; J6)"
+  apply(simp add: Skip_def)
+  apply(rel_auto)
+*)
+
+(*
+lemma TC2_TC3: "(TC2(TC3(P))) = (TC3(TC2(P)))"
+  apply(simp add: TC2_def TC3_def Skip_def)
+  apply(rel_auto)
+  sledgehammer
+*)
+
+lemma TC1_TRRw_rdes [rdes_def]:
+  assumes "P is TRC" "Q is TRRw" "R is TRR"
+  shows "TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(P \<turnstile> (\<U>(true, []) \<or> Q) \<diamondop> R)"
+  by (subst TC1_rdes_w, simp_all add: closure assms wp Healthy_if)
 
 lemma TC1_TRR_rdes [rdes_def]:
   assumes "P is TRC" "Q is TRR" "R is TRR"
   shows "TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(P \<turnstile> (\<U>(true, []) \<or> Q) \<diamondop> R)"
-  by (subst TC1_rdes, simp_all add: closure assms wp Healthy_if)
+  by (simp add: TC1_TRRw_rdes TRR_TRRw assms(1) assms(2) assms(3))
+
+lemma TC2w_rdes [rdes_def]:
+  assumes "P is TRC" "Q is TRRw" "R is TRRw"
+  shows "TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(P \<turnstile>(Q \<or> R ;; \<U>(true, [])) \<diamondop> R ;; II\<^sub>t)"
+  using assms by (rdes_simp)
 
 lemma TC2_rdes [rdes_def]:
   assumes "P is TRC" "Q is TRR" "R is TRR"
   shows "TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R)) = \<^bold>R(P \<turnstile>(Q \<or> R ;; \<U>(true, [])) \<diamondop> R ;; II\<^sub>t)"
-  using assms by (rdes_simp)
+  by (simp add: TC2w_rdes TRR_TRRw assms)
+
+lemma TC2_TC1 [closure]: "P is NRD \<Longrightarrow> TC2(TC1(P)) is TC1"
+proof -
+  assume a: "P is NRD"
+  have "TC1(TC2(TC1(P))) = TC2(TC1(P))"
+    by (rdes_eq cls: a)
+  then show ?thesis
+    by (simp add: Healthy_intro)
+qed
+
+lemma TC2_TC1_TRR_rdes [rdes_def]:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = \<^bold>R(II\<^sub>t wp\<^sub>r P
+                 \<turnstile> ((\<U>(true, []) \<or> TRRw(Q)) \<or> TRRw(R) ;; \<U>(true, []))
+                 \<diamondop> TRRw(R) ;; II\<^sub>t)"
+proof -
+  (*
+  have "(TRRw (RR(R))) ;; \<U>(true, []) = RR(R) ;; \<U>(true, [])"
+    apply(rel_auto)
+    sledgehammer
+  *)
+
+  have "TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC2(\<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRRw(Q)) \<diamondop> TRRw(R)))"
+    by (simp add: TC1_rdes_w assms)
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r P
+                 \<turnstile> ((\<U>(true, []) \<or> TRRw(Q)) \<or> TRRw(R) ;; \<U>(true, []))
+                 \<diamondop> TRRw(R) ;; II\<^sub>t)"
+    apply(subst TC2w_rdes)
+    apply (metis RR_implies_R1 TRC_wp_intro TRR_implies_RR TRR_tc_skip assms(1) tc_skip_self_unit wp_rea_RC wp_rea_seq)
+    apply(rel_auto)
+    apply(rel_auto)
+    apply(rel_auto)
+    done
+  finally show ?thesis .
+qed
+
+lemma TRR6_RC_wp_1: "TRR6(II\<^sub>t wp\<^sub>r (RC P)) = (II\<^sub>t wp\<^sub>r TRR6(RC(P)))"
+  by (rel_auto; meson)
+
+lemma TRR6_RC_wp: "TRR6(II\<^sub>t wp\<^sub>r (RC P)) = TRR6(II\<^sub>t wp\<^sub>r TRR6(RC(P)))"
+  apply(rel_auto)
+  by meson
+
+lemma TRR6_RC_wp_2: "TRR6(II\<^sub>t wp\<^sub>r (RC P)) = (II\<^sub>t wp\<^sub>r RC(P))"
+  by (rel_auto)
+
+lemma TRRw_uns: "(\<U>(true, []) \<or> TRRw P) = TRRw(\<U>(true, []) \<or> P)"
+  by rel_auto
+
+lemma TC3_TC2_TC1_TRR_rdes [rdes_def]:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC3(TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)))) = \<^bold>R(
+    II\<^sub>t wp\<^sub>r P
+  \<turnstile> (\<U>(true, []) \<or> TRR Q \<or> (TRRw R) ;; \<U>(true, []))
+  \<diamondop> TRRw R ;; II\<^sub>t)"
+proof - 
+  have 1: "TRR6(TRRw Q \<or> (TRRw R) ;; \<U>(true, [])) = (TRR Q \<or> ((TRRw R) ;; \<U>(true, [])))"
+    by (rel_auto)
+  have 2: "TRR6(R ;; II\<^sub>t) = (R ;; II\<^sub>t)"
+    by (rel_auto)
+  have 3: "(TRR6 R) ;; \<U>(true, []) = (R ;; \<U>(true, []))"
+    apply(rel_auto)
+    apply blast+
+    by fastforce
+  have 4: "(TRR6(R) ;; II\<^sub>t) = (R ;; II\<^sub>t)"
+    apply(rel_auto)
+    by fastforce
+
+  have "TC3(TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)))) = TC3(\<^bold>R(II\<^sub>t wp\<^sub>r P
+    \<turnstile> ((\<U>(true, []) \<or> TRRw(Q)) \<or> TRRw(R) ;; \<U>(true, []))
+    \<diamondop> TRRw(R) ;; II\<^sub>t))"
+    by (simp add: TC2_TC1_TRR_rdes assms(1) assms(2) assms(3))
+  also have "\<dots> = \<^bold>R(TRR6(II\<^sub>t wp\<^sub>r P) \<turnstile> TRR6 (\<U>(true, []) \<or> TRRw Q \<or> TRRw(R) ;; \<U>(true, [])) \<diamondop> TRR6(TRRw R ;; II\<^sub>t))"
+    apply(subst TC3_contract)
+    apply (simp add: TRR_implies_RR TRR_tc_skip assms(1) wp_rea_RC)
+    apply(rel_auto)
+    apply(rel_auto)
+    by (simp add: utp_pred_laws.sup.assoc)
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> TRR6 (\<U>(true, []) \<or> TRRw Q \<or> TRRw(R) ;; \<U>(true, [])) \<diamondop> TRR6(TRRw R ;; II\<^sub>t))"
+    by (metis Healthy_if TRR6_RC_wp_2 assms(1))
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> TRR6 (\<U>(true, []) \<or> TRRw Q \<or> TRRw(R) ;; \<U>(true, [])) \<diamondop> TRRw R ;; II\<^sub>t)"
+    by (metis Healthy_if Healthy_intro TRR6_closed_seq TRR_TRRw TRR_def TRR_tc_skip)
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRR6(TRRw Q \<or> TRRw(R) ;; \<U>(true, []))) \<diamondop> TRRw R ;; II\<^sub>t)"
+    by (simp add: TRR6_uns)
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRR Q \<or> (TRRw R) ;; \<U>(true, [])) \<diamondop> TRRw R ;; II\<^sub>t)"
+    using "1" by presburger
+  finally show ?thesis .
+qed
+
+(*
+lemma TRR6_RR: "P is RR \<Longrightarrow> TRR6 P is RR"
+proof -
+  assume 1: "P is RR"
+  have "RR(TRR6(RR P)) = TRR6(RR P)"
+    by (rel_auto)
+  thus ?thesis
+    by (metis "1" Healthy_def')
+qed
+*)
+
+lemma TRRw_RR [closure]: "P is RR \<Longrightarrow> TRRw P is RR"
+proof -
+  assume 1: "P is RR"
+  have "RR(TRRw(RR P)) = TRRw(RR P)"
+    by (rel_auto)
+  thus ?thesis
+    by (metis "1" Healthy_def')
+qed
+
+
+lemma TRR6_RC1 [closure]: "P is RC \<Longrightarrow> TRR6 P is RC"
+proof -
+  assume 1: "P is RC"
+  show ?thesis
+    by (metis "1" Healthy_if Healthy_intro TRR6_closed_wp TRR_TRRw TRR_def trel_theory.top_closed wp_rea_RC_false)
+qed
+
+lemma RC_wp [closure]: "P is RC \<Longrightarrow> II\<^sub>t wp\<^sub>r (RC P) is RC"
+proof -
+  assume 1: "P is RC"
+  show ?thesis
+    by (simp add: "1" Healthy_if TRR_implies_RR TRR_tc_skip wp_rea_RC)
+qed
+
+lemma TC1_TC2_com:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC1(TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+  apply(rdes_eq_split cls: assms)
+  apply(rel_auto)
+  apply(rel_auto)
+  apply(rel_auto)
+  apply blast+
+  done
+
+lemma TC1_TC3:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC3(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC1(TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+proof -
+  have "TC3(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC3(\<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRRw Q) \<diamondop> TRRw R))"
+    by (simp add: TC1_rdes_w assms)
+  also have "\<dots> = \<^bold>R(TRR6(II\<^sub>t wp\<^sub>r P) \<turnstile> TRR6 (\<U>(true, []) \<or> TRRw Q) \<diamondop> TRR6(TRRw R))"
+    apply(subst TC3_contract)
+    apply(simp add: TRR_implies_RR TRR_tc_skip assms(1) wp_rea_RC)
+    apply(rel_auto)
+    apply (simp add: Healthy_if TRR1_def TRR_implies_RR TRR_tc_skip TRRw_def assms(3) rrel_theory.Healthy_Sequence)
+    apply blast
+    done
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r (TRR6 P) \<turnstile> TRR6(\<U>(true, []) \<or> TRRw Q) \<diamondop> TRR6(TRRw R))"
+    by (metis Healthy_if TRR6_RC_wp_1 assms(1))
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r (TRR6 P) \<turnstile> (\<U>(true, []) \<or> TRR6(TRRw Q)) \<diamondop> TRR6(TRRw R))"
+    by (simp add: TRR6_uns)
+  also have "\<dots> = \<^bold>R(II\<^sub>t wp\<^sub>r (TRR6 P) \<turnstile> (\<U>(true, []) \<or> TRRw(TRR6 Q)) \<diamondop> TRRw(TRR6 R))"
+    by (simp add: TRRw_TRC)
+  also have "\<dots> = TC1(\<^bold>R(TRR6 P \<turnstile> TRR6 Q \<diamondop> TRR6 R))"
+    by (simp add: TC1_rdes_w assms closure)
+  also have "\<dots> = TC1(TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+    by (simp add: TC3_contract assms)
+  finally show ?thesis .
+qed
+
+lemma TC2_TC3_rdes:
+  assumes "P is TRC" "Q is TRRw" "R is TRRw"
+  shows "TC3(TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC2(TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+proof -
+  have 1: "TRR6(Q \<or> R ;; \<U>(true, [])) = (TRR6 Q \<or> (R ;; \<U>(true, [])))"
+    apply (rel_auto)
+    by blast
+  have 2: "TRR6(R ;; II\<^sub>t) = (R ;; II\<^sub>t)"
+    by (rel_auto)
+  have 3: "(TRR6 R) ;; \<U>(true, []) = (R ;; \<U>(true, []))"
+    apply(rel_auto)
+    apply blast+
+    by fastforce
+  have 4: "(TRR6(R) ;; II\<^sub>t) = (R ;; II\<^sub>t)"
+    apply(rel_auto)
+    by fastforce
+  have "TC3(TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC3(\<^bold>R(P \<turnstile> (Q \<or> R ;; \<U>(true, [])) \<diamondop> R ;; II\<^sub>t))"
+    by (simp add: TC2w_rdes assms(1) assms(2) assms(3))
+  also have "\<dots> = \<^bold>R(TRR6 P \<turnstile> (TRR6(Q) \<or> R ;; \<U>(true, [])) \<diamondop> (R ;; II\<^sub>t))"
+    by (metis (no_types, lifting) "1" "2" Healthy_if TRC_TRR6 TRR6_R TRR6_des_TRC TRR6_wait assms(1))
+  also have "\<dots> = \<^bold>R(TRR6 P \<turnstile> (TRR6(Q) \<or> (TRR6 R) ;; \<U>(true, [])) \<diamondop> ((TRR6 R) ;; II\<^sub>t))"
+    using "3" "4" by presburger
+  also have "\<dots> = TC2(\<^bold>R(TRR6 P \<turnstile> TRR6(Q) \<diamondop> TRR6 R))"
+    by (metis (no_types, lifting) Healthy_if Healthy_intro TC2w_rdes TRC_TRR6 TRR_def TRRw_TRC assms(1) assms(2) assms(3))
+  also have "\<dots> = TC2(TC3(\<^bold>R(P \<turnstile> Q \<diamondop> R)))"
+    by (simp add: TC3_contract TRC_implies_RC TRR_implies_RR TRRw_implies_RR assms(1) assms(2) assms(3))
+  finally show ?thesis .
+qed
+(*
+lemma TC1_TC3_1:
+  assumes "P is RC" "Q is RR" "R is RR"
+  shows "TC3(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R))) is TC1"
+proof -
+  have "TC1(TC3(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)))) = TC1(TC3(\<^bold>R(II\<^sub>t wp\<^sub>r P \<turnstile> (\<U>(true, []) \<or> TRRw Q) \<diamondop> TRRw R)))"
+    by (simp add: TC1_rdes_w assms)
+  also have "\<dots> = TC1(\<^bold>R(TRR6(II\<^sub>t wp\<^sub>r P) \<turnstile> TRR6 (\<U>(true, []) \<or> TRRw Q) \<diamondop> TRR6(TRRw R)))"
+    apply(subst TC3_contract)
+    apply(simp add: TRR_implies_RR TRR_tc_skip assms(1) wp_rea_RC)
+    apply(rel_auto)
+    apply (simp add: Healthy_if TRR1_def TRR_implies_RR TRR_tc_skip TRRw_def assms(3) rrel_theory.Healthy_Sequence)
+    by blast
+  also have "\<dots> = TC1(\<^bold>R(TRR6(II\<^sub>t wp\<^sub>r P) \<turnstile> \<U>(true, []) \<or> TRR Q \<diamondop> TRR R))"
+    oops
+qed
+ *)
+
+lemma TC3_TC1 [closure]: "P is NRD \<Longrightarrow> TC3(TC1(P)) is TC1"
+proof -
+  assume a: "P is NRD"
+  have 1: "P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P)"
+    by (rdes_eq cls: a)
+  have "TC1(TC3(TC1(P))) = TC1(TC1(TC3(P)))"
+    by (metis "1" NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_TC3 a periR_RR postR_RR)
+  also have "\<dots> = TC1(TC3(P))"
+    by (meson TC1_idem)
+  finally have "TC1(TC3(TC1(P))) = TC1(TC3(P))" .
+  thus ?thesis
+    by (metis "1" Healthy_def NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_TC3 a periR_RR postR_RR)
+qed
+
+lemma TC3_TC2 [closure]: "P is NRD \<Longrightarrow> P is TC1 \<Longrightarrow> TC3(TC2(P)) is TC2"
+proof -
+  assume a: "P is NRD"
+  assume b: "P is TC1"
+  have 1: "P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P)"
+    by (rdes_eq cls: a)
+  have 2: "TC1(P) = \<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw(peri\<^sub>R P)) \<diamondop> TRRw(post\<^sub>R P))"
+    by (metis "1" NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_rdes_w a periR_RR postR_RR)
+  have "TC2(TC3(TC2(P))) = TC2(TC3(TC2(TC1(P))))"
+    by (simp add: Healthy_if b)
+  also have "\<dots> = TC2(TC3(TC2(\<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw(peri\<^sub>R P)) \<diamondop> TRRw(post\<^sub>R P)))))"
+    by (simp add: "2")
+  also have "\<dots> = TC2(TC2(TC3(\<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw(peri\<^sub>R P)) \<diamondop> TRRw(post\<^sub>R P)))))"
+    apply(subst TC2_TC3_rdes)
+    apply (metis NRD_neg_pre_RC R2_implies_R1 RR_implies_R2 TRC_wp_intro TRR_implies_RR TRR_tc_skip a tc_skip_self_unit wp_rea_RC wp_rea_seq)
+    apply (simp add: Healthy_intro TRRw_idem TRRw_uns)
+    apply (simp add: Healthy_intro TRRw_idem)
+    by blast
+  also have "\<dots> = TC2(TC3(\<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw(peri\<^sub>R P)) \<diamondop> TRRw(post\<^sub>R P))))"
+    by (meson TC2_idem)
+  also have "\<dots> = TC3(TC2(\<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw(peri\<^sub>R P)) \<diamondop> TRRw(post\<^sub>R P))))"
+    apply(subst TC2_TC3_rdes)
+    apply (metis NRD_neg_pre_RC R2_implies_R1 RR_implies_R2 TRC_wp_intro TRR_implies_RR TRR_tc_skip a tc_skip_self_unit wp_rea_RC wp_rea_seq)
+    apply (simp add: Healthy_intro TRRw_idem TRRw_uns)
+    apply (simp add: Healthy_intro TRRw_idem)
+    by blast
+  also have "\<dots> = TC3(TC2(TC1(P)))"
+    using "2" by presburger
+  also have "\<dots> = TC3(TC2(P))"
+    by (simp add: Healthy_if b)
+  finally have "TC2(TC3(TC2(P))) = TC3(TC2(P))" .
+  thus ?thesis
+    by (simp add: Healthy_intro)
+qed
+
+
+lemma "TC1(P) is NRD \<Longrightarrow> P is NRD"
+proof -
+  assume a: "TC1(P) is NRD"
+
+  show "P is NRD"
+    apply(simp add: closure a)
+qed
+
+(*
+lemma TC3_TC2 [closure]: "P is NRD \<Longrightarrow> TC3(TC1(P)) is TC1"
+proof -
+  assume a: "P is NRD"
+  have 1: "P = \<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P)"
+    by (rdes_eq cls: a)
+  have "TC1(TC3(TC1(P))) = TC1(TC1(TC3(P)))"
+    by (metis "1" NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_TC3 a periR_RR postR_RR)
+  also have "\<dots> = TC1(TC3(P))"
+    by (meson TC1_idem)
+  finally have "TC1(TC3(TC1(P))) = TC1(TC3(P))" .
+  thus ?thesis
+    by (metis "1" Healthy_def NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_TC3 a periR_RR postR_RR)
+qed
+*)
+
+(*
+lemma "NRD(TC1(P)) is TC1"
+  sledgehammer
+
+lemma "NRD(TC3(P)) is TC3"
+proof -
+  assume a: "P is NRD"
+  have "TC3(NRD(TC3(NRD(P)))) = NRD(TC3(NRD(P)))"
+    apply(rdes_simp)
+    apply(rel_simp)
+    apply(safe)
+    sledgehammer
+qed
+*)
 
 lemma TC_implies_TC1 [closure]: 
   assumes "P is TC"
@@ -61,7 +760,10 @@ lemma TC_implies_TC1 [closure]:
 proof -
   have a:"P is NRD"
     by (simp add: closure assms)
+  have "TC(P) = TC3(TC2(TC1(P)))"
+    apply(simp add: TC_def)
   have "TC1(TC(P)) = TC(P)"
+    sledgehammer
     by (rdes_eq cls: a simps: TC_def)
   thus ?thesis
     by (metis Healthy_def assms)
@@ -138,21 +840,21 @@ qed
 
 lemma TC_inner_closures [closure]:
   assumes "P is TC"
-  shows "pre\<^sub>R(P) is TRC" "peri\<^sub>R(P) is TRR" "post\<^sub>R(P) is TRF" "peri\<^sub>R(P) \<sqsubseteq> \<U>(true, [])" "peri\<^sub>R P \<sqsubseteq> post\<^sub>R P ;; \<U>(true, [])"
+  shows "pre\<^sub>R(P) is TRC" "peri\<^sub>R(P) is TRRw" "post\<^sub>R(P) is TRF" "peri\<^sub>R(P) \<sqsubseteq> \<U>(true, [])" "peri\<^sub>R P \<sqsubseteq> post\<^sub>R P ;; \<U>(true, [])"
 proof -
   have a: "P is NRD"
     using TC_implies_NRD assms by blast
   have b: "P = TC1(\<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))"
     by (simp add: Healthy_if NRD_is_RD RD_reactive_tri_design TC_implies_TC1 TC_implies_TC2 a assms)
-  hence 1: "P = \<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRR (peri\<^sub>R P)) \<diamondop> TRR (post\<^sub>R P))"
-    by (simp add: TC1_rdes TC2_rdes closure assms)
+  hence 1: "P = \<^bold>R(II\<^sub>t wp\<^sub>r pre\<^sub>R P \<turnstile> (\<U>(true, []) \<or> TRRw (peri\<^sub>R P)) \<diamondop> TRRw (post\<^sub>R P))"
+    by (metis NRD_is_RD NRD_neg_pre_RC RD_healths(2) TC1_rdes a periR_RR postR_RR)
   hence 2: "II\<^sub>t wp\<^sub>r pre\<^sub>R P = pre\<^sub>R P"
     by (metis TRR_implies_RR TRR_tc_skip a preR_NRD_RR preR_rdes wp_rea_RR_closed)
   thus [closure]: "pre\<^sub>R(P) is TRC"
     by (simp add: NRD_neg_pre_RC TRC_wp_intro a)
-  have peri: "peri\<^sub>R(P) = (pre\<^sub>R(P) \<Rightarrow>\<^sub>r (\<U>(true, []) \<or> TRR (peri\<^sub>R P)))"
+  have peri: "peri\<^sub>R(P) = (pre\<^sub>R(P) \<Rightarrow>\<^sub>r (\<U>(true, []) \<or> TRRw (peri\<^sub>R P)))"
     by (subst 1, simp add: rdes closure assms 2)
-  also have "... is TRR"
+  also have "... is TRRw"
     by (simp add: closure assms)
   finally show [closure]: "peri\<^sub>R(P) is TRR" .
   show "peri\<^sub>R(P) \<sqsubseteq> \<U>(true, [])"
