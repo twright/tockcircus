@@ -122,8 +122,10 @@ lemma "TRR6(R1 P) = R1(TRR6 P)"
 lemma "TRR6(R2 P) = R2(TRR6 P)"
   by (rel_auto)
 
+(*
 lemma "R3c(TRR6a(P)) = R3c(TRR6a(R3c(P)))"
   by (rel_auto)
+*)
 
 lemma TC3_rdes:
   assumes "P is TRC" "Q is TRRw" "R is TRF"
@@ -316,11 +318,11 @@ proof -
     by (rel_auto)
   have 3: "(TRR6 R) ;; \<U>(true, []) = (R ;; \<U>(true, []))"
     apply(rel_auto)
-    apply blast+
-    by fastforce
+      apply blast+
+    by metis
   have 4: "(TRR6(R) ;; II\<^sub>t) = (R ;; II\<^sub>t)"
     apply(rel_auto)
-    by fastforce
+    by metis
 
   have "TC3(TC2(TC1(\<^bold>R(P \<turnstile> Q \<diamondop> R)))) = TC3(\<^bold>R(II\<^sub>t wp\<^sub>r P
     \<turnstile> ((\<U>(true, []) \<or> TRRw(Q)) \<or> TRRw(R) ;; \<U>(true, []))
@@ -411,10 +413,10 @@ proof -
   have 3: "(TRR6 R) ;; \<U>(true, []) = (R ;; \<U>(true, []))"
     apply(rel_auto)
     apply blast+
-    by fastforce
+    by metis
   have 4: "(TRR6(R) ;; II\<^sub>t) = (R ;; II\<^sub>t)"
     apply(rel_auto)
-    by fastforce
+    by metis
   have "TC3(TC2(\<^bold>R(P \<turnstile> Q \<diamondop> R))) = TC3(\<^bold>R(P \<turnstile> (Q \<or> R ;; \<U>(true, [])) \<diamondop> R ;; II\<^sub>t))"
     by (simp add: TC2w_rdes assms(1) assms(2) assms(3))
   also have "\<dots> = \<^bold>R(TRR6 P \<turnstile> (TRR6(Q) \<or> R ;; \<U>(true, [])) \<diamondop> (R ;; II\<^sub>t))"
@@ -774,7 +776,7 @@ proof -
   have "post\<^sub>R(P) = (pre\<^sub>R(P) \<Rightarrow>\<^sub>r TRR (post\<^sub>R P))"
     by (metis "1" "2" Healthy_def' NRD_neg_pre_RC RC_implies_RR TRR_implies_RR a postR_rdes trel_theory.HCond_Idem)
   also have "... is TRR"
-    by (smt (z3) Healthy_def NRD_is_RD RD_healths(2) RR_TRR TRC_TRR1 TRC_neg_TRR6 TRR1_def TRR6_J6 TRR6_seq_comp TRR_TRR1_raw TRR_TRRw TRR_def TRR_ident_intro TRR_tc_skip TRRw_closed_disj TRRw_closed_neg a c postR_RR rea_impl_def seqr_or_distl)
+    by (metis Healthy_def TRC_neg_TRR c rea_impl_def trel_theory.HCond_Idem trel_theory.disj_is_healthy)
   finally have [closure]: "post\<^sub>R(P) is TRR" .  
   have "P = TC2(\<^bold>R(pre\<^sub>R P \<turnstile> peri\<^sub>R P \<diamondop> post\<^sub>R P))"
     by (simp add: Healthy_if NRD_is_RD RD_reactive_tri_design TC_implies_TC2 a assms)

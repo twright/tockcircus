@@ -8,6 +8,10 @@ subsection \<open> Patience Sets \<close>
 
 datatype patience = unpat | pat bool ("[_]\<^sub>\<P>")
 
+abbreviation "true\<^sub>p \<equiv> [True]\<^sub>\<P>"
+
+abbreviation "false\<^sub>p \<equiv> [False]\<^sub>\<P>"
+
 instantiation patience :: order
 begin
   fun less_eq_patience :: "patience \<Rightarrow> patience \<Rightarrow> bool" where

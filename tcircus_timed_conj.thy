@@ -195,6 +195,7 @@ lemma tconj_TRR6 [closure]:
    shows "P \<squnion>\<^sub>t Q is TRR6"
 proof -
   have "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P" "Q\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> Q"
+    sledgehammer
     by (meson TRR6_alt_def assms)+
   hence "(P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<squnion>\<^sub>t Q\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>) \<sqsubseteq> (P \<squnion>\<^sub>t Q)"
     by (meson dual_order.trans tconj_mono(1) tconj_mono(2))

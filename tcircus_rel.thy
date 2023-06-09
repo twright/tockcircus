@@ -61,6 +61,9 @@ subsection \<open> Reactive Relation Constructs \<close>
 definition tt_skip :: "('s, 'e) taction" ("II\<^sub>t") where
 [upred_defs]: "tt_skip = ($tr\<acute> =\<^sub>u $tr \<and> $st\<acute> =\<^sub>u $st)"
 
+definition sr_skip :: "('s, 'e) taction" ("II\<^sub>s\<^sub>r") where
+[upred_defs]: "sr_skip = (($ref\<acute> =\<^sub>u $ref) \<and> ($ok\<acute> =\<^sub>u $ok) \<and> ($wait\<acute> =\<^sub>u $wait) \<and> II\<^sub>t)"
+
 definition TRR1 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR1(P) = (II\<^sub>t ;; P)"
 
@@ -71,41 +74,116 @@ definition TRR3 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR3(P) = (P ;; II\<^sub>t)"
 
 definition uns :: "('s,'e) taction" where
-[upred_defs]: "uns = U($tr\<acute> = $tr \<and> $ref\<acute> = \<^bold>\<bullet> \<and> $pat\<acute>)"
+[upred_defs]: "uns = U($tr\<acute> = $tr \<and> ($ref\<acute> = \<^bold>\<bullet>) \<and> ($pat\<acute>))"
 
 definition TRR4 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction \<Rightarrow> ('s,'e) taction" where
 [upred_defs]: "TRR4 P Q = (Q \<or> P ;; uns)"
 
 
 definition TRR6 :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR6(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> $pat\<acute>))"
+[upred_defs]: "TRR6(P) = (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>))"
 
+(*
 definition TRR6a :: "('s,'e) taction \<Rightarrow> ('s,'e) taction" where
-[upred_defs]: "TRR6a(P) = U(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> ($wait \<Rightarrow> $pat\<acute>)))"
+[upred_defs]: "TRR6a(P) = U(P\<lbrakk>\<guillemotleft>false\<^sub>p\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P \<and> ($wait \<Rightarrow> ($pat\<acute> = true\<^sub>p))))"
+*)
 
 definition J6 :: "('s,'e) taction" where
-[upred_defs]: "J6 = (($pat \<Rightarrow> $pat\<acute>) \<and> ($ref\<acute> =\<^sub>u $ref) \<and> ($ok\<acute> =\<^sub>u $ok) \<and> ($wait\<acute> =\<^sub>u $wait) \<and> II\<^sub>t)"
+[upred_defs]: "J6 = ((($pat) \<Rightarrow> ($pat\<acute>)) \<and> II\<^sub>s\<^sub>r)"
 
+(*
 definition J61 :: "('s,'e) taction" where
-[upred_defs]: "J61 = (($pat \<Rightarrow> $pat\<acute>) \<and> ($ref\<acute> =\<^sub>u $ref) \<and> II\<^sub>t)"
+[upred_defs]: "J61 = ((($pat =\<^sub>u \<guillemotleft>true\<^sub>p\<guillemotright>) \<Rightarrow> ($pat\<acute> =\<^sub>u \<guillemotleft>true\<^sub>p\<guillemotright>)) \<and> ($ref\<acute> =\<^sub>u $ref) \<and> II\<^sub>t)"
+*)
 
-no_utp_lift TRR6 J6 J61
+no_utp_lift TRR6 J6
 
 lemma TRR6_idem:
   "TRR6(TRR6(P)) = TRR6 P"
   by (rel_auto)
 
+(*
+lemma TRR6_form: "TRR6 P = (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>))"
+  apply
+*)
+
+lemma J6_split:
+  shows "(P ;; J6) = TRR6 P"
+proof -
+  have "(P ;; J6) = (P ;; (($pat \<Rightarrow> $pat\<acute>) \<and> II\<^sub>s\<^sub>r))"
+    by (simp add: J6_def)
+  also have "\<dots> = (P ;; (($pat \<Rightarrow> $pat \<and> $pat\<acute>) \<and> II\<^sub>s\<^sub>r))"
+    by (rel_auto)
+  also have "\<dots> = ((P ;; (\<not> $pat \<and> II\<^sub>s\<^sub>r)) \<or> (P ;; ($pat \<and> II\<^sub>s\<^sub>r \<and> $pat\<acute>)))"
+    by (rel_auto)
+  also have "\<dots> = (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>))"
+    by (rel_auto)
+  also have "\<dots> = TRR6 P"
+    by rel_auto
+  (* 
+  proof -
+    have "(P ;; (\<not> $pat \<and> II\<^sub>s\<^sub>r)) = P\<^sup>f"
+    proof -
+      have "(P ;; (\<not> $ok \<and> \<lceil>II\<rceil>\<^sub>D)) = ((P \<and> \<not> $ok\<acute>) ;; \<lceil>II\<rceil>\<^sub>D)"
+        by (rel_auto)
+      also have "... = (\<exists> $ok\<acute> \<bullet> P \<and> $ok\<acute> =\<^sub>u false)"
+        by (rel_auto)
+      also have "... = P\<^sup>f"
+        by (metis C1 one_point out_var_uvar unrest_as_exists ok_vwb_lens vwb_lens_mwb)
+     finally show ?thesis .
+    qed
+    moreover have "(P ;; ($ok \<and> (\<lceil>II\<rceil>\<^sub>D \<and> $ok\<acute>))) = (P\<^sup>t \<and> $ok\<acute>)"
+    proof -
+      have "(P ;; ($ok \<and> (\<lceil>II\<rceil>\<^sub>D \<and> $ok\<acute>))) = (P ;; ($ok \<and> II))"
+        by (rel_auto)
+      also have "... = (P\<^sup>t \<and> $ok\<acute>)"
+        by (rel_auto)
+      finally show ?thesis .
+    qed
+    ultimately show ?thesis
+      by simp
+  qed
+  *)
+  finally show ?thesis .
+qed
+
+lemma TRR6_equivalence:
+  "P is TRR6 \<longleftrightarrow> `P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<Rightarrow> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>`"
+proof -
+  have "`P \<Leftrightarrow> (P ;; J6)` \<longleftrightarrow> `P \<Leftrightarrow> (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>))`"
+    by (simp add: J6_split TRR6_def)
+  also have "\<dots> \<longleftrightarrow> `(P \<Leftrightarrow> P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>)\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<and> (P \<Leftrightarrow> P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<and> $pat\<acute>)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>`"
+    by (simp add: subst_bool_split)
+  also have "\<dots> = `(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<Leftrightarrow> P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk>) \<and> (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<Leftrightarrow> P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)`"
+    by (subst_tac)
+  also have "\<dots> = `P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<Leftrightarrow> (P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<or> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)`"
+    by (pred_auto robust)
+  also have "\<dots> = `(P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk> \<Rightarrow> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>)`"
+    by (pred_blast)
+  finally show ?thesis
+    by (metis Healthy_def J6_split taut_iff_eq)
+qed
+
+lemma TRR6_equiv:
+  "P is TRR6 \<longleftrightarrow> P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P\<lbrakk>\<guillemotleft>False\<guillemotright>/$pat\<acute>\<rbrakk>"
+  by (simp add: TRR6_equivalence refBy_order)
+
+
 lemma TRR6_alt_def:
   "(P is TRR6) = (P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P)"
-proof 
+  by (smt (verit) Healthy_def TRR6_def TRR6_equiv out_var_semi_uvar pat_vwb_lens subst_conj unrest_as_subst unrest_lit unrest_usubst_single utp_pred_laws.inf.absorb_iff1 utp_pred_laws.inf.idem vwb_lens_mwb)
+(*
+proof
   assume 1: "P is TRR6"
-  have "TRR6(P)\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> TRR6(P)"
+  have "TRR6(P)\<lbrakk>\<guillemotleft>true\<^sub>p\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> TRR6(P)"         
     by (rel_auto)
-  thus "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
+  thus "P\<lbrakk>\<guillemotleft>true\<^sub>p\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
     by (simp add: Healthy_if 1)
 next
-  assume "P\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
+  assume "P\<lbrakk>\<guillemotleft>true\<^sub>p\<guillemotright>/$pat\<acute>\<rbrakk> \<sqsubseteq> P"
   thus "P is TRR6"
+    apply(rel_auto)
+    sledgehammer
     by(rel_auto; smt (z3))
 qed
 
@@ -113,6 +191,7 @@ lemma TRR6_J6:
   "TRR6(P) = (P ;; J6)"
   apply(rel_auto)
   by (metis (full_types))
+*)
 
 lemma [closure]:
   assumes "P is TRR1"
@@ -626,7 +705,7 @@ proof -
   ultimately have "(P ;; (\<not>\<^sub>r Q)) \<sqsubseteq> (P ;; (\<not>\<^sub>r Q))\<lbrakk>\<guillemotleft>True\<guillemotright>/$pat\<acute>\<rbrakk>"
     by simp
   hence "\<not>\<^sub>r (P ;; (\<not>\<^sub>r Q)) is TRR6"
-    by (metis (no_types, lifting) R1_rea_not R1_rea_not' TRR6_alt_def TRR6_not_refines disj_upred_def not_refines_TRR6 rea_not_R1 rea_not_def semilattice_sup_class.sup.order_iff subst_not utp_pred_laws.compl_sup utp_pred_laws.inf.cobounded2)
+    by (smt (verit) R1_rea_not R1_rea_not' TRR6_equiv TRR6_not_refines disj_upred_def not_refines_TRR6 out_var_semi_uvar pat_vwb_lens rea_not_R1 rea_not_def semilattice_sup_class.sup.order_iff subst_disj subst_not unrest_as_subst unrest_lit unrest_usubst_single utp_pred_laws.compl_le_compl_iff vwb_lens_mwb)
   thus ?thesis
     by (simp add: wp_rea_def)
 qed
@@ -736,9 +815,9 @@ lemma TIP_prop:
   shows "U(P\<lbrakk>$st,\<^bold>\<bullet>,True,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$pat\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> P" 
 proof -
   have "U(TIP(TRR(P))\<lbrakk>$st,\<^bold>\<bullet>,True,[],idleprefix($tr\<acute>-$tr)/$st\<acute>,$ref\<acute>,$pat\<acute>,$tr,$tr\<acute>\<rbrakk>) \<sqsubseteq> TRR(P)"
-    by (rel_simp, blast)
+    by (rel_auto; metis)
   thus ?thesis
-    by (simp add: Healthy_if assms(1) assms(2))
+    by (simp add: Healthy_if assms)
 qed
 
 lemma TRR_TIP_closed [closure]:
