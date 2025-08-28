@@ -1,8 +1,10 @@
 section \<open> Tick Tock CSP UTP Semantics \<close>
 
 theory tcircus_traces
-  imports "UTP-Reactive-Designs.utp_rea_designs"  "/home/isabelle/utp-main/theories/rcircus/Refusal_Tests"
-begin recall_syntax
+  imports "UTP-Reactive-Designs.utp_rea_designs" "Circus_Toolkit.Trace_Algebra" Refusal_Tests
+begin
+
+unbundle UTP_Syntax
 
 subsection \<open> Preliminaries \<close>
 
@@ -162,7 +164,7 @@ lemma tock_power_in_tocks: "[Tock A]^n \<in> tocks A"
 lemma tocks_ord_closed:
   "\<lbrakk> t\<^sub>1 \<in> tocks A; t\<^sub>2 \<subseteq>\<^sub>t t\<^sub>1 \<rbrakk> \<Longrightarrow> t\<^sub>2 \<in> tocks A"
   by (auto simp add: tocks_def tock_ord_def in_set_conv_nth)
-     (metis (no_types, hide_lams) nth_mem subset_trans tev.inject(1))
+     (metis (no_types, opaque_lifting) nth_mem subset_trans tev.inject(1))
 
 lemma tock_ord_Evt: "x \<subseteq>\<^sub>t Evt e # y \<Longrightarrow> (\<exists> t. x = Evt e # t \<and> t \<subseteq>\<^sub>t y)"
   apply (simp add: tock_ord_def)
@@ -357,38 +359,5 @@ definition patient where
 
 lemma patient_torefvars: "patient (torefvars E)"
   by (auto simp add: torefvars_def patient_def)
-
-
-syntax
-  "_events"      :: "logic \<Rightarrow> logic" ("events\<^sub>u'(_')")
-  "_tocks"       :: "logic \<Rightarrow> logic" ("tocks\<^sub>u'(_')")
-  "_refusallist" :: "logic \<Rightarrow> logic" ("refusallist\<^sub>u'(_')")
-  "_refusals"    :: "logic \<Rightarrow> logic" ("refusals\<^sub>u'(_')")
-  "_idleprefix"  :: "logic \<Rightarrow> logic" ("idleprefix\<^sub>u'(_')")
-  "_activesuffix"  :: "logic \<Rightarrow> logic" ("activesuffix\<^sub>u'(_')")
-  "_idlesuffix"  :: "logic \<Rightarrow> logic" ("idlesuffix\<^sub>u'(_')")
-  "_ev"          :: "logic \<Rightarrow> logic" ("ev\<^sub>u'(_')")
-  "_tock"        :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("tock\<^sub>u'(_,_')")
-  "_list_diff"   :: "logic \<Rightarrow> logic \<Rightarrow> logic" ("listdiff\<^sub>u'(_,_')")
-  "_filtertocks" :: "logic \<Rightarrow> logic" ("filtertocks\<^sub>u'(_')")
-  "_refusedevts" :: "logic \<Rightarrow> logic" ("refusedevts\<^sub>u'(_')")
-  "_patient" :: "logic \<Rightarrow> logic" ("patient\<^sub>u'(_')")
-
-
-translations
-  "events\<^sub>u(t)" == "CONST uop CONST events t"
-  "tocks\<^sub>u(t)" == "CONST uop CONST tocks t"
-  "refusallist\<^sub>u(t)" == "CONST uop CONST refusallist t"
-  "refusals\<^sub>u(t)" == "CONST uop CONST refusals t"
-  "idleprefix\<^sub>u(t)" == "CONST uop CONST idleprefix t"
-  "activesuffix\<^sub>u(t)" == "CONST uop CONST activesuffix t"
-  "idlesuffix\<^sub>u(t)" == "CONST uop CONST idlesuffix t"
-  "ev\<^sub>u(e)" == "CONST uop CONST Evt e"
-  "tock\<^sub>u(t,A)" == "CONST bop CONST Tock t A"
-  "listdiff\<^sub>u(x,y)" == "CONST bop CONST list_diff x y"
-  "filtertocks\<^sub>u(t)" == "CONST uop CONST filtertocks t"
-  "refusedevts\<^sub>u(r)" == "CONST uop CONST refusedevts r"
-  "patient\<^sub>u(r)" == "CONST uop CONST patient r"
-
 
 end
